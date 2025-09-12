@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Apartment Booking</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background: #f5f5f5;
+        }
+        .floor {
+            margin-bottom: 30px;
+        }
+        .floor-title {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .flats-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .flat {
+            width: 70px;
+            height: 70px;
+            background: #e0e0e0;
+            border: 2px solid #bbb;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s, border 0.2s;
+            font-size: 1.2rem;
+        }
+        .flat.booked {
+            background: #4caf50;
+            border-color: #388e3c;
+            color: #fff;
+            cursor: not-allowed;
+        }
+        .flat.prebooked {
+            background: #e53935;
+            border-color: #b71c1c;
+            color: #fff;
+            cursor: not-allowed;
+        }
+        .flat:not(.booked):hover {
+            background: #90caf9;
+            border-color: #1976d2;
+        }
+        .flat-tooltip {
+            display: none;
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: #fff;
+            padding: 7px 12px;
+            border-radius: 5px;
+            font-size: 13px;
+            white-space: nowrap;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .flat:hover .flat-tooltip {
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 10px;
+            }
+            .flats-row {
+                gap: 6px;
+            }
+            .flat {
+                width: 50px;
+                height: 50px;
+                font-size: 1rem;
+            }
+            .flat-tooltip {
+                top: 60px;
+                font-size: 12px;
+            }
+        }
+        @media (max-width: 600px) {
+            h2 {
+                font-size: 1.2rem;
+            }
+            .floor-title {
+                font-size: 1rem;
+            }
+            .flats-row {
+                gap: 4px;
+            }
+            .flat {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+            .flat-tooltip {
+                top: 44px;
+                font-size: 11px;
+            }
+        }
+        @media (max-width: 400px) {
+            .flat {
+                width: 28px;
+                height: 28px;
+                font-size: 0.7rem;
+            }
+            .flat-tooltip {
+                top: 36px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h2>Apartment Booking</h2>
+    <div id="apartment"></div>
+
+    <script>
+        // Example data for size and cost
+        const flatSizes = ['900 sqft', '950 sqft', '1000 sqft', '1050 sqft'];
+        const flatCosts = [50000, 52000, 54000, 56000, 58000, 60000, 62000, 64000, 66000, 68000];
+
+        const floors = 4;
+        const flatsPerFloor = 10;
+
+    // Track booked flats: Set of "floor-flat" keys
+    const booked = new Set();
+    // Track pre-booked flats: Set of "floor-flat" keys
+    // Example: Pre-booked flats (hardcoded for demo)
+    const prebooked = new Set(["2-3", "3-7", "4-1"]);
+
+        function getFlatSize(floor, flat) {
+            // Example: cycle through sizes
+            return flatSizes[(flat + floor) % flatSizes.length];
+        }
+        function getFlatCost(floor, flat) {
+            // Example: cost increases with floor and flat number
+            return flatCosts[flat] + floor * 2000;
+        }
+
+
+        function renderApartment() {
+            const container = document.getElementById('apartment');
+            container.innerHTML = '';
+            for (let f = floors; f >= 1; f--) {
+                const floorDiv = document.createElement('div');
+                floorDiv.className = 'floor';
+                const floorTitle = document.createElement('div');
+                floorTitle.className = 'floor-title';
+                floorTitle.textContent = `Floor ${f}`;
+                floorDiv.appendChild(floorTitle);
+
+                const flatsRow = document.createElement('div');
+                flatsRow.className = 'flats-row';
+
+                for (let h = 1; h <= flatsPerFloor; h++) {
+                    const flatKey = `${f}-${h}`;
+                    const flatDiv = document.createElement('div');
+                    flatDiv.className = 'flat';
+                    if (prebooked.has(flatKey)) {
+                        flatDiv.classList.add('prebooked');
+                    } else if (booked.has(flatKey)) {
+                        flatDiv.classList.add('booked');
+                    }
+                    flatDiv.textContent = h;
+
+                    const size = getFlatSize(f, h-1);
+                    const cost = getFlatCost(f-1, h-1);
+
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'flat-tooltip';
+                    tooltip.innerHTML = `Size: ${size}<br>Cost: $${cost.toLocaleString()}`;
+                    flatDiv.appendChild(tooltip);
+
+                    if (!prebooked.has(flatKey) && !booked.has(flatKey)) {
+                        flatDiv.addEventListener('click', () => {
+                            if (confirm(`Book Flat ${h} on Floor ${f}?\nSize: ${size}\nCost: $${cost.toLocaleString()}`)) {
+                                booked.add(flatKey);
+                                renderApartment();
+                            }
+                        });
+                    }
+
+                    flatsRow.appendChild(flatDiv);
+                }
+                floorDiv.appendChild(flatsRow);
+                container.appendChild(floorDiv);
+            }
+        }
+
+        renderApartment();
+    </script>
+</body>
+</html>
