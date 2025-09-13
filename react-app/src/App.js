@@ -21,14 +21,27 @@ function App() {
             <span className="bar"></span>
             <span className="bar"></span>
           </button>
-          <nav className={`construction-nav${menuOpen ? ' open' : ''}`}>
-            <ul>
-              <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
-              <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
-              <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
-              <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
+          <nav className="construction-nav">
+            <ul className="desktop-menu">
+              <li><NavLink to="/" end>Home</NavLink></li>
+              <li><NavLink to="/about">About</NavLink></li>
+              <li><NavLink to="/contact">Contact</NavLink></li>
+              <li><NavLink to="/login">Login</NavLink></li>
             </ul>
           </nav>
+          {menuOpen && (
+            <div className="menu-popup" onClick={() => setMenuOpen(false)}>
+              <div className="menu-popup-content" onClick={e => e.stopPropagation()}>
+                <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
+                <ul>
+                  <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
+                  <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
+                  <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
+                  <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
+                </ul>
+              </div>
+            </div>
+          )}
         </header>
         <main className="construction-main">
           <Routes>
@@ -41,7 +54,6 @@ function App() {
       </div>
     </Router>
   );
-
 }
 
 export default App;

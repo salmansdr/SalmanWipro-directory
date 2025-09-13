@@ -1,3 +1,84 @@
+.close-popup-btn {
+  position: absolute;
+  top: 0.7rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #c62828;
+  cursor: pointer;
+  z-index: 10001;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.18s;
+}
+.close-popup-btn:hover {
+  color: #b71c1c;
+}
+.menu-popup-content {
+  position: relative;
+}
+/* Popup menu for hamburger */
+.menu-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.45);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+.menu-popup-content {
+  background: #fff;
+  color: #c62828;
+  min-width: 220px;
+  margin: 1.5rem 1.5rem 0 0;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  padding: 1.2rem 1.2rem 1.2rem 1.2rem;
+  animation: popupIn 0.18s;
+}
+.menu-popup-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.menu-popup-content ul li:not(:last-child) {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+.menu-popup-content li {
+  margin-bottom: 1.1rem;
+}
+.menu-popup-content li:last-child {
+  margin-bottom: 0;
+}
+.menu-popup-content a {
+  color: #c62828;
+  font-size: 1.18rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.18s;
+}
+.menu-popup-content a:hover, .menu-popup-content a.active {
+  color: #b71c1c;
+}
+@keyframes popupIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.desktop-menu {
+  display: flex;
+}
+@media (max-width: 900px) {
+  .desktop-menu {
+    display: none;
+  }
+}
 /* Hamburger menu styles */
 .hamburger-btn {
   display: none;
@@ -359,19 +440,20 @@ body {
   background: #f4f6fa;
 }
 
+
 .construction-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #212121;
+  background: #c62828;
   padding: 0.5rem 2.5rem 0.5rem 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 8px rgba(198,40,40,0.15);
 }
 .header-title {
   font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
   font-size: 2rem;
   font-weight: 700;
-  color: #ffb300;
+  color: #fff;
   letter-spacing: 1px;
   display: flex;
   align-items: center;
@@ -406,8 +488,8 @@ body {
   transition: background 0.18s, color 0.18s;
 }
 .construction-nav a:hover, .construction-nav a.active {
-  background: #ffb300;
-  color: #212121;
+  background: #ff5252;
+  color: #fff;
 }
 
 .construction-main {
