@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Hero from './Hero';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import './App.css';
-import projectsData from './projects.json';
+
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -171,10 +171,21 @@ const PROJECT_TABS_META = [
 
 
 
+
 function Home() {
   const [tab, setTab] = useState('completed');
+  const [projectsData, setProjectsData] = useState(null);
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
+
+  React.useEffect(() => {
+    fetch('/projects.json')
+      .then(res => res.json())
+      .then(data => setProjectsData(data));
+  }, []);
+
+  if (!projectsData) return <div>Loading...</div>;
+
   if (tab === 'completed') tabProjects = projectsData.completed;
   if (tab === 'running') tabProjects = projectsData.running;
   if (tab === 'upcoming') tabProjects = projectsData.upcoming;
