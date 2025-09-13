@@ -179,7 +179,7 @@ function Home() {
   let tabProjects = [];
 
   React.useEffect(() => {
-    fetch('/projects.json')
+    fetch(process.env.PUBLIC_URL + '/projects.json')
       .then(res => res.json())
       .then(data => setProjectsData(data));
   }, []);
