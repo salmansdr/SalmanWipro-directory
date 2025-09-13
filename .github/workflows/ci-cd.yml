@@ -32,10 +32,9 @@ jobs:
       - name: Build React app
         run: cd react-app && npm run build
 
-      # Add deployment steps here if needed, e.g., Azure, AWS, etc.
-      # - name: Deploy to Azure Web App
-      #   uses: azure/webapps-deploy@v2
-      #   with:
-      #     app-name: <your-app-name>
-      #     publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-      #     package: ./react-app/build
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./react-app/build
+          publish_branch: gh-pages
