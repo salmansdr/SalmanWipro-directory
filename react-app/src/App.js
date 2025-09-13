@@ -1,7 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Hero from './Hero';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import './App.css';
+import projectsData from './projects.json';
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,153 +41,54 @@ function App() {
       </div>
     </Router>
   );
+
 }
 
+export default App;
 
 
 
 
 
-// Project data restored from JSON
-const COMPLETED_PROJECTS = [
-  {
-    id: 101,
-    name: 'Sunrise Residency',
-    location: 'Central Park',
-    progress: 100,
-    image: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80',
-    floors: 10,
-    flatsPerFloor: 5,
-    sellingPrice: '₹75L - ₹1Cr',
-    startDate: '2021-01-01',
-    endDate: '2023-03-15',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing', 'Fixtures and Fitting', 'Handover'
-    ]
-  },
-  {
-    id: 102,
-    name: 'Lakeview Apartments',
-    location: 'Lakeside',
-    progress: 100,
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80',
-    floors: 12,
-    flatsPerFloor: 6,
-    sellingPrice: '₹90L - ₹1.3Cr',
-    startDate: '2020-06-10',
-    endDate: '2022-12-01',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing', 'Fixtures and Fitting', 'Handover'
-    ]
-  },
-  {
-    id: 103,
-    name: 'Metro City Homes',
-    location: 'Metro City',
-    progress: 100,
-    image: 'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?auto=format&fit=crop&w=400&q=80',
-    floors: 15,
-    flatsPerFloor: 8,
-    sellingPrice: '₹1Cr - ₹1.5Cr',
-    startDate: '2019-03-20',
-    endDate: '2021-11-30',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing', 'Fixtures and Fitting', 'Handover'
-    ]
-  },
-  {
-    id: 104,
-    name: 'Hilltop Villas',
-    location: 'Hill Area',
-    progress: 100,
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    floors: 6,
-    flatsPerFloor: 4,
-    sellingPrice: '₹1.2Cr - ₹2Cr',
-    startDate: '2018-07-01',
-    endDate: '2020-10-10',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing', 'Fixtures and Fitting', 'Handover'
-    ]
-  }
-];
 
-const RUNNING_PROJECTS = [
-  {
-    id: 1,
-    name: 'Skyline Heights',
-    location: 'Downtown City',
-    progress: 78,
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80',
-    floors: 12,
-    flatsPerFloor: 6,
-    sellingPrice: '₹85L - ₹1.2Cr',
-    startDate: '2024-01-15',
-    endDate: '2026-06-30',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing'
-    ]
-  },
-  {
-    id: 2,
-    name: 'Green Valley Residency',
-    location: 'Suburban Area',
-    progress: 54,
-    image: 'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80',
-    floors: 8,
-    flatsPerFloor: 8,
-    sellingPrice: '₹65L - ₹95L',
-    startDate: '2023-09-01',
-    endDate: '2025-12-15',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior'
-    ]
-  },
-  {
-    id: 3,
-    name: 'Oceanic Towers',
-    location: 'Coastal Road',
-    progress: 92,
-    image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=400&q=80',
-    floors: 15,
-    flatsPerFloor: 4,
-    sellingPrice: '₹1.1Cr - ₹1.8Cr',
-    startDate: '2022-05-10',
-    endDate: '2025-01-20',
-    stages: [
-      'Approval process', 'Planning & Design', 'Foundation work', 'Structural Framing', 'Roofing and Exterior', 'Interior Finishing', 'Fixtures and Fitting', 'Handover'
-    ]
-  }
-];
 
-const UPCOMING_PROJECTS = [
-  {
-    id: 201,
-    name: 'Riverfront Residency',
-    location: 'Riverside',
-    progress: 0,
-    image: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=400&q=80',
-    floors: 9,
-    flatsPerFloor: 7,
-    sellingPrice: '₹70L - ₹1Cr',
-    startDate: '2026-01-01',
-    endDate: '2028-06-30',
-    stages: []
-  },
-  {
-    id: 202,
-    name: 'Garden Estate',
-    location: 'Green Belt',
-    progress: 0,
-    image: 'https://images.unsplash.com/photo-1468436139062-f60a71c5c892?auto=format&fit=crop&w=400&q=80',
-    floors: 11,
-    flatsPerFloor: 5,
-    sellingPrice: '₹80L - ₹1.1Cr',
-    startDate: '2026-09-15',
-    endDate: '2029-02-28',
-    stages: []
-  }
-];
+function Login() {
+  return (
+    <div className="construction-login">
+      <h2>Login</h2>
+      <form className="login-form">
+        <label>
+          Username:
+          <input type="text" name="username" />
+        </label>
+        <label>
+          Password:
+          <input type="password" name="password" />
+        </label>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  );
+}
+
+function About() {
+  return (
+    <div className="construction-about">
+      <h2>About Project</h2>
+      <p>This portal helps manage building construction projects efficiently.</p>
+    </div>
+  );
+}
+
+function Contact() {
+  return (
+    <div className="construction-contact">
+      <h2>Contact Us</h2>
+      <p>Email: info@construction.com</p>
+    </div>
+  );
+}
+
 
 
 
@@ -266,15 +169,18 @@ const PROJECT_TABS_META = [
 ];
 
 
+
+
 function Home() {
   const [tab, setTab] = useState('completed');
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
-  if (tab === 'completed') tabProjects = COMPLETED_PROJECTS;
-  if (tab === 'running') tabProjects = RUNNING_PROJECTS;
-  if (tab === 'upcoming') tabProjects = UPCOMING_PROJECTS;
+  if (tab === 'completed') tabProjects = projectsData.completed;
+  if (tab === 'running') tabProjects = projectsData.running;
+  if (tab === 'upcoming') tabProjects = projectsData.upcoming;
   return (
     <div className="construction-home">
+      <Hero />
       <div className="project-mini-menu">
         {PROJECT_TABS_META.map(t => (
           <button
@@ -295,43 +201,3 @@ function Home() {
     </div>
   );
 }
-
-function Login() {
-  return (
-    <div className="construction-login">
-      <h2>Login</h2>
-      <form className="login-form">
-        <label>
-          Username:
-          <input type="text" name="username" />
-        </label>
-        <label>
-          Password:
-          <input type="password" name="password" />
-        </label>
-        <button type="submit">Login</button>
-      </form>
-    </div>
-  );
-}
-
-function About() {
-  return (
-    <div className="construction-about">
-      <h2>About Project</h2>
-      <p>This portal helps manage building construction projects efficiently.</p>
-    </div>
-  );
-}
-
-function Contact() {
-  return (
-    <div className="construction-contact">
-      <h2>Contact Us</h2>
-      <p>Email: info@construction.com</p>
-    </div>
-  );
-}
-
-
-export default App;
