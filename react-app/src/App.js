@@ -4,17 +4,27 @@ import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-do
 import './App.css';
 
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <Router>
       <div className="construction-app">
         <header className="construction-header">
           <div className="header-title">🏗️ BuildPro Construction</div>
-          <nav className="construction-nav">
+          <button
+            className={`hamburger-btn${menuOpen ? ' open' : ''}`}
+            aria-label="Toggle menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+          </button>
+          <nav className={`construction-nav${menuOpen ? ' open' : ''}`}>
             <ul>
-              <li><NavLink to="/" end>Home</NavLink></li>
-              <li><NavLink to="/about">About</NavLink></li>
-              <li><NavLink to="/contact">Contact</NavLink></li>
-              <li><NavLink to="/login">Login</NavLink></li>
+              <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
+              <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
+              <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
+              <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
             </ul>
           </nav>
         </header>
