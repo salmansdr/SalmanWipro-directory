@@ -1,0 +1,419 @@
+.progress-divider {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 0.5rem 0 0.2rem 0;
+  width: 100%;
+}
+.more-details-link.below-status {
+  position: static;
+  margin-top: 0.5rem;
+  display: block;
+  width: fit-content;
+  align-self: flex-end;
+}
+.more-details-link {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.98rem;
+  font-weight: 500;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(33,150,243,0.08);
+  transition: background 0.18s, color 0.18s;
+  z-index: 2;
+}
+.more-details-link:hover, .more-details-link:focus {
+  background: #1565c0;
+  color: #fff;
+}
+
+.details-divider {
+  border: none;
+  border-top: 2px solid #90caf9;
+  margin: 0 0 1.2rem 0;
+  width: 100%;
+}
+.project-mini-menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 2.2rem 0 1.5rem 0;
+}
+.mini-menu-btn {
+  background: #fff;
+  border: 2px solid #90caf9;
+  color: #1976d2;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(33,150,243,0.07);
+}
+.mini-menu-btn.active, .mini-menu-btn:focus {
+  background: #1976d2;
+  color: #fff;
+  border: 2px solid #1976d2;
+  box-shadow: 0 4px 18px rgba(33,150,243,0.13);
+}
+.mini-menu-btn:hover:not(.active) {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 2px solid #64b5f6;
+}
+.mini-menu-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+}
+.project-card-list {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin: 2rem 0 1.5rem 0;
+  flex-wrap: wrap;
+}
+.project-card {
+  background: #fff;
+  border: 2px solid #ffe082;
+  border-radius: 16px;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(255,193,7,0.08);
+  cursor: pointer;
+  transition: box-shadow 0.2s, border 0.2s;
+  position: relative;
+  outline: none;
+}
+.project-card.selected, .project-card:focus {
+  border: 2.5px solid #ffb300;
+  box-shadow: 0 4px 18px rgba(255,179,0,0.18);
+}
+.project-img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+.project-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.7rem 1rem 0.5rem 1rem;
+  width: 100%;
+}
+.project-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f57c00;
+  margin-bottom: 0.2rem;
+}
+.project-location {
+  font-size: 0.98rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+.project-progress {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.97rem;
+}
+.progress-bar {
+  flex: 1;
+  background: #ffe082;
+  border-radius: 6px;
+  height: 10px;
+  margin: 0 0.2rem;
+  overflow: hidden;
+  min-width: 60px;
+  max-width: 90px;
+  position: relative;
+}
+.progress-bar-inner {
+  background: linear-gradient(90deg, #ffb300 60%, #f57c00 100%);
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s;
+  display: block;
+}
+.progress-percent {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.project-details {
+  background: #e3f2fd;
+  border: 2px solid #90caf9;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 12px rgba(33,150,243,0.08);
+  min-width: 320px;
+  max-width: 500px;
+  text-align: left;
+}
+.project-details h2 {
+  color: #1976d2;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+.project-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.project-details li {
+  margin-bottom: 0.6rem;
+  font-size: 1.05rem;
+}
+.stage-list {
+  margin: 0.3rem 0 0 1.2rem;
+  padding: 0;
+  font-size: 0.98rem;
+}
+.stage-list li {
+  margin-bottom: 0.2rem;
+}
+
+@media (max-width: 900px) {
+  .project-card-list {
+    gap: 1.2rem;
+  }
+  .project-card {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+@media (max-width: 600px) {
+  .project-card-list {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .project-card {
+    width: 98vw;
+    max-width: 340px;
+    height: 140px;
+    min-width: 180px;
+  }
+  .project-details {
+    min-width: unset;
+    max-width: 98vw;
+    padding: 1rem 0.5rem;
+  }
+}
+/* Responsive styles for all devices */
+@media (max-width: 900px) {
+  .construction-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
+  .header-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .construction-nav ul {
+    gap: 1.2rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .construction-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.7rem 0.5rem 0.3rem 0.5rem;
+  }
+  .header-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+    justify-content: center;
+  }
+  .construction-nav ul {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-left: 0.2rem;
+  }
+  .construction-nav a {
+    font-size: 1rem;
+    padding: 0.4rem 0.7rem;
+    width: 100%;
+    display: block;
+  }
+  .construction-main {
+    padding: 1rem 0.2rem 1rem 0.2rem;
+  }
+  .construction-home, .construction-login, .construction-about, .construction-contact {
+    padding: 1rem 0.5rem;
+    min-width: unset;
+    max-width: 100%;
+    font-size: 0.98rem;
+  }
+}
+
+.App {
+  text-align: center;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f6fa;
+}
+
+
+.construction-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f4f6fa;
+}
+
+.construction-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #212121;
+  padding: 0.5rem 2.5rem 0.5rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.header-title {
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffb300;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+}
+
+
+.construction-nav {
+  background: transparent;
+  box-shadow: none;
+}
+.construction-nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  gap: 2.2rem;
+}
+.construction-nav li {
+  margin: 0;
+}
+.construction-nav a {
+  color: #fff;
+  text-decoration: none;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 1.13rem;
+  letter-spacing: 0.5px;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  transition: background 0.18s, color 0.18s;
+}
+.construction-nav a:hover, .construction-nav a.active {
+  background: #ffb300;
+  color: #212121;
+}
+
+.construction-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2.5rem 1rem 1.5rem 1rem;
+}
+
+.construction-home {
+  background: #fffde7;
+  border: 2px solid #ffe082;
+  border-radius: 12px;
+  padding: 2rem 3rem;
+  box-shadow: 0 2px 12px rgba(255,193,7,0.08);
+  text-align: center;
+}
+.construction-home h1 {
+  color: #f57c00;
+  margin-bottom: 0.5rem;
+}
+.construction-home p {
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.construction-login, .construction-about, .construction-contact {
+  background: #e3f2fd;
+  border: 2px solid #90caf9;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 12px rgba(33,150,243,0.08);
+  min-width: 320px;
+  max-width: 400px;
+}
+.construction-login h2,
+.construction-about h2,
+.construction-contact h2 {
+  color: #1976d2;
+  margin-bottom: 1rem;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  color: #333;
+}
+.login-form input {
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  border: 1px solid #bdbdbd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.login-form button {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.login-form button:hover {
+  background: #1565c0;
+}
