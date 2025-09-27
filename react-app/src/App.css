@@ -197,9 +197,10 @@
 @media (max-width: 768px) {
   .hamburger-btn {
     display: flex;
-    position: absolute;
+    position: fixed;
     right: 18px;
     top: 18px;
+    z-index: 10001;
   }
   .construction-nav {
     position: absolute;
