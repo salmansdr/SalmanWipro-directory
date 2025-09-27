@@ -1,8 +1,37 @@
 
+
 import React, { useState } from 'react';
 import Hero from './Hero';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import './App.css';
+
+function Login() {
+  return (
+    <div className="construction-login">
+      <h2>Login</h2>
+      <form className="login-form">
+        <label>
+          Username:
+          <input type="text" name="username" />
+        </label>
+        <label>
+          Password:
+          <input type="password" name="password" />
+        </label>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  );
+}
+
+function About() {
+  return (
+    <div className="construction-about">
+      <h2>About Project</h2>
+      <p>This portal helps manage building construction projects efficiently.</p>
+    </div>
+  );
+}
 
 
 function App() {
@@ -54,9 +83,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<Home />} />
           </Routes>
-        </main>
 
-      <a
+ <a
         href="https://wa.me/9874592300"
         target="_blank"
         rel="noopener noreferrer"
@@ -65,6 +93,9 @@ function App() {
       >
         <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="whatsapp-img" />
       </a>
+        </main>
+
+     
       
       <footer className="construction-footer">
         <div className="footer-social-section">
@@ -86,45 +117,8 @@ function App() {
           </a>
         </div>
       </footer>
-      
     </div>
   </Router>
-  );
-}
-
-export default App;
-
-
-
-
-
-
-
-function Login() {
-  return (
-    <div className="construction-login">
-      <h2>Login</h2>
-      <form className="login-form">
-        <label>
-          Username:
-          <input type="text" name="username" />
-        </label>
-        <label>
-          Password:
-          <input type="password" name="password" />
-        </label>
-        <button type="submit">Login</button>
-      </form>
-    </div>
-  );
-}
-
-function About() {
-  return (
-    <div className="construction-about">
-      <h2>About Project</h2>
-      <p>This portal helps manage building construction projects efficiently.</p>
-    </div>
   );
 }
 
@@ -156,17 +150,20 @@ function ProjectSection({ title, projects, showProgress = true }) {
             <div className="project-info">
               <div className="project-title">{proj.name}</div>
               <div className="project-location">{proj.location}</div>
-              {showProgress && (
-                <>
-                  <div className="project-progress">
-                    <span>Progress: </span>
-                    <span className="progress-bar">
-                      <span className="progress-bar-inner" style={{width: proj.progress + '%'}}></span>
+              <div className="project-location">{proj.status}</div>
+              {proj.status === 'running' && (
+                <div className="project-progress horizontal-thermometer">
+                  <span className="progress-label">Progress: {proj.progress + '%'}</span>
+                  {/*
+                  <span className="thermometer-bar-horizontal">
+                    <span className="thermometer-bg-horizontal">
+                      <span className="thermometer-fill-horizontal" style={{width: proj.progress + '%'}}></span>
                     </span>
-                    <span className="progress-percent">{proj.progress}%</span>
-                  </div>
-                  <hr className="progress-divider" />
-                </>
+                    <span className="thermometer-bulb-horizontal"></span>
+                  </span>
+                  <span className="progress-percent-horizontal">{proj.progress}%</span>
+                  */}
+                </div>
               )}
               <button
                 className={`more-details-link${showProgress ? ' below-status' : ''}`}
@@ -223,39 +220,141 @@ const PROJECT_TABS_META = [
 function Home() {
   const [tab, setTab] = useState('completed'); // 'completed' is Home
   const [projectsData, setProjectsData] = useState(null);
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchStatus, setSearchStatus] = useState('completed');
+  const [filteredProjects, setFilteredProjects] = useState(null);
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
-//process.env.PUBLIC_URL + '/projects.json'
-//'https://localhost:7099/api/projects'
+
   React.useEffect(() => {
     setTab('completed'); // Ensure Home is active on mount
     fetch(process.env.PUBLIC_URL + '/projects.json')
       .then(res => res.json())
-      .then(data => setProjectsData(data));
+      .then(data => {
+        setProjectsData(data);
+        // Show completed projects by default
+        setFilteredProjects(data.completed);
+      });
   }, []);
 
   if (!projectsData) return <div>Loading...</div>;
 
-  if (tab === 'completed') tabProjects = projectsData.completed;
-  if (tab === 'running') tabProjects = projectsData.running;
-  if (tab === 'upcoming') tabProjects = projectsData.upcoming;
+  // Gather all unique locations and statuses from projects.json
+  const allProjects = [
+    ...projectsData.completed,
+    ...projectsData.running,
+    ...projectsData.upcoming
+  ];
+  const uniqueLocations = Array.from(new Set(allProjects.map(p => p.location)));
+  //const uniqueStatuses = ['completed', 'running', 'upcoming'];
+
+  // Filtering logic
+  function handleSearch() {
+    let results = allProjects;
+    // If both dropdowns are 'All' or empty, show all
+    const locationSelected = searchLocation && searchLocation !== 'All';
+    const statusSelected = searchStatus && searchStatus !== 'All';
+
+    if (locationSelected && statusSelected) {
+      // AND condition: both filters must match
+      results = results.filter(p => {
+        let statusMatch = false;
+        if (searchStatus === 'completed') statusMatch = projectsData.completed.some(c => c.id === p.id);
+        if (searchStatus === 'running') statusMatch = projectsData.running.some(r => r.id === p.id);
+        if (searchStatus === 'upcoming') statusMatch = projectsData.upcoming.some(u => u.id === p.id);
+        return p.location === searchLocation && statusMatch;
+      });
+    } else if (locationSelected) {
+      // Only location filter
+      results = results.filter(p => p.location === searchLocation);
+    } else if (statusSelected) {
+      // Only status filter
+      results = results.filter(p => {
+        if (searchStatus === 'completed') return projectsData.completed.some(c => c.id === p.id);
+        if (searchStatus === 'running') return projectsData.running.some(r => r.id === p.id);
+        if (searchStatus === 'upcoming') return projectsData.upcoming.some(u => u.id === p.id);
+        return true;
+      });
+    }
+    // If neither selected, results remain allProjects
+    setFilteredProjects(results);
+  }
+
+  function handleReset() {
+    setSearchLocation('');
+    setSearchStatus('');
+    setFilteredProjects(null);
+  }
+
+  // Determine which projects to show
+  if (filteredProjects !== null) {
+    tabProjects = filteredProjects;
+  } else {
+    if (tab === 'completed') tabProjects = projectsData.completed;
+    if (tab === 'running') tabProjects = projectsData.running;
+    if (tab === 'upcoming') tabProjects = projectsData.upcoming;
+  }
+
   return (
     <div className="construction-home">
       <Hero />
-      
+      {/* Search Section */}
+      <div className="project-search-section card-style">
+        <div className="search-row side-by-side compact-row">
+          <div className="search-group">
+            <div className="search-label">By Location</div>
+            <select
+              id="location-select"
+              className="search-select"
+              value={searchLocation}
+              onChange={e => setSearchLocation(e.target.value)}
+            >
+              <option value="">All</option>
+              {uniqueLocations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+          </div>
+         
+          <div className="search-group">
+            <div className="search-label">By Status</div>
+            <select
+              id="status-select"
+              className="search-select"
+              value={searchStatus}
+              onChange={e => setSearchStatus(e.target.value)}
+            >
+              <option value="completed">Completed</option>
+              <option value="running">Running</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="">All</option>
+            </select>
+          </div>
+          <div className="search-btn-group">
+            <button className="search-btn icon-btn" onClick={handleSearch} title="Search">
+              <span role="img" aria-label="search">🔍</span>
+            </button>
+            <button className="reset-btn icon-btn" onClick={handleReset} title="Reset">
+              <span role="img" aria-label="reset">♻️</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* End Search Section */}
+      {/*
       <div className="project-mini-menu">
         {PROJECT_TABS_META.map(t => (
           <button
             key={t.key}
             className={`mini-menu-btn${tab === t.key ? ' active' : ''}`}
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setFilteredProjects(null); }}
             type="button"
           >
             <span className="mini-menu-icon">{t.icon}</span> {t.label}
           </button>
         ))}
       </div>
-      
+      */}
       <ProjectSection
         title={`${currentTab.icon} ${currentTab.label} Projects`}
         projects={tabProjects}
@@ -264,3 +363,4 @@ function Home() {
     </div>
   );
 }
+  export default App;
