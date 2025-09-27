@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Salman\\BuildingContruction\\SalmanWipro-directory\\Server\\ConstructionAPI\\ConstructionAPI.csproj": {}
+    "/workspaces/SalmanWipro-directory/Server/ConstructionAPI/ConstructionAPI.csproj": {}
   },
   "projects": {
-    "C:\\Salman\\BuildingContruction\\SalmanWipro-directory\\Server\\ConstructionAPI\\ConstructionAPI.csproj": {
+    "/workspaces/SalmanWipro-directory/Server/ConstructionAPI/ConstructionAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Salman\\BuildingContruction\\SalmanWipro-directory\\Server\\ConstructionAPI\\ConstructionAPI.csproj",
+        "projectUniqueName": "/workspaces/SalmanWipro-directory/Server/ConstructionAPI/ConstructionAPI.csproj",
         "projectName": "ConstructionAPI",
-        "projectPath": "C:\\Salman\\BuildingContruction\\SalmanWipro-directory\\Server\\ConstructionAPI\\ConstructionAPI.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "C:\\Salman\\BuildingContruction\\SalmanWipro-directory\\Server\\ConstructionAPI\\obj\\",
+        "projectPath": "/workspaces/SalmanWipro-directory/Server/ConstructionAPI/ConstructionAPI.csproj",
+        "packagesPath": "/home/codespace/.nuget/packages/",
+        "outputPath": "/workspaces/SalmanWipro-directory/Server/ConstructionAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/home/codespace/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -37,8 +37,7 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.300"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -72,7 +71,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.412/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

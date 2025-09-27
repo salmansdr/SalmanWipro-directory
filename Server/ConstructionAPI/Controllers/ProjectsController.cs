@@ -6,10 +6,11 @@ namespace ConstructionAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+
     public class ProjectsController : ControllerBase
     {
-    //private readonly string _jsonPath = "../Server/projects.json";
-private readonly string _jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "projects.json");
+    private readonly string _jsonPath = "../Server/projects.json";
+
         [HttpGet]
         public async Task<IActionResult> GetProjects()
         {
@@ -17,7 +18,15 @@ private readonly string _jsonPath = Path.Combine(Directory.GetCurrentDirectory()
                 return NotFound("projects.json file not found.");
 
             var json = await System.IO.File.ReadAllTextAsync(_jsonPath);
-            return Content(json, "application/json");
+            try
+            {
+                var data = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+                return Ok(data);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return BadRequest("Invalid JSON format in projects.json.");
+            }
         }
     }
 }
