@@ -9,7 +9,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
-        builder => builder.WithOrigins("http://localhost:3000")
+        builder => builder.WithOrigins("https://congenial-guacamole-77wpqxxr4g72rxjx-3000.app.github.dev")
                           .AllowAnyHeader()
                           .AllowAnyMethod());
 });

@@ -11,7 +11,10 @@ function App() {
     <Router>
       <div className="construction-app">
         <header className="construction-header">
-          <div className="header-title">🏗️ BuildPro Construction</div>
+          <div>
+            <div className="header-title">🏗️ BuildPro Construction</div>
+            <div className="powered-signature">Powered by Salman and Reza Kwsar</div>
+          </div>
           <button
             className={`hamburger-btn${menuOpen ? ' open' : ''}`}
             aria-label="Toggle menu"
@@ -23,10 +26,10 @@ function App() {
           </button>
           <nav className="construction-nav">
             <ul className="desktop-menu">
-              <li><NavLink to="/" end>Home</NavLink></li>
-              <li><NavLink to="/about">About</NavLink></li>
-              <li><NavLink to="/contact">Contact</NavLink></li>
-              <li><NavLink to="/login">Login</NavLink></li>
+              <li><NavLink to="/" end className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Home</NavLink></li>
+              <li><NavLink to="/about" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>About</NavLink></li>
+              <li><NavLink to="/contact" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Contact</NavLink></li>
+              <li><NavLink to="/login" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Login</NavLink></li>
             </ul>
           </nav>
           {menuOpen && (
@@ -51,8 +54,38 @@ function App() {
             <Route path="/login" element={<Login />} />
           </Routes>
         </main>
-      </div>
-    </Router>
+
+      <a
+        href="https://wa.me/9874592300"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="whatsapp-float"
+        aria-label="WhatsApp"
+      >
+        <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="whatsapp-img" />
+      </a>
+      <footer className="construction-footer">
+        <div className="footer-social-section">
+          <div className="footer-heading">Follow us on</div>
+          <a href="https://facebook.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon facebook" aria-label="Facebook">
+            <img src={process.env.PUBLIC_URL + '/social/Facebook.PNG'} alt="Facebook" className="social-img" />
+          </a>
+          <a href="https://instagram.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon instagram" aria-label="Instagram">
+            <img src={process.env.PUBLIC_URL + '/social/instagram.PNG'} alt="Instagram" className="social-img" />
+          </a>
+          <a href="https://x.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon x" aria-label="X">
+            <img src={process.env.PUBLIC_URL + '/social/x.PNG'} alt="X" className="social-img" />
+          </a>
+          <a href="https://linkedin.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon linkedin" aria-label="LinkedIn">
+            <img src={process.env.PUBLIC_URL + '/social/linkedin.PNG'} alt="LinkedIn" className="social-img" />
+          </a>
+          <a href="https://youtube.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon youtube" aria-label="YouTube">
+            <img src={process.env.PUBLIC_URL + '/social/youtube.PNG'} alt="YouTube" className="social-img" />
+          </a>
+        </div>
+      </footer>
+    </div>
+  </Router>
   );
 }
 
@@ -190,9 +223,9 @@ function Home() {
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
 //process.env.PUBLIC_URL + '/projects.json'
-
+//'https://localhost:7099/api/projects'
   React.useEffect(() => {
-    fetch('https://localhost:7099/api/projects')
+    fetch(process.env.PUBLIC_URL + '/projects.json')
       .then(res => res.json())
       .then(data => setProjectsData(data));
   }, []);
