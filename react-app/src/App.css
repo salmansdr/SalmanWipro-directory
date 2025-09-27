@@ -276,7 +276,7 @@
   width: 100%;
 }
 .project-mini-menu {
-  display: none;
+  display: flex;
   justify-content: center;
   align-items: center;
   gap: 1.5rem;
