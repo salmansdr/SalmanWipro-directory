@@ -7,15 +7,7 @@ import './App.css';
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
-  {/*
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  */}
+ 
   return (
     <Router>
       <div className="construction-app">
