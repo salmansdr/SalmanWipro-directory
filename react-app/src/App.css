@@ -158,23 +158,25 @@
 .desktop-menu {
   display: flex;
 }
-@media (max-width: 900px) {
-  .desktop-menu {
-    display: none;
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: flex !important;
+    position: fixed;
+    right: 18px;
+    top: 18px;
+    z-index: 10001;
   }
-}
-/* Hamburger menu styles */
-.hamburger-btn {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 40px;
-  height: 40px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  z-index: 1001;
+  .whatsapp-float {
+    right: 12px;
+    top: auto;
+    bottom: 90px;
+    transform: none;
+    padding: 4px;
+  }
+  .whatsapp-img {
+    width: 36px;
+    height: 36px;
+  }
 }
 .hamburger-btn .bar {
   width: 28px;
