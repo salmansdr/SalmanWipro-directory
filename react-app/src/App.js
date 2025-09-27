@@ -7,6 +7,7 @@ import './App.css';
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  {/*
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   React.useEffect(() => {
@@ -14,6 +15,7 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  */}
   return (
     <Router>
       <div className="construction-app">
@@ -25,9 +27,10 @@ function App() {
             aria-label="Toggle menu"
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
+             <span className="bar" style={{ background: '#1976d2' }}></span>
+                <span className="bar" style={{ background: 'rgba(40, 198, 45, 1)' }}></span>
+                <span className="bar" style={{ background: '#ffb300' }}></span>
+           
           </button>
           <nav className="construction-nav">
             <ul className="desktop-menu">
