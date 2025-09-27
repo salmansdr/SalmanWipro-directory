@@ -18,44 +18,38 @@ function App() {
     <Router>
       <div className="construction-app">
         <header className="construction-header">
-          <div>
-            <div className="header-title">🏗️ BuildPro Construction</div>
-            <div className="powered-signature">Powered by Salman and Reza Kwsar</div>
-          </div>
-          {isMobile && (
-            <>
-              <button
-                className={`hamburger-btn${menuOpen ? ' open' : ''}`}
-                aria-label="Toggle menu"
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                <span className="bar bar-top" style={{ background: '#1976d2' }}></span>
-                <span className="bar bar-middle" style={{ background: '#c62828' }}></span>
-                <span className="bar bar-bottom" style={{ background: '#ffb300' }}></span>
-              </button>
-              {menuOpen && (
-                <div className="menu-popup" onClick={() => setMenuOpen(false)}>
-                  <div className="menu-popup-content" onClick={e => e.stopPropagation()}>
-                    <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
-                    <ul>
-                      <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
-                      <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
-                      <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
-                      <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+          <div className="header-title">🏗️ BuildPro Construction</div>
+          <div className="powered-signature">Powered by Salman and Reza Kwsar</div>
+          <button
+            className={`hamburger-btn${menuOpen ? ' open' : ''}`}
+            aria-label="Toggle menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+          </button>
           <nav className="construction-nav">
             <ul className="desktop-menu">
-              <li><NavLink to="/" end className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Home</NavLink></li>
-              <li><NavLink to="/about" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>About</NavLink></li>
-              <li><NavLink to="/contact" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Contact</NavLink></li>
-              <li><NavLink to="/login" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Login</NavLink></li>
+              <li><NavLink to="/" end>Home</NavLink></li>
+              <li><NavLink to="/about">About</NavLink></li>
+              <li><NavLink to="/contact">Contact</NavLink></li>
+              <li><NavLink to="/login">Login</NavLink></li>
             </ul>
           </nav>
+          {menuOpen && (
+            <div className="menu-popup" onClick={() => setMenuOpen(false)}>
+              <div className="menu-popup-content" onClick={e => e.stopPropagation()}>
+                <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
+                <ul>
+                  <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
+                  <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
+                  <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
+                  <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
+                </ul>
+              </div>
+            </div>
+          )}
         </header>
         <main className="construction-main">
           <Routes>
@@ -76,6 +70,7 @@ function App() {
       >
         <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="whatsapp-img" />
       </a>
+      
       <footer className="construction-footer">
         <div className="footer-social-section">
           <div className="footer-heading">Follow us on</div>
@@ -96,6 +91,7 @@ function App() {
           </a>
         </div>
       </footer>
+      
     </div>
   </Router>
   );
@@ -251,6 +247,7 @@ function Home() {
   return (
     <div className="construction-home">
       <Hero />
+      
       <div className="project-mini-menu">
         {PROJECT_TABS_META.map(t => (
           <button
@@ -263,6 +260,7 @@ function Home() {
           </button>
         ))}
       </div>
+      
       <ProjectSection
         title={`${currentTab.icon} ${currentTab.label} Projects`}
         projects={tabProjects}
