@@ -189,9 +189,10 @@ function Home() {
   const [projectsData, setProjectsData] = useState(null);
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
+//process.env.PUBLIC_URL + '/projects.json'
 
   React.useEffect(() => {
-    fetch(process.env.PUBLIC_URL + '/projects.json')
+    fetch('https://localhost:7099/api/projects')
       .then(res => res.json())
       .then(data => setProjectsData(data));
   }, []);

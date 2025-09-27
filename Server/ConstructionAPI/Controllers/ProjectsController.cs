@@ -8,8 +8,8 @@ namespace ConstructionAPI.Controllers
     [Route("api/[controller]")]
     public class ProjectsController : ControllerBase
     {
-    private readonly string _jsonPath = "../Server/projects.json";
-
+    //private readonly string _jsonPath = "../Server/projects.json";
+private readonly string _jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "projects.json");
         [HttpGet]
         public async Task<IActionResult> GetProjects()
         {
