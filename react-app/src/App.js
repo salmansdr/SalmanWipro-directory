@@ -218,13 +218,14 @@ const PROJECT_TABS_META = [
 
 
 function Home() {
-  const [tab, setTab] = useState('completed');
+  const [tab, setTab] = useState('completed'); // 'completed' is Home
   const [projectsData, setProjectsData] = useState(null);
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
 //process.env.PUBLIC_URL + '/projects.json'
 //'https://localhost:7099/api/projects'
   React.useEffect(() => {
+    setTab('completed'); // Ensure Home is active on mount
     fetch(process.env.PUBLIC_URL + '/projects.json')
       .then(res => res.json())
       .then(data => setProjectsData(data));
