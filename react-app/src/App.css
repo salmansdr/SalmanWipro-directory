@@ -161,6 +161,7 @@
 @media (max-width: 768px) {
   .hamburger-btn {
     display: flex !important;
+    flex-direction: column;
     position: fixed;
     right: 18px;
     top: 18px;
@@ -275,7 +276,7 @@
   width: 100%;
 }
 .project-mini-menu {
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
   gap: 1.5rem;

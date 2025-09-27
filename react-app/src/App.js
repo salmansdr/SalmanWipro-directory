@@ -7,6 +7,13 @@ import './App.css';
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   return (
     <Router>
       <div className="construction-app">
@@ -15,15 +22,32 @@ function App() {
             <div className="header-title">🏗️ BuildPro Construction</div>
             <div className="powered-signature">Powered by Salman and Reza Kwsar</div>
           </div>
-          <button
-            className={`hamburger-btn${menuOpen ? ' open' : ''}`}
-            aria-label="Toggle menu"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
-          </button>
+          {isMobile && (
+            <>
+              <button
+                className={`hamburger-btn${menuOpen ? ' open' : ''}`}
+                aria-label="Toggle menu"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <span className="bar bar-top" style={{ background: '#1976d2' }}></span>
+                <span className="bar bar-middle" style={{ background: '#c62828' }}></span>
+                <span className="bar bar-bottom" style={{ background: '#ffb300' }}></span>
+              </button>
+              {menuOpen && (
+                <div className="menu-popup" onClick={() => setMenuOpen(false)}>
+                  <div className="menu-popup-content" onClick={e => e.stopPropagation()}>
+                    <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
+                    <ul>
+                      <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
+                      <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
+                      <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
+                      <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           <nav className="construction-nav">
             <ul className="desktop-menu">
               <li><NavLink to="/" end className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Home</NavLink></li>
@@ -32,19 +56,6 @@ function App() {
               <li><NavLink to="/login" className={({ isActive }) => isActive ? "menu-link selected" : "menu-link"}>Login</NavLink></li>
             </ul>
           </nav>
-          {menuOpen && (
-            <div className="menu-popup" onClick={() => setMenuOpen(false)}>
-              <div className="menu-popup-content" onClick={e => e.stopPropagation()}>
-                <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
-                <ul>
-                  <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
-                  <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
-                  <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
-                  <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
-                </ul>
-              </div>
-            </div>
-          )}
         </header>
         <main className="construction-main">
           <Routes>
