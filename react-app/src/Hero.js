@@ -3,19 +3,19 @@ import './Styles/Hero.css';
 
 const images = [
   {
-    src: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+    src: process.env.PUBLIC_URL + '/ConstructionImage/Sunrise_Residency.PNG',
     alt: 'Construction Site 1',
   },
   {
-    src: 'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80',
+    src: process.env.PUBLIC_URL + '/ConstructionImage/Oceanic_Towers.PNG',
     alt: 'Construction Site 2',
   },
   {
-    src: 'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=800&q=80',
+    src: process.env.PUBLIC_URL + '/ConstructionImage/Lakeview_Apartments.PNG',
     alt: 'Construction Site 3',
   },
   {
-    src: 'https://images.unsplash.com/photo-1429497419816-9ca5cfb4571a?auto=format&fit=crop&w=800&q=80',
+    src: process.env.PUBLIC_URL + '/ConstructionImage/Metro_City_Homes.PNG',
     alt: 'Construction Site 4',
   },
 ];
