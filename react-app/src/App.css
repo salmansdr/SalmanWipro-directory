@@ -111,20 +111,41 @@
   margin-bottom: 4px;
 }
 @media (max-width: 600px) {
-  .search-row.side-by-side {
-  flex-wrap: wrap;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.7rem;
-  }
-  .search-group, .search-btn-group {
-  width: 100%;
-  box-sizing: border-box;
-  justify-content: flex-start;
-  }
+  #location-select,
+  #status-select,
   .search-select {
-  width: 100%;
-  min-width: 0;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    margin-bottom: 0.2rem;
+    display: block;
+  }
+  .search-group {
+    width: 100% !important;
+    box-sizing: border-box;
+    margin-bottom: 0.2rem;
+    display: block;
+  }
+  .search-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+    width: 100%;
+  }
+  .search-btn-group button {
+    width: 100%;
+    margin-bottom: 0.2rem;
+    box-sizing: border-box;
+  }
+  .search-row.side-by-side,
+  .search-row.side-by-side.compact-row {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 0.7rem !important;
+    width: 100%;
   }
 }
 .search-select {
@@ -149,7 +170,7 @@
 }
 @media (max-width: 600px) {
   .search-row.side-by-side {
-    flex-wrap: wrap;
+    /* flex-wrap: wrap; */
     flex-direction: column;
     align-items: stretch;
     gap: 0.7rem;
@@ -567,7 +588,7 @@
 }
 .project-img {
   width: 100%;
-  height: 110px;
+  height: 50%;
   object-fit: cover;
   border-top-left-radius: 14px;
   border-top-right-radius: 14px;
@@ -677,10 +698,18 @@
   .project-card {
     width: 98vw;
     max-width: 340px;
-    height: 140px;
     min-width: 180px;
+    min-height: 140px;
+    height: auto;
+    /* Allow card to expand for content */
   }
   /* ...existing code... */
+  .project-info {
+    flex: 1 1 auto;
+    overflow: visible;
+    padding: 0.5rem 0.7rem 0.4rem 0.7rem;
+    width: 100%;
+  }
   .project-details {
     min-width: unset;
     max-width: 98vw;

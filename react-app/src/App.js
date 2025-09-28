@@ -138,7 +138,7 @@ function ProjectSection({ title, projects, showProgress = true }) {
   const [selected, setSelected] = useState(null);
   return (
     <section className="project-section">
-      <h1>{title}</h1>
+      {/* <h1>{title}</h1> */}
       <div className="project-card-list">
         {projects.map((proj, idx) => (
           <div
@@ -146,8 +146,9 @@ function ProjectSection({ title, projects, showProgress = true }) {
             className={`project-card${selected === idx ? ' selected' : ''}`}
             tabIndex={0}
           >
-            <img src={proj.image} alt={proj.name} className="project-img" />
-            <div className="project-info">
+
+           <img src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image} alt={proj.name} className="project-img" />
+                 <div className="project-info">
               <div className="project-title">{proj.name}</div>
               <div className="project-location">{proj.location}</div>
               <div className="project-location">{proj.status}</div>
