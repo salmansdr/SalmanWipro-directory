@@ -1,3 +1,105 @@
+/* Construction Report Styles */
+.construction-report {
+  max-width: 1100px;
+  margin: 2rem auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(33,150,243,0.08);
+  padding: 2rem 2.5rem 2.5rem 2.5rem;
+}
+.report-dropdown-section {
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.dropdown-label {
+  font-size: 1.1rem;
+  color: #1976d2;
+  font-weight: 600;
+}
+.modern-dropdown {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 2px solid #90caf9;
+  font-size: 1.08rem;
+  background: #f4f6fa;
+  color: #1976d2;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  box-shadow: 0 1px 4px rgba(33,150,243,0.07);
+  outline: none;
+  transition: border 0.18s;
+  min-width: 180px;
+}
+.modern-dropdown:focus {
+  border-color: #1976d2;
+}
+.card-style {
+  background: #e3f2fd;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(33,150,243,0.07);
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 2rem;
+}
+.section-heading {
+  color: #c62828;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  font-size: 1.08rem;
+  margin-bottom: 0.5rem;
+}
+.summary-label {
+  color: #1976d2;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.report-phase-table-section {
+  margin-top: 2rem;
+}
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(33,150,243,0.07);
+  padding: 1.2rem 0.5rem;
+  font-size: 1.05rem;
+}
+.phase-grid-header {
+  font-weight: 700;
+  color: #1976d2;
+  background: #e3f2fd;
+  padding: 0.7rem 0.3rem;
+  border-radius: 6px;
+  text-align: center;
+}
+.phase-grid-cell {
+  padding: 0.6rem 0.3rem;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+.phase-name {
+  font-weight: 600;
+  color: #333;
+}
+.phase-est, .phase-act {
+  color: #1976d2;
+}
+.phase-var.over, .phase-varp.over {
+  color: #c62828;
+  font-weight: 700;
+}
+.phase-var.under, .phase-varp.under {
+  color: #388e3c;
+  font-weight: 700;
+}
 @media (max-width: 900px) {
   .desktop-menu {
     flex-direction: column;
