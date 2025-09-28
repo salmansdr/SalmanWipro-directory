@@ -10,14 +10,16 @@ function Login() {
     <div className="construction-login">
       <h2>Login</h2>
       <form className="login-form">
-        <label>
-          Username:
-          <input type="text" name="username" />
-        </label>
-        <label>
-          Password:
-          <input type="password" name="password" />
-        </label>
+        <div className="login-form-row">
+          <label>
+            Username:
+            <input type="text" name="username" />
+          </label>
+          <label>
+            Password:
+            <input type="password" name="password" />
+          </label>
+        </div>
         <button type="submit">Login</button>
       </form>
     </div>
@@ -33,6 +35,24 @@ function About() {
   );
 }
 
+function ProjectManagement() {
+  return (
+    <div className="construction-about">
+      <h2>Project Management</h2>
+      <p>Manage all your construction projects here.</p>
+    </div>
+  );
+}
+
+function Reports() {
+  return (
+    <div className="construction-about">
+      <h2>Reports</h2>
+      <p>View and generate reports for your projects.</p>
+    </div>
+  );
+}
+
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -41,8 +61,10 @@ function App() {
     <Router>
       <div className="construction-app">
         <header className="construction-header">
-          <div className="header-title">🏗️ BuildPro Construction</div>
-          <div className="powered-signature">Powered by Salman and Reza Kwsar</div>
+          <div>
+            <div className="header-title">🏗️ BuildPro Construction</div>
+            <div className="powered-signature">Powered by Salman and Reza Kawsar</div>
+          </div>
           <button
             className={`hamburger-btn${menuOpen ? ' open' : ''}`}
             aria-label="Toggle menu"
@@ -51,11 +73,12 @@ function App() {
              <span className="bar" style={{ background: '#1976d2' }}></span>
                 <span className="bar" style={{ background: 'rgba(40, 198, 45, 1)' }}></span>
                 <span className="bar" style={{ background: '#ffb300' }}></span>
-           
           </button>
           <nav className="construction-nav">
             <ul className="desktop-menu">
               <li><NavLink to="/" end>Home</NavLink></li>
+              <li><NavLink to="/project-management">Project Management</NavLink></li>
+              <li><NavLink to="/reports">Reports</NavLink></li>
               <li><NavLink to="/about">About</NavLink></li>
               <li><NavLink to="/contact">Contact</NavLink></li>
               <li><NavLink to="/login">Login</NavLink></li>
@@ -67,6 +90,8 @@ function App() {
                 <button className="close-popup-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>&#10005;</button>
                 <ul>
                   <li><NavLink to="/" end onClick={() => setMenuOpen(false)}>Home</NavLink></li>
+                  <li><NavLink to="/project-management" onClick={() => setMenuOpen(false)}>Project Management</NavLink></li>
+                  <li><NavLink to="/reports" onClick={() => setMenuOpen(false)}>Reports</NavLink></li>
                   <li><NavLink to="/about" onClick={() => setMenuOpen(false)}>About</NavLink></li>
                   <li><NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink></li>
                   <li><NavLink to="/login" onClick={() => setMenuOpen(false)}>Login</NavLink></li>
@@ -78,6 +103,8 @@ function App() {
         <main className="construction-main">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/project-management" element={<ProjectManagement />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
@@ -100,16 +127,16 @@ function App() {
       <footer className="construction-footer">
         <div className="footer-social-section">
           <div className="footer-heading">Follow us on</div>
-          <a href="https://facebook.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon facebook" aria-label="Facebook">
+          <a href="https://facebook.com/salmansdr" target="_blank" rel="noopener noreferrer" className="footer-icon facebook" aria-label="Facebook">
             <img src={process.env.PUBLIC_URL + '/social/Facebook.PNG'} alt="Facebook" className="social-img" />
           </a>
-          <a href="https://instagram.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon instagram" aria-label="Instagram">
+          <a href="https://instagram.com/syedsalman1206" target="_blank" rel="noopener noreferrer" className="footer-icon instagram" aria-label="Instagram">
             <img src={process.env.PUBLIC_URL + '/social/instagram.PNG'} alt="Instagram" className="social-img" />
           </a>
-          <a href="https://x.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon x" aria-label="X">
+          <a href="https://x.com/@salman13965660" target="_blank" rel="noopener noreferrer" className="footer-icon x" aria-label="X">
             <img src={process.env.PUBLIC_URL + '/social/x.PNG'} alt="X" className="social-img" />
           </a>
-          <a href="https://linkedin.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon linkedin" aria-label="LinkedIn">
+          <a href="https://linkedin.com/syed-salman-155239219" target="_blank" rel="noopener noreferrer" className="footer-icon linkedin" aria-label="LinkedIn">
             <img src={process.env.PUBLIC_URL + '/social/linkedin.PNG'} alt="LinkedIn" className="social-img" />
           </a>
           <a href="https://youtube.com/sample" target="_blank" rel="noopener noreferrer" className="footer-icon youtube" aria-label="YouTube">
@@ -250,42 +277,38 @@ function Home() {
   //const uniqueStatuses = ['completed', 'running', 'upcoming'];
 
   // Filtering logic
-  function handleSearch() {
-    let results = allProjects;
-    // If both dropdowns are 'All' or empty, show all
-    const locationSelected = searchLocation && searchLocation !== 'All';
-    const statusSelected = searchStatus && searchStatus !== 'All';
+  function handleSearch(location, status) {
+  let results = allProjects;
 
-    if (locationSelected && statusSelected) {
-      // AND condition: both filters must match
-      results = results.filter(p => {
-        let statusMatch = false;
-        if (searchStatus === 'completed') statusMatch = projectsData.completed.some(c => c.id === p.id);
-        if (searchStatus === 'running') statusMatch = projectsData.running.some(r => r.id === p.id);
-        if (searchStatus === 'upcoming') statusMatch = projectsData.upcoming.some(u => u.id === p.id);
-        return p.location === searchLocation && statusMatch;
-      });
-    } else if (locationSelected) {
-      // Only location filter
-      results = results.filter(p => p.location === searchLocation);
-    } else if (statusSelected) {
-      // Only status filter
-      results = results.filter(p => {
-        if (searchStatus === 'completed') return projectsData.completed.some(c => c.id === p.id);
-        if (searchStatus === 'running') return projectsData.running.some(r => r.id === p.id);
-        if (searchStatus === 'upcoming') return projectsData.upcoming.some(u => u.id === p.id);
+  const locationSelected = location && location !== 'All';
+  const statusSelected = status && status !== 'All';
+
+  // Helper function to check status match
+  const matchesStatus = (project) => {
+    switch (status) {
+      case 'completed':
+        return projectsData.completed.some(c => c.id === project.id);
+      case 'running':
+        return projectsData.running.some(r => r.id === project.id);
+      case 'upcoming':
+        return projectsData.upcoming.some(u => u.id === project.id);
+      default:
         return true;
-      });
     }
-    // If neither selected, results remain allProjects
-    setFilteredProjects(results);
+  };
+
+  if (locationSelected && statusSelected) {
+    results = results.filter(p => p.location === location && matchesStatus(p));
+  } else if (locationSelected) {
+    results = results.filter(p => p.location === location);
+  } else if (statusSelected) {
+    results = results.filter(p => matchesStatus(p));
   }
 
-  function handleReset() {
-    setSearchLocation('');
-    setSearchStatus('');
-    setFilteredProjects(null);
-  }
+  setFilteredProjects(results);
+}
+
+  
 
   // Determine which projects to show
   if (filteredProjects !== null) {
@@ -308,7 +331,11 @@ function Home() {
               id="location-select"
               className="search-select"
               value={searchLocation}
-              onChange={e => setSearchLocation(e.target.value)}
+              onChange={e => {
+                const newLocation = e.target.value;
+    setSearchLocation(newLocation);
+    handleSearch(newLocation, searchStatus);
+  }}
             >
               <option value="">All</option>
               {uniqueLocations.map(loc => (
@@ -323,7 +350,11 @@ function Home() {
               id="status-select"
               className="search-select"
               value={searchStatus}
-              onChange={e => setSearchStatus(e.target.value)}
+              onChange={e => {
+              const newStatus = e.target.value;
+              setSearchStatus(newStatus);
+              handleSearch(searchLocation, newStatus);
+  }}
             >
               <option value="completed">Completed</option>
               <option value="running">Running</option>
@@ -331,14 +362,18 @@ function Home() {
               <option value="">All</option>
             </select>
           </div>
+          {/*
           <div className="search-btn-group">
+            
             <button className="search-btn icon-btn" onClick={handleSearch} title="Search">
               <span role="img" aria-label="search">🔍</span>
             </button>
+            
             <button className="reset-btn icon-btn" onClick={handleReset} title="Reset">
               <span role="img" aria-label="reset">♻️</span>
             </button>
           </div>
+          */}
         </div>
       </div>
       {/* End Search Section */}
