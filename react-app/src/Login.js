@@ -6,14 +6,14 @@ function Login() {
       <h2>Login</h2>
       <form className="login-form">
         <div className="login-form-row">
-          <label>
-            Username:
-            <input type="text" name="username" />
-          </label>
-          <label>
-            Password:
-            <input type="password" name="password" />
-          </label>
+          <div className="login-field-group">
+            <label className="login-label" htmlFor="username">Username:</label>
+            <input type="text" id="username" name="username" className="modern-input" autoComplete="username" />
+          </div>
+          <div className="login-field-group">
+            <label className="login-label" htmlFor="password">Password:</label>
+            <input type="password" id="password" name="password" className="modern-input" autoComplete="current-password" />
+          </div>
         </div>
         <button type="submit">Login</button>
       </form>
