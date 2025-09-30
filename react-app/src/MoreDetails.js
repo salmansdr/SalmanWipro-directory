@@ -2,40 +2,6 @@ import React from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import './Styles/MoreDetails.css';
 
-// Sample data (replace with props or fetch as needed)
-const sampleProject = {
-  name: 'Sample Project',
-  image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-  keyDetails: {
-    location: 'Downtown',
-    floors: 12,
-    flatsPerFloor: 4,
-    price: '₹1.2 Cr',
-    startDate: '2024-01-01',
-    endDate: '2025-12-31',
-    status: 'Running',
-  },
-  amenities: {
-    indoor: ['Gym', 'Club House', 'Indoor Games'],
-    outdoor: ['Swimming Pool', 'Garden', 'Children Play Area'],
-  },
-  gallery: [
-    'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1429497419816-9ca5cfb4571a?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
-  ],
-  documents: [
-    { name: 'Master Plan', url: '#' },
-    { name: 'Site Plan', url: '#' },
-    { name: 'Booking Form', url: '#' },
-    { name: 'Brochure', url: '#' },
-  ],
-  location: {
-    lat: 22.5726,
-    lng: 88.3639,
-  },
-};
 
 function MoreDetails({ onBack, projectId, allProjects }) {
   const project = allProjects.find(p => p.id === projectId) || {};
