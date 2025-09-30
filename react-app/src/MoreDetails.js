@@ -1,4 +1,5 @@
 import React from 'react';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import './Styles/MoreDetails.css';
 
 // Sample data (replace with props or fetch as needed)
@@ -37,92 +38,146 @@ const sampleProject = {
 };
 
 function MoreDetails({ onBack, projectId, allProjects }) {
-  const project = allProjects.find(p => p.id === projectId);
+  const project = allProjects.find(p => p.id === projectId) || {};
+  // Fallback for documents if missing
+  const documents = project.documents && project.documents.length > 0
+    ? project.documents
+    : [
+        { name: 'Master Plan', url: '#' },
+        { name: 'Site Plan', url: '#' },
+        { name: 'Booking Form', url: '#' },
+        { name: 'Brochure', url: '#' }
+      ];
+
+  // Fallback for amenities if missing
+  const amenities = project.amenities || {
+    indoor: ['Gym', 'Club House', 'Indoor Games'],
+    outdoor: ['Swimming Pool', 'Garden', 'Children Play Area']
+  };
   const [galleryIndex, setGalleryIndex] = React.useState(0);
-  const gallery = project?.gallery || [];
+  // Fallback for gallery images if missing
+  const gallery = (project && project.gallery && project.gallery.length > 0)
+    ? project.gallery
+    : [
+        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80', // Exterior view
+        'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80', // Living room
+        'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=800&q=80', // Bedroom
+        'https://images.unsplash.com/photo-1429497419816-9ca5cfb4571a?auto=format&fit=crop&w=800&q=80'  // Kitchen
+      ];
   const nextImage = () => setGalleryIndex((galleryIndex + 1) % gallery.length);
   const prevImage = () => setGalleryIndex((galleryIndex - 1 + gallery.length) % gallery.length);
 
   if (!project) return <div>Project not found</div>;
 
   return (
-    <div className="more-details-page">
-      <header className="more-details-header">
-        <button className="back-btn" onClick={onBack}>&larr; Back</button>
-        <h1>{project.name}</h1>
-      </header>
-      <section className="project-image-section">
-        <img src={project.image.startsWith('http') ? project.image : process.env.PUBLIC_URL + '/' + project.image} alt={project.name} className="main-project-image" />
-      </section>
-      <section className="key-details-section">
-        <h2>Key Details</h2>
-        <ul>
-          <li><b>Location:</b> {project.location}</li>
-          <li><b>Floors:</b> {project.floors}</li>
-          <li><b>Flats per Floor:</b> {project.flatsPerFloor}</li>
-          <li><b>Price:</b> {project.sellingPrice}</li>
-          <li><b>Start Date:</b> {project.startDate}</li>
-          <li><b>End Date:</b> {project.endDate}</li>
-          <li><b>Status:</b> {project.status}</li>
-        </ul>
-      </section>
-      <section className="amenities-section">
-        <h2>Amenities</h2>
-        <div className="amenities-row">
-          <div className="amenities-col">
-            <h3>Indoor</h3>
-            <ul>
-              {(project.amenities?.indoor || []).map((item, idx) => <li key={idx}>{item}</li>)}
-            </ul>
-          </div>
-          <div className="amenities-col">
-            <h3>Outdoor</h3>
-            <ul>
-              {(project.amenities?.outdoor || []).map((item, idx) => <li key={idx}>{item}</li>)}
-            </ul>
-          </div>
-        </div>
-      </section>
-      <section className="gallery-section">
-        <h2>Gallery</h2>
-        <div className="gallery-carousel">
-          <button className="gallery-btn" onClick={prevImage}>&lt;</button>
-          <img src={sampleProject.gallery[galleryIndex]} alt={`Gallery ${galleryIndex + 1}`} className="gallery-image" />
-          <button className="gallery-btn" onClick={nextImage}>&gt;</button>
-        </div>
-        <div className="gallery-indicators">
-          {sampleProject.gallery.map((img, idx) => (
-            <span
-              key={idx}
-              className={idx === galleryIndex ? 'indicator active' : 'indicator'}
-              onClick={() => setGalleryIndex(idx)}
-            />
-          ))}
-        </div>
-      </section>
-      <section className="documents-section">
-        <h2>Documents</h2>
-        <ul>
-          {sampleProject.documents.map((doc, idx) => (
-            <li key={idx}><a href={doc.url} target="_blank" rel="noopener noreferrer">{doc.name}</a></li>
-          ))}
-        </ul>
-      </section>
-      <section className="location-section">
-        <h2>Location</h2>
-        <div className="map-container">
-          <iframe
-            title="Google Map"
-            width="100%"
-            height="250"
-            frameBorder="0"
-            style={{ border: 0, borderRadius: '12px' }}
-            src={`https://www.google.com/maps?q=${sampleProject.location.lat},${sampleProject.location.lng}&z=15&output=embed`}
-            allowFullScreen
-          ></iframe>
-        </div>
-      </section>
-    </div>
+    <Container className="more-details-page py-4">
+      <Card className="mb-4 shadow-sm">
+        <Card.Header className="d-flex align-items-center justify-content-between">
+          <Button variant="outline-secondary" className="back-btn" onClick={onBack}>&larr; Back</Button>
+          <h3 className="mb-0 ms-3">{project.name}</h3>
+        </Card.Header>
+        <Card.Body>
+          <Row>
+            <Col md={6} className="mb-3">
+              <Card className="mb-3">
+                <Card.Img variant="top" src={project.image.startsWith('http') ? project.image : process.env.PUBLIC_URL + '/' + project.image} alt={project.name} className="main-project-image" />
+              </Card>
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Key Details</Card.Title>
+                  <ul className="list-unstyled mb-0">
+                    <li><b>Location:</b> {project.location}</li>
+                    <li><b>Floors:</b> {project.floors}</li>
+                    <li><b>Flats per Floor:</b> {project.flatsPerFloor}</li>
+                    <li><b>Price:</b> {project.sellingPrice}</li>
+                    <li><b>Start Date:</b> {project.startDate}</li>
+                    <li><b>End Date:</b> {project.endDate}</li>
+                    <li><b>Status:</b> {project.status}</li>
+                  </ul>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Amenities</Card.Title>
+                  <Row>
+                    <Col>
+                      <h6>Indoor</h6>
+                      <ul className="list-unstyled">
+                        {amenities.indoor.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
+                    </Col>
+                    <Col>
+                      <h6>Outdoor</h6>
+                      <ul className="list-unstyled">
+                        {amenities.outdoor.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Gallery</Card.Title>
+                  <div className="d-flex align-items-center justify-content-center mb-2">
+                    <Button variant="outline-primary" className="gallery-btn me-2" onClick={prevImage}>&lt;</Button>
+                    <img src={gallery[galleryIndex]} alt={`Gallery ${galleryIndex + 1}`} className="gallery-image rounded" style={{ maxHeight: '220px', maxWidth: '100%' }} />
+                    <Button variant="outline-primary" className="gallery-btn ms-2" onClick={nextImage}>&gt;</Button>
+                  </div>
+                  <div className="gallery-indicators d-flex justify-content-center">
+                    {gallery.map((img, idx) => (
+                      <span
+                        key={idx}
+                        className={idx === galleryIndex ? 'indicator active mx-1' : 'indicator mx-1'}
+                        style={{ cursor: 'pointer', width: 12, height: 12, borderRadius: '50%', background: idx === galleryIndex ? '#1976d2' : '#e0e0e0', display: 'inline-block' }}
+                        onClick={() => setGalleryIndex(idx)}
+                      />
+                    ))}
+                  </div>
+                </Card.Body>
+              </Card>
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Documents</Card.Title>
+                  <div className="d-flex flex-wrap gap-2">
+                    {documents.map((doc, idx) => (
+                      <a
+                        key={idx}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline-primary"
+                        download
+                        style={{ minWidth: '120px', textAlign: 'center' }}
+                      >
+                        {doc.name}
+                      </a>
+                    ))}
+                  </div>
+                </Card.Body>
+              </Card>
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Location</Card.Title>
+                  <div className="map-container">
+                    <iframe
+                      title="Google Map"
+                      width="100%"
+                      height="180"
+                      frameBorder="0"
+                      style={{ border: 0, borderRadius: '12px' }}
+                      src={`https://www.google.com/maps?q=${project.location?.lat},${project.location?.lng}&z=15&output=embed`}
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }
 

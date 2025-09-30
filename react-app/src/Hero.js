@@ -45,6 +45,7 @@ function Hero() {
         />
         <button className="carousel-btn" onClick={nextImage}>&gt;</button>
       </div>
+      {/*}
       <div className="carousel-indicators">
         {images.map((img, idx) => (
           <span
@@ -53,7 +54,7 @@ function Hero() {
             onClick={() => setCurrent(idx)}
           />
         ))}
-      </div>
+      </div>*/}
     </section>
   );
 }

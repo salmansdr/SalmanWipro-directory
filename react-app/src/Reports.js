@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+import { Container, Row, Col, Card, Form } from 'react-bootstrap';
+
 
 const PHASES = [
   'Site Preparation',
@@ -45,60 +47,85 @@ function Reports() {
   }, [selectedId, projects]);
 
   return (
-    <div className="construction-report">
-      <h2>Building Construction Report</h2>
-      <div className="report-dropdown-section">
-        <label htmlFor="project-select" className="dropdown-label">Select Project:</label>
-        <select
-          id="project-select"
-          className="modern-dropdown"
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-        >
-          <option value="">-- Select --</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+    <Container className="construction-report py-4">
+      <Card className="mb-4 shadow-sm">
+        <Card.Header>
+          <h2 className="mb-0">Building Construction Report</h2>
+        </Card.Header>
+        <Card.Body>
+          <Form.Group as={Row} className="mb-4 report-dropdown-section" controlId="project-select">
+            <Form.Label column sm={3} className="dropdown-label">Select Project:</Form.Label>
+            <Col sm={9}>
+              <Form.Select
+                className="modern-dropdown"
+                value={selectedId}
+                onChange={e => setSelectedId(e.target.value)}
+              >
+                <option value="">-- Select --</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </Form.Select>
+            </Col>
+          </Form.Group>
 
-      {selectedProject && (
-        <div className="report-summary-section card-style">
-          <h3 className="section-heading">Project Summary</h3>
-          <div className="summary-grid">
-            <div><span className="summary-label">Location:</span> {selectedProject.location}</div>
-            <div><span className="summary-label">Start Date:</span> {selectedProject.startDate}</div>
-            <div><span className="summary-label">End Date:</span> {selectedProject.endDate}</div>
-          </div>
-        </div>
-      )}
+          {selectedProject && (
+            <Card className="mb-4 report-summary-section card-style">
+              <Card.Header>
+                <h4 className="mb-0 section-heading">Project Summary</h4>
+              </Card.Header>
+              <Card.Body>
+                <Row className="summary-grid">
+                  <Col><span className="summary-label">Location:</span> {selectedProject.location}</Col>
+                  <Col><span className="summary-label">Start Date:</span> {selectedProject.startDate}</Col>
+                  <Col><span className="summary-label">End Date:</span> {selectedProject.endDate}</Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          )}
 
-      {selectedProject && (
-        <div className="report-phase-table-section card-style">
-          <h3 className="section-heading">Phase Cost Tracking</h3>
-          <div className="phase-grid">
-            <div className="phase-grid-header">Phase</div>
-            <div className="phase-grid-header">Estimated Cost (₹)</div>
-            <div className="phase-grid-header">Actual Cost (₹)</div>
-            <div className="phase-grid-header">Variance (₹)</div>
-            <div className="phase-grid-header">Variance (%)</div>
-            {PHASES.map(phase => {
-              const est = samplePhaseCosts[phase]?.estimated || 0;
-              const act = samplePhaseCosts[phase]?.actual || 0;
-              const variance = act - est;
-              const variancePerc = est ? ((variance / est) * 100).toFixed(2) : '0.00';
-              return [
-                <div key={phase + '-name'} className="phase-grid-cell phase-name">{phase}</div>,
-                <div key={phase + '-est'} className="phase-grid-cell phase-est">{est.toLocaleString()}</div>,
-                <div key={phase + '-act'} className="phase-grid-cell phase-act">{act.toLocaleString()}</div>,
-                <div key={phase + '-var'} className={`phase-grid-cell phase-var${variance > 0 ? ' over' : ' under'}`}>{variance.toLocaleString()}</div>,
-                <div key={phase + '-varp'} className={`phase-grid-cell phase-varp${variance > 0 ? ' over' : ' under'}`}>{variancePerc}%</div>
-              ];
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+          {selectedProject && (
+            <Card className="mb-4 report-phase-table-section card-style">
+              <Card.Header>
+                <h4 className="mb-0 section-heading">Phase Cost Tracking</h4>
+              </Card.Header>
+              <Card.Body>
+                <div className="table-responsive">
+                  <table className="table table-bordered align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Phase</th>
+                        <th>Estimated Cost (₹)</th>
+                        <th>Actual Cost (₹)</th>
+                        <th>Variance (₹)</th>
+                        <th>Variance (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PHASES.map(phase => {
+                        const est = samplePhaseCosts[phase]?.estimated || 0;
+                        const act = samplePhaseCosts[phase]?.actual || 0;
+                        const variance = act - est;
+                        const variancePerc = est ? ((variance / est) * 100).toFixed(2) : '0.00';
+                        return (
+                          <tr key={phase}>
+                            <td>{phase}</td>
+                            <td>{est.toLocaleString()}</td>
+                            <td>{act.toLocaleString()}</td>
+                            <td className={variance > 0 ? 'text-danger' : 'text-success'}>{variance.toLocaleString()}</td>
+                            <td className={variance > 0 ? 'text-danger' : 'text-success'}>{variancePerc}%</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }
 
