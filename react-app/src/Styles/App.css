@@ -1,4 +1,10 @@
 @media (max-width: 600px) {
+  .project-search-section {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
   .hamburger-btn {
     display: flex !important;
     flex-direction: column;
@@ -42,12 +48,12 @@
     min-width: 180px;
     min-height: 140px;
     height: auto;
-    margin: 0 auto 1.2rem auto !important;
+    margin: 0 0 1.2rem 0 !important; /* Remove horizontal centering */
     border-radius: 18px !important;
     box-shadow: 0 2px 12px rgba(255,193,7,0.08);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch; /* Remove center alignment */
     background: #fff;
     padding-bottom: 1.2rem !important;
     padding-top: 1.2rem !important;

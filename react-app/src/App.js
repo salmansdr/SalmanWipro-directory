@@ -40,11 +40,11 @@ function App() {
     <span style={{ fontSize: '1.7rem', marginRight: '0.7rem' }}>🏗️</span>
     <span>BuildPro</span>
   </div>
-  {/*
-  <span className="powered-signature" style={{ color: 'white', fontWeight: 400, fontSize: '.7 rem', marginTop: '2px' }}>
-    Powered by Salman and Reza Kawsar
+  
+  <span className="powered-signature" style={{ color: 'white', fontWeight: 400, fontSize: '0.65rem', marginTop: '2px' }}>
+    Powered by Salman & Kawsar
   </span>
-  */}
+  
 </Navbar.Brand>
 
               <Navbar.Toggle aria-controls="mainNavbar" />

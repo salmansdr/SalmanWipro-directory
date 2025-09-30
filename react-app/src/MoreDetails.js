@@ -20,7 +20,6 @@ function MoreDetails({ onBack, projectId, allProjects }) {
     indoor: ['Gym', 'Club House', 'Indoor Games'],
     outdoor: ['Swimming Pool', 'Garden', 'Children Play Area']
   };
-  const [galleryIndex, setGalleryIndex] = React.useState(0);
   // Fallback for gallery images if missing
   const gallery = (project && project.gallery && project.gallery.length > 0)
     ? project.gallery
@@ -30,6 +29,15 @@ function MoreDetails({ onBack, projectId, allProjects }) {
         'https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=800&q=80', // Bedroom
         'https://images.unsplash.com/photo-1429497419816-9ca5cfb4571a?auto=format&fit=crop&w=800&q=80'  // Kitchen
       ];
+  const [galleryIndex, setGalleryIndex] = React.useState(0);
+
+  // Auto-rotate gallery images every 3 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setGalleryIndex(idx => (idx + 1) % gallery.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [gallery.length]);
   const nextImage = () => setGalleryIndex((galleryIndex + 1) % gallery.length);
   const prevImage = () => setGalleryIndex((galleryIndex - 1 + gallery.length) % gallery.length);
 
@@ -86,10 +94,25 @@ function MoreDetails({ onBack, projectId, allProjects }) {
               <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>Gallery</Card.Title>
-                  <div className="d-flex align-items-center justify-content-center mb-2">
-                    <Button variant="outline-primary" className="gallery-btn me-2" onClick={prevImage}>&lt;</Button>
-                    <img src={gallery[galleryIndex]} alt={`Gallery ${galleryIndex + 1}`} className="gallery-image rounded" style={{ maxHeight: '220px', maxWidth: '100%' }} />
-                    <Button variant="outline-primary" className="gallery-btn ms-2" onClick={nextImage}>&gt;</Button>
+                  <div className="gallery-carousel-wrapper position-relative d-flex justify-content-center mb-2" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                    <Button
+                      variant="outline-primary"
+                      className="gallery-btn gallery-btn-left position-absolute"
+                      style={{ top: '50%', left: '-32px', transform: 'translateY(-50%)' }}
+                      onClick={prevImage}
+                    >&lt;</Button>
+                    <img
+                      src={gallery[galleryIndex]}
+                      alt={`Gallery ${galleryIndex + 1}`}
+                      className="gallery-image rounded"
+                      style={{ maxHeight: '220px', maxWidth: '100%', display: 'block' }}
+                    />
+                    <Button
+                      variant="outline-primary"
+                      className="gallery-btn gallery-btn-right position-absolute"
+                      style={{ top: '50%', right: '-32px', transform: 'translateY(-50%)' }}
+                      onClick={nextImage}
+                    >&gt;</Button>
                   </div>
                   <div className="gallery-indicators d-flex justify-content-center">
                     {gallery.map((img, idx) => (
