@@ -27,40 +27,42 @@ import { Row, Col } from 'react-bootstrap';
 
 
 function App() {
-  //const [menuOpen, setMenuOpen] = useState(false);
+  const [expanded, setExpanded] = React.useState(false);
  
   return (
     <Router>
   <Container fluid className="construction-app" style={{background: '#f8f8faff', minHeight: '100vh'}}>
        
-          <Navbar bg="light" expand="lg" className="shadow-sm" style={{width: '100%'}}>
+          <Navbar bg="light" expand="lg" className="shadow-sm" style={{width: '100%'}} expanded={expanded} onToggle={setExpanded}>
             <Container fluid style={{width: '100%'}}>
-              <Navbar.Brand as={NavLink} to="/" className="d-flex flex-column align-items-start">
+              <Navbar.Brand as={NavLink} to="/" className="d-flex flex-column align-items-start" onClick={() => setExpanded(false)}>
   <div className="d-flex align-items-center">
     <span style={{ fontSize: '1.7rem', marginRight: '0.7rem' }}>🏗️</span>
-    <span>BuildPro Construction</span>
+    <span>BuildPro</span>
   </div>
-  <span className="powered-signature" style={{ color: 'white', fontWeight: 600, fontSize: '1.05rem', marginTop: '2px' }}>
+  {/*
+  <span className="powered-signature" style={{ color: 'white', fontWeight: 400, fontSize: '.7 rem', marginTop: '2px' }}>
     Powered by Salman and Reza Kawsar
   </span>
+  */}
 </Navbar.Brand>
 
               <Navbar.Toggle aria-controls="mainNavbar" />
               <Navbar.Collapse id="mainNavbar">
                 <Nav className="ms-auto mb-2 mb-lg-0">
-                  <Nav.Link as={NavLink} to="/" end>Home</Nav.Link>
+                  <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)}>Home</Nav.Link>
                   <NavDropdown title="Project Management" id="project-management-nav-dropdown" menuVariant="light" className="menu-dropdown">
-                    <NavDropdown.Item as={NavLink} to="/project-management">Project Management</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/pricing-calculator">Pricing Calculator</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                   </NavDropdown>
                   <NavDropdown title="Reports" id="reports-nav-dropdown" menuVariant="light" className="menu-dropdown">
-                    <NavDropdown.Item as={NavLink} to="/reports">Reports</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Reports</NavDropdown.Item>
                     <NavDropdown.Divider />
-                    <NavDropdown.Item as={NavLink} to="/cost-report">Cost Report</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/cost-report" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
                   </NavDropdown>
-                  <Nav.Link as={NavLink} to="/about">About</Nav.Link>
-                  <Nav.Link as={NavLink} to="/contact">Contact</Nav.Link>
-                  <Nav.Link as={NavLink} to="/login">Login</Nav.Link>
+                  <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)}>About</Nav.Link>
+                  <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)}>Contact</Nav.Link>
+                  <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)}>Login</Nav.Link>
                 </Nav>
               </Navbar.Collapse>
             </Container>
