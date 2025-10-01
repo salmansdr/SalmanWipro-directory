@@ -1,3 +1,4 @@
+import { exportCostDataToExcel } from './excelUtils';
 import React, { useState } from 'react';
 import { Button, Form, Row, Col, Container, ProgressBar } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -147,11 +148,22 @@ function WizardSteps() {
         )}
         {step === 4 && (
           <div>
+            <div className="d-flex justify-content-end mb-3">
+              <Button variant="success" onClick={() => exportCostDataToExcel(sampleCostData, costLevel)}>
+                <i className="bi bi-file-earmark-excel" style={{marginRight: '0.5rem'}}></i>
+                Download Excel
+              </Button>
+            </div>
             <div className="mb-3">
               {sampleCostData.map(cat => (
-                <div key={cat.category} className="mb-4 p-3 bg-light rounded">
-                  <div className="mb-2 text-primary fw-bold">{cat.category}</div>
-                  <div>
+                <div key={cat.category} className="mb-4 p-3 bg-white rounded shadow-sm border position-relative">
+                  <div className="mb-2 d-flex align-items-center">
+                    <span style={{fontSize: '1.5rem', color: '#1976d2', marginRight: '0.5rem'}}>
+                      <i className="bi bi-grid-3x3-gap"></i>
+                    </span>
+                    <span className="fw-bold text-primary" style={{fontSize: '1.15rem'}}>{cat.category}</span>
+                  </div>
+                  <div className="cost-level-selector mb-2">
                     {costLevels.map(level => (
                       <Form.Check
                         key={level.key}
@@ -162,8 +174,8 @@ function WizardSteps() {
                         value={level.key}
                         checked={costLevel === level.key}
                         onChange={() => setCostLevel(level.key)}
-                        className="d-block mb-2"
-                        style={{fontSize: '0.98rem'}}
+                        className="d-inline-block me-3"
+                        style={{fontSize: '1rem'}}
                       />
                     ))}
                   </div>
@@ -172,15 +184,20 @@ function WizardSteps() {
             </div>
             {sampleCostData.map(cat => (
               <div key={cat.category} className="mb-4">
-                <h5 className="text-primary">{cat.category}</h5>
-                <table className="table table-bordered table-sm">
-                  <thead>
+                <h5 className="text-primary d-flex align-items-center" style={{fontSize: '1.12rem'}}>
+                  <span style={{fontSize: '1.3rem', marginRight: '0.5rem', color: '#90caf9'}}>
+                    <i className="bi bi-table"></i>
+                  </span>
+                  {cat.category}
+                </h5>
+                <table className="table table-bordered table-sm mb-0">
+                  <thead style={{background: '#e3f2fd'}}>
                     <tr>
-                      <th>Item</th>
-                      <th>Qty</th>
-                      <th>Unit</th>
-                      <th>Rate</th>
-                      <th>Price</th>
+                      <th style={{background: '#e3f2fd', color: '#1976d2'}}>Item</th>
+                      <th style={{background: '#e3f2fd', color: '#1976d2'}}>Qty</th>
+                      <th style={{background: '#e3f2fd', color: '#1976d2'}}>Unit</th>
+                      <th style={{background: '#e3f2fd', color: '#1976d2'}}>Rate</th>
+                      <th style={{background: '#e3f2fd', color: '#1976d2'}}>Price</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -6,8 +6,8 @@ import './Styles/MoreDetails.css';
 function MoreDetails({ onBack, projectId, allProjects }) {
   const project = allProjects.find(p => p.id === projectId) || {};
   // Fallback for documents if missing
-  const documents = project.documents && project.documents.length > 0
-    ? project.documents
+  const documents = project.projectdocuments && project.projectdocuments.length > 0
+    ? project.projectdocuments
     : [
         { name: 'Master Plan', url: '#' },
         { name: 'Site Plan', url: '#' },
@@ -16,10 +16,14 @@ function MoreDetails({ onBack, projectId, allProjects }) {
       ];
 
   // Fallback for amenities if missing
-  const amenities = project.amenities || {
-    indoor: ['Gym', 'Club House', 'Indoor Games'],
-    outdoor: ['Swimming Pool', 'Garden', 'Children Play Area']
-  };
+  const amenities = Array.isArray(project.amenities) && project.amenities.length > 0
+    ? project.amenities
+    : [
+        { type: 'indoor', items: ['Gym', 'Club House', 'Indoor Games'] },
+        { type: 'outdoor', items: ['Swimming Pool', 'Garden', 'Children Play Area'] }
+      ];
+
+
   // Fallback for gallery images if missing
   const gallery = (project && project.gallery && project.gallery.length > 0)
     ? project.gallery
@@ -30,6 +34,34 @@ function MoreDetails({ onBack, projectId, allProjects }) {
         'https://images.unsplash.com/photo-1429497419816-9ca5cfb4571a?auto=format&fit=crop&w=800&q=80'  // Kitchen
       ];
   const [galleryIndex, setGalleryIndex] = React.useState(0);
+
+  // State for map coordinates
+  const [coords, setCoords] = React.useState({ lat: null, lng: null });
+
+  // Helper to improve location string for geocoding
+  function getGeoLocationString(location) {
+    if (!location) return '';
+    let loc = location;
+   
+    return loc;
+  }
+
+  // Fetch coordinates from Nominatim API when project changes
+  React.useEffect(() => {
+    const geoLocation = getGeoLocationString(project.location);
+    if (geoLocation) {
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geoLocation)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            setCoords({ lat: data[0].lat, lng: data[0].lon });
+          } else {
+            setCoords({ lat: null, lng: null });
+          }
+        })
+        .catch(() => setCoords({ lat: null, lng: null }));
+    }
+  }, [project.location]);
 
   // Auto-rotate gallery images every 3 seconds
   React.useEffect(() => {
@@ -76,18 +108,14 @@ function MoreDetails({ onBack, projectId, allProjects }) {
                 <Card.Body>
                   <Card.Title>Amenities</Card.Title>
                   <Row>
-                    <Col>
-                      <h6>Indoor</h6>
-                      <ul className="list-unstyled">
-                        {amenities.indoor.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </Col>
-                    <Col>
-                      <h6>Outdoor</h6>
-                      <ul className="list-unstyled">
-                        {amenities.outdoor.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </Col>
+                    {amenities.map((group, idx) => (
+                      <Col key={group.type || idx}>
+                        <h6>{group.type ? group.type.charAt(0).toUpperCase() + group.type.slice(1) : ''}</h6>
+                        <ul className="list-unstyled">
+                          {group.items.map((item, i) => <li key={i}>{item}</li>)}
+                        </ul>
+                      </Col>
+                    ))}
                   </Row>
                 </Card.Body>
               </Card>
@@ -134,13 +162,24 @@ function MoreDetails({ onBack, projectId, allProjects }) {
                       <a
                         key={idx}
                         href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="btn btn-outline-primary"
-                        download
                         style={{ minWidth: '120px', textAlign: 'center' }}
+                        download
+                        onClick={e => {
+                          // Only trigger download if url is not '#'
+                          if (!doc.url || doc.url === '#') {
+                            e.preventDefault();
+                            alert('No document available for download.');
+                          }
+                        }}
                       >
                         {doc.name}
+                        <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M.5 9.9V14a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V9.9a.5.5 0 0 0-1 0V14a.5.5 0 0 1-.5.5h-13A.5.5 0 0 1 .5 14V9.9a.5.5 0 0 0-1 0z"/>
+                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                          </svg>
+                        </span>
                       </a>
                     ))}
                   </div>
@@ -150,15 +189,21 @@ function MoreDetails({ onBack, projectId, allProjects }) {
                 <Card.Body>
                   <Card.Title>Location</Card.Title>
                   <div className="map-container">
-                    <iframe
-                      title="Google Map"
-                      width="100%"
-                      height="180"
-                      frameBorder="0"
-                      style={{ border: 0, borderRadius: '12px' }}
-                      src={`https://www.google.com/maps?q=${project.location?.lat},${project.location?.lng}&z=15&output=embed`}
-                      allowFullScreen
-                    ></iframe>
+                    {coords.lat && coords.lng ? (
+                      <iframe
+                        title="Google Map"
+                        width="100%"
+                        height="180"
+                        frameBorder="0"
+                        style={{ border: 0, borderRadius: '12px' }}
+                        src={`https://www.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`}
+                        allowFullScreen
+                      ></iframe>
+                    ) : (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
+                        Map not available for this location
+                      </div>
+                    )}
                   </div>
                 </Card.Body>
               </Card>

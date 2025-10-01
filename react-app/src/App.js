@@ -8,6 +8,7 @@ import Contact from './Contact';
 import Reports from './Reports';
 import CostReport from './CostReport';
 import ProjectManagement from './ProjectManagement';
+import ProjectManagementEntryForm from './ProjectManagementEntryForm';
 import PricingCalculator from './PricingCalculator';
 import Login from './Login';
 
@@ -51,8 +52,8 @@ function App() {
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                   </NavDropdown>
                   <NavDropdown title={<span style={{ color: 'white' }}>Reports</span>} id="reports-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
-                    <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Reports</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/cost-report" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
+                    
+                    <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
                   </NavDropdown>
                   <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)} style={{ color: 'white' }}>About</Nav.Link>
                   <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Contact</Nav.Link>
@@ -66,6 +67,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/project-management" element={<ProjectManagement />} />
+            <Route path="/ProjectManagementEntryForm" element={<ProjectManagementEntryForm />} />
             <Route path="/pricing-calculator" element={<PricingCalculator />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/cost-report" element={<CostReport />} />
