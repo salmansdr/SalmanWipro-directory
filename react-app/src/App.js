@@ -30,9 +30,9 @@ function App() {
  
   return (
     <Router>
-  <div className="container-fluid bg-light min-vh-100">
+  <div className="bg-light min-vh-100" style={{ padding: 0 }}>
        
-          <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: '#003366'}} expanded={expanded} onToggle={setExpanded}>
+          <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: '#003366', margin: 0}} expanded={expanded} onToggle={setExpanded}>
             <Container fluid style={{width: '100%'}}>
               <Navbar.Brand as={NavLink} to="/" className="d-flex flex-column align-items-start" onClick={() => setExpanded(false)}>
                 <div className="d-flex align-items-center">
@@ -42,7 +42,7 @@ function App() {
                 <small className="fw-light mt-1" style={{ color: 'white', fontSize: '0.75rem' }}>Powered by Salman & Kawsar</small>
               </Navbar.Brand>
 
-              <Navbar.Toggle aria-controls="mainNavbar" />
+              <Navbar.Toggle aria-controls="mainNavbar" className="navbar-toggler-icon-white" />
               <Navbar.Collapse id="mainNavbar">
                 <Nav className="ms-auto mb-2 mb-lg-0">
                   <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)} style={{ color: 'white' }}>Home</Nav.Link>

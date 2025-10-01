@@ -23,19 +23,19 @@ function Hero() {
   const [current, setCurrent] = useState(0);
 
   // Auto-rollup every 3 seconds
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % images.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    React.useEffect(() => {
+      const interval = setInterval(() => {
+        setCurrent((prev) => (prev + 1) % images.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }, []);
 
   const nextImage = () => setCurrent((current + 1) % images.length);
   const prevImage = () => setCurrent((current - 1 + images.length) % images.length);
 
-  return (
-    <section className="container-fluid py-4" style={{ display: 'flex', justifyContent: 'center' }}>
-      <div style={{ maxWidth: '800px', width: '100%' }}>
+    return (
+      <section className="w-100 py-4 d-flex justify-content-center align-items-center" style={{ margin: 0, padding: 0 }}>
+        <div style={{ maxWidth: '800px', width: '100%', margin: 0, padding: 0 }}>
         <div className="d-flex justify-content-center align-items-center mb-3">
           <button className="btn btn-outline-secondary me-2" onClick={prevImage}>&lt;</button>
           <img
