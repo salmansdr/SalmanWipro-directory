@@ -15,7 +15,6 @@ import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-do
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Styles/App.css';
 import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
-import { Row, Col } from 'react-bootstrap';
 
 
 
