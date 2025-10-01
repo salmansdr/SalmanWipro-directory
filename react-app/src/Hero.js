@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import './Styles/Hero.css';
 
 const images = [
   {
@@ -35,26 +34,29 @@ function Hero() {
   const prevImage = () => setCurrent((current - 1 + images.length) % images.length);
 
   return (
-    <section className="hero-webpart">
-      <div className="hero-carousel">
-        <button className="carousel-btn" onClick={prevImage}>&lt;</button>
-        <img
-          src={images[current].src}
-          alt={images[current].alt}
-          className="carousel-image"
-        />
-        <button className="carousel-btn" onClick={nextImage}>&gt;</button>
-      </div>
-      {/*}
-      <div className="carousel-indicators">
-        {images.map((img, idx) => (
-          <span
-            key={idx}
-            className={idx === current ? 'indicator active' : 'indicator'}
-            onClick={() => setCurrent(idx)}
+    <section className="container-fluid py-4" style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ maxWidth: '800px', width: '100%' }}>
+        <div className="d-flex justify-content-center align-items-center mb-3">
+          <button className="btn btn-outline-secondary me-2" onClick={prevImage}>&lt;</button>
+          <img
+            src={images[current].src}
+            alt={images[current].alt}
+            className="img-fluid rounded shadow"
+            style={{ width: '100%', maxWidth: '800px', height: '220px', objectFit: 'cover' }}
           />
-        ))}
-      </div>*/}
+          <button className="btn btn-outline-secondary ms-2" onClick={nextImage}>&gt;</button>
+        </div>
+        <div className="d-flex justify-content-center">
+          {images.map((img, idx) => (
+            <button
+              key={idx}
+              className={`btn btn-sm mx-1 ${idx === current ? 'btn-primary' : 'btn-outline-primary'}`}
+              style={{ borderRadius: '50%', width: 18, height: 18, padding: 0 }}
+              onClick={() => setCurrent(idx)}
+            />
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

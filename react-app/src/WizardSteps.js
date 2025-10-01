@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Form, Row, Col } from 'react-bootstrap';
-import './Styles/WizardSteps.css';
+import { Button, Form, Row, Col, Container, ProgressBar } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const cities = [
   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',
@@ -75,19 +75,26 @@ function WizardSteps() {
   const handleCircleClick = (s) => setStep(s);
 
   return (
-    <div className="wizard-container">
+    <Container className="my-4 p-4 bg-white rounded shadow" style={{maxWidth: 600}}>
       {/* Step Indicator */}
-      <div className="wizard-indicator">
+      <Row className="justify-content-center mb-4">
         {[1,2,3,4].map(s => (
-          <span
-            key={s}
-            className={`wizard-circle${step === s ? ' active' : ''}`}
-            onClick={() => handleCircleClick(s)}
-          >{s}</span>
+          <Col key={s} xs="auto">
+            <Button
+              variant={step === s ? "primary" : "outline-primary"}
+              className="rounded-circle"
+              style={{width: 40, height: 40, fontWeight: 700, fontSize: '1.2rem'}}
+              onClick={() => handleCircleClick(s)}
+            >
+              {s}
+            </Button>
+          </Col>
         ))}
-      </div>
+      </Row>
+      <ProgressBar now={step * 25} className="mb-4" />
+
       {/* Step Content */}
-      <div className="wizard-step-content">
+      <div className={`wizard-step-content${step === 4 ? ' step-4' : ''}`}>
         {step === 1 && (
           <Form>
             <Form.Group>
@@ -116,7 +123,7 @@ function WizardSteps() {
               </Col>
             </Row>
             {plotArea && (
-              <div className="plot-area-display">Plot Area: <b>{plotArea} sqft</b></div>
+              <div className="alert alert-info mt-3">Plot Area: <b>{plotArea} sqft</b></div>
             )}
           </Form>
         )}
@@ -140,20 +147,33 @@ function WizardSteps() {
         )}
         {step === 4 && (
           <div>
-            <div className="cost-level-selector mb-3">
-              {costLevels.map(level => (
-                <Button
-                  key={level.key}
-                  variant={costLevel === level.key ? 'primary' : 'outline-primary'}
-                  className="me-2"
-                  onClick={() => setCostLevel(level.key)}
-                >{level.label}</Button>
+            <div className="mb-3">
+              {sampleCostData.map(cat => (
+                <div key={cat.category} className="mb-4 p-3 bg-light rounded">
+                  <div className="mb-2 text-primary fw-bold">{cat.category}</div>
+                  <div>
+                    {costLevels.map(level => (
+                      <Form.Check
+                        key={level.key}
+                        type="radio"
+                        name={`costLevel-${cat.category}`}
+                        id={`costLevel-${cat.category}-${level.key}`}
+                        label={level.label}
+                        value={level.key}
+                        checked={costLevel === level.key}
+                        onChange={() => setCostLevel(level.key)}
+                        className="d-block mb-2"
+                        style={{fontSize: '0.98rem'}}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             {sampleCostData.map(cat => (
-              <div key={cat.category} className="cost-category mb-4">
-                <h5>{cat.category}</h5>
-                <table className="table table-bordered">
+              <div key={cat.category} className="mb-4">
+                <h5 className="text-primary">{cat.category}</h5>
+                <table className="table table-bordered table-sm">
                   <thead>
                     <tr>
                       <th>Item</th>
@@ -181,11 +201,11 @@ function WizardSteps() {
         )}
       </div>
       {/* Navigation Buttons */}
-      <div className="wizard-nav-btns mt-4">
-        <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
-        <Button disabled={step === 4} onClick={() => setStep(step+1)}>Next</Button>
+      <div className="d-flex justify-content-between mt-4">
+        <Button disabled={step === 1} onClick={() => setStep(step-1)} variant="secondary">Back</Button>
+        <Button disabled={step === 4} onClick={() => setStep(step+1)} variant="primary">Next</Button>
       </div>
-    </div>
+    </Container>
   );
 }
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button } from 'react-bootstrap';
 import Hero from './Hero';
@@ -12,41 +11,40 @@ const PROJECT_TABS_META = [
 
 function ProjectSection({ title, projects, showProgress = true }) {
   return (
-  <Container className="project-section mt-3">
-  <Row xs={1} md={4} className="no-gutters tight-card-row">
-    {projects.map((proj) => (
-      <Col key={proj.id}>
-        <Card className="h-100 project-card shadow-sm">
-          <Card.Img
-            variant="top"
-            src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image}
-            alt={proj.name}
-            className="project-img"
-          />
-          <Card.Body className="project-info">
-            <Card.Title className="project-title">{proj.name}</Card.Title>
-            <Card.Subtitle className="mb-2 text-muted project-location">{proj.location}</Card.Subtitle>
-            <div className="project-location">{proj.status}</div>
-            {proj.status === 'running' && (
-              <div className="project-progress horizontal-thermometer">
-                <span className="progress-label">Progress: {proj.progress}%</span>
+    <div className="container-fluid mt-3 px-3">
+      <div className="row">
+        {projects.map((proj) => (
+          <div key={proj.id} className="col-12 col-md-6 col-lg-3 mb-4">
+            <div className="card h-100 shadow-sm d-flex flex-column">
+              <img
+                src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image}
+                alt={proj.name}
+                className="card-img-top"
+                style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}
+              />
+              <div className="card-body d-flex flex-column">
+                <h5 className="card-title">{proj.name}</h5>
+                <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
+                <div className="mb-2">{proj.status}</div>
+                {proj.status === 'running' && (
+                  <div className="mb-2">
+                    <span className="fw-bold">Progress: {proj.progress}%</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`btn btn-outline-primary mt-auto`}
+                  id={proj.id}
+                  onClick={() => proj.onKnowMore()}
+                >
+                  More Details
+                </button>
               </div>
-            )}
-            <Button
-              variant="outline-primary"
-              className={`more-details-link${showProgress ? ' below-status' : ''} mt-2`}
-              id={proj.id}
-              onClick={() => proj.onKnowMore()}
-            >
-              More Details
-            </Button>
-          </Card.Body>
-        </Card>
-      </Col>
-    ))}
-  </Row>
-</Container>
-
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -113,17 +111,18 @@ function Home() {
   }
 
   return (
-    <Container fluid className="construction-home">
+    <div className="container-fluid px-0">
       <Hero />
       {/* Search Section */}
-      <Card className="project-search-section card-style mt-4 mb-4 shadow-sm">
-        <Card.Body>
-          <Row className="g-3 align-items-end">
-            <Col xs={12} md={6}>
-              <Form.Group controlId="location-select">
-                <Form.Label className="search-label">By Location</Form.Label>
-                <Form.Select
-                  className="search-select"
+      <div className="card mt-4 mb-4 shadow-sm">
+        <div className="card-body">
+          <div className="row g-3 align-items-end">
+            <div className="col-12 col-md-6">
+              <div className="mb-3">
+                <label htmlFor="location-select" className="form-label">By Location</label>
+                <select
+                  id="location-select"
+                  className="form-select"
                   value={searchLocation}
                   onChange={e => {
                     const newLocation = e.target.value;
@@ -135,14 +134,15 @@ function Home() {
                   {uniqueLocations.map(loc => (
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Group controlId="status-select">
-                <Form.Label className="search-label">By Status</Form.Label>
-                <Form.Select
-                  className="search-select"
+                </select>
+              </div>
+            </div>
+            <div className="col-12 col-md-6">
+              <div className="mb-3">
+                <label htmlFor="status-select" className="form-label">By Status</label>
+                <select
+                  id="status-select"
+                  className="form-select"
                   value={searchStatus}
                   onChange={e => {
                     const newStatus = e.target.value;
@@ -154,19 +154,19 @@ function Home() {
                   <option value="running">Running</option>
                   <option value="upcoming">Upcoming</option>
                   <option value="">All</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* End Search Section */}
       <ProjectSection
         title={`${currentTab.icon} ${currentTab.label} Projects`}
         projects={projectsWithNav}
         showProgress={currentTab.showProgress}
       />
-    </Container>
+    </div>
   );
 }
 

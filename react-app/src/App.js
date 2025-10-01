@@ -31,44 +31,39 @@ function App() {
  
   return (
     <Router>
-  <Container fluid className="construction-app" style={{background: '#f8f8faff', minHeight: '100vh'}}>
+  <div className="container-fluid bg-light min-vh-100">
        
-          <Navbar bg="light" expand="lg" className="shadow-sm" style={{width: '100%'}} expanded={expanded} onToggle={setExpanded}>
+          <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: '#003366'}} expanded={expanded} onToggle={setExpanded}>
             <Container fluid style={{width: '100%'}}>
               <Navbar.Brand as={NavLink} to="/" className="d-flex flex-column align-items-start" onClick={() => setExpanded(false)}>
-  <div className="d-flex align-items-center">
-    <span style={{ fontSize: '1.7rem', marginRight: '0.7rem' }}>🏗️</span>
-    <span>BuildPro</span>
-  </div>
-  
-  <span className="powered-signature" style={{ color: 'white', fontWeight: 400, fontSize: '0.65rem', marginTop: '2px' }}>
-    Powered by Salman & Kawsar
-  </span>
-  
-</Navbar.Brand>
+                <div className="d-flex align-items-center">
+                  <span style={{ fontSize: '1.7rem', marginRight: '0.7rem', color: 'white' }}>🏗️</span>
+                  <span style={{ color: 'white' }}>BuildPro</span>
+                </div>
+                <small className="fw-light mt-1" style={{ color: 'white', fontSize: '0.75rem' }}>Powered by Salman & Kawsar</small>
+              </Navbar.Brand>
 
               <Navbar.Toggle aria-controls="mainNavbar" />
               <Navbar.Collapse id="mainNavbar">
                 <Nav className="ms-auto mb-2 mb-lg-0">
-                  <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)}>Home</Nav.Link>
-                  <NavDropdown title="Project Management" id="project-management-nav-dropdown" menuVariant="light" className="menu-dropdown">
+                  <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)} style={{ color: 'white' }}>Home</Nav.Link>
+                  <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                   </NavDropdown>
-                  <NavDropdown title="Reports" id="reports-nav-dropdown" menuVariant="light" className="menu-dropdown">
+                  <NavDropdown title={<span style={{ color: 'white' }}>Reports</span>} id="reports-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Reports</NavDropdown.Item>
-                    <NavDropdown.Divider />
                     <NavDropdown.Item as={NavLink} to="/cost-report" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
                   </NavDropdown>
-                  <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)}>About</Nav.Link>
-                  <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)}>Contact</Nav.Link>
-                  <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)}>Login</Nav.Link>
+                  <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)} style={{ color: 'white' }}>About</Nav.Link>
+                  <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Contact</Nav.Link>
+                  <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Login</Nav.Link>
                 </Nav>
               </Navbar.Collapse>
             </Container>
           </Navbar>
        
-        <main className="construction-main">
+  <main className="container py-4 px-3">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/project-management" element={<ProjectManagement />} />
@@ -85,43 +80,44 @@ function App() {
         href="https://wa.me/9874592300"
         target="_blank"
         rel="noopener noreferrer"
-        className="whatsapp-float"
+        className="position-fixed bottom-0 end-0 m-4 rounded-circle shadow"
+        style={{ zIndex: 999 }}
         aria-label="WhatsApp"
       >
-        <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="whatsapp-img" />
+        <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="img-fluid rounded-circle" style={{ width: '48px', height: '48px' }} />
       </a>
         </main>
 
      
       
-      <footer className="construction-footer bg-light pt-3 pb-2 shadow-sm">
-  <Container>
-    <Row className="align-items-center justify-content-center">
-      <Col xs={12} md={10} className="d-flex align-items-center justify-content-end">
-        <span className="footer-heading fw-bold text-secondary me-2">Follow us on</span>
-        <Nav className="flex-row" style={{ gap: '4px' }}>
-          <Nav.Link href="https://facebook.com/salmansdr" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="p-0 m-0">
-            <img src={process.env.PUBLIC_URL + '/social/Facebook.PNG'} alt="Facebook" className="social-img" />
-          </Nav.Link>
-          <Nav.Link href="https://instagram.com/syedsalman1206" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="p-0 m-0">
-            <img src={process.env.PUBLIC_URL + '/social/instagram.PNG'} alt="Instagram" className="social-img" />
-          </Nav.Link>
-          <Nav.Link href="https://x.com/@salman13965660" target="_blank" rel="noopener noreferrer" aria-label="X" className="p-0 m-0">
-            <img src={process.env.PUBLIC_URL + '/social/x.PNG'} alt="X" className="social-img" />
-          </Nav.Link>
-          <Nav.Link href="https://linkedin.com/syed-salman-155239219" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="p-0 m-0">
-            <img src={process.env.PUBLIC_URL + '/social/linkedin.PNG'} alt="LinkedIn" className="social-img" />
-          </Nav.Link>
-          <Nav.Link href="https://youtube.com/sample" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="p-0 m-0">
-            <img src={process.env.PUBLIC_URL + '/social/youtube.PNG'} alt="YouTube" className="social-img" />
-          </Nav.Link>
-        </Nav>
-      </Col>
-    </Row>
-  </Container>
-</footer>
+      <footer className="bg-light pt-3 pb-2 shadow-sm">
+        <div className="container">
+          <div className="row align-items-center justify-content-center">
+            <div className="col-12 col-md-10 d-flex align-items-center justify-content-end">
+              <span className="fw-bold text-secondary me-2">Follow us on</span>
+              <nav className="d-flex flex-row gap-2">
+                <a href="https://facebook.com/salmansdr" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="p-0 m-0">
+                  <img src={process.env.PUBLIC_URL + '/social/Facebook.PNG'} alt="Facebook" className="img-fluid rounded me-1" style={{ width: '32px', height: '32px' }} />
+                </a>
+                <a href="https://instagram.com/syedsalman1206" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="p-0 m-0">
+                  <img src={process.env.PUBLIC_URL + '/social/instagram.PNG'} alt="Instagram" className="img-fluid rounded me-1" style={{ width: '32px', height: '32px' }} />
+                </a>
+                <a href="https://x.com/@salman13965660" target="_blank" rel="noopener noreferrer" aria-label="X" className="p-0 m-0">
+                  <img src={process.env.PUBLIC_URL + '/social/x.PNG'} alt="X" className="img-fluid rounded me-1" style={{ width: '32px', height: '32px' }} />
+                </a>
+                <a href="https://linkedin.com/syed-salman-155239219" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="p-0 m-0">
+                  <img src={process.env.PUBLIC_URL + '/social/linkedin.PNG'} alt="LinkedIn" className="img-fluid rounded me-1" style={{ width: '32px', height: '32px' }} />
+                </a>
+                <a href="https://youtube.com/sample" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="p-0 m-0">
+                  <img src={process.env.PUBLIC_URL + '/social/youtube.PNG'} alt="YouTube" className="img-fluid rounded me-1" style={{ width: '32px', height: '32px' }} />
+                </a>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
 
-  </Container>
+  </div>
   </Router>
   );
 }
