@@ -164,13 +164,14 @@ function WizardSteps() {
                     <span className="fw-bold text-primary" style={{fontSize: '1.15rem'}}>{cat.category}</span>
                   </div>
                   <div className="cost-level-selector mb-2">
+                    {/*
                     {costLevels.map(level => (
                       <Form.Check
                         key={level.key}
-                        type="radio"
-                        name={`costLevel-${cat.category}`}
+                        // type="radio"
+                        // name={`costLevel-${cat.category}`}
                         id={`costLevel-${cat.category}-${level.key}`}
-                        label={level.label}
+                        //label={level.label}
                         value={level.key}
                         checked={costLevel === level.key}
                         onChange={() => setCostLevel(level.key)}
@@ -178,6 +179,7 @@ function WizardSteps() {
                         style={{fontSize: '1rem'}}
                       />
                     ))}
+                    */}
                   </div>
                 </div>
               ))}

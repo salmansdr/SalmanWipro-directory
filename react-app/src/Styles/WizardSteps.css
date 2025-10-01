@@ -150,7 +150,6 @@
     flex-direction: column;
     gap: 0.7rem;
     align-items: flex-start;
-    width: 100%;
   }
   .cost-level-selector label {
     display: block;         /* Stack radio and text vertically */
