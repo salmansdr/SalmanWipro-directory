@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/SalmanWipro-directory/static/css/main.68ed2e29.css",
-    "main.js": "/SalmanWipro-directory/static/js/main.8f7a480d.js",
+    "main.css": "/SalmanWipro-directory/static/css/main.1ead1011.css",
+    "main.js": "/SalmanWipro-directory/static/js/main.d652a7e8.js",
     "static/js/453.98bb53cb.chunk.js": "/SalmanWipro-directory/static/js/453.98bb53cb.chunk.js",
     "index.html": "/SalmanWipro-directory/index.html",
-    "main.68ed2e29.css.map": "/SalmanWipro-directory/static/css/main.68ed2e29.css.map",
-    "main.8f7a480d.js.map": "/SalmanWipro-directory/static/js/main.8f7a480d.js.map",
+    "main.1ead1011.css.map": "/SalmanWipro-directory/static/css/main.1ead1011.css.map",
+    "main.d652a7e8.js.map": "/SalmanWipro-directory/static/js/main.d652a7e8.js.map",
     "453.98bb53cb.chunk.js.map": "/SalmanWipro-directory/static/js/453.98bb53cb.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.68ed2e29.css",
-    "static/js/main.8f7a480d.js"
+    "static/css/main.1ead1011.css",
+    "static/js/main.d652a7e8.js"
   ]
 }
