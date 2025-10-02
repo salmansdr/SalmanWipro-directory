@@ -165,6 +165,42 @@ function Home() {
         projects={projectsWithNav}
         showProgress={currentTab.showProgress}
       />
+
+  {/* Enquire Now Section */}
+  <div className="container mt-3 mb-5">
+        <div className="card shadow-sm">
+          <div className="card-header bg-primary text-white">
+            <h4 className="mb-0">Enquire Now</h4>
+          </div>
+          <div className="card-body">
+            <form className="row g-3">
+              <div className="col-12 col-md-6">
+                <input type="text" className="form-control" id="enq-name" placeholder="Name" required />
+              </div>
+              <div className="col-12 col-md-6">
+                <input type="email" className="form-control" id="enq-email" placeholder="Email" required />
+              </div>
+              <div className="col-12 col-md-6">
+                <select className="form-select" id="enq-project" required>
+                  <option value="">Select project</option>
+                  {allProjects.map(p => (
+                    <option key={p.id} value={p.name}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-12 col-md-6">
+                <input type="tel" className="form-control" id="enq-phone" placeholder="Phone No." pattern="[0-9]{10}" maxLength={10} required />
+              </div>
+              <div className="col-12">
+                <textarea className="form-control" id="enq-message" placeholder="Message" rows="3" style={{resize: 'vertical'}}></textarea>
+              </div>
+              <div className="col-12 d-flex justify-content-end">
+                <button type="submit" className="btn btn-success px-4">Submit</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -77,8 +77,8 @@ function Reports() {
               <Card.Body>
                 <Row className="summary-grid">
                   <Col><span className="summary-label">Location:</span> {selectedProject.location}</Col>
-                  <Col><span className="summary-label">Start Date:</span> {selectedProject.startDate}</Col>
-                  <Col><span className="summary-label">End Date:</span> {selectedProject.endDate}</Col>
+                  <Col><span className="summary-label">Start Date:</span> {selectedProject.startDate ? new Date(selectedProject.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}</Col>
+                  <Col><span className="summary-label">End Date:</span> {selectedProject.endDate ? new Date(selectedProject.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}</Col>
                 </Row>
               </Card.Body>
             </Card>

@@ -27,6 +27,8 @@ const outdoorAmenities = ['Swimming Pool', 'Garden', 'Children Play Area', 'Jogg
 function ProjectManagement() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Determine if editing (Edit button) or viewing (hyperlink)
+  const isEdit = location.state && location.state.edit === true;
   // Master section state
   const [projectName, setProjectName] = useState('');
   const [projectLocation, setProjectLocation] = useState('');
@@ -37,7 +39,7 @@ function ProjectManagement() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState('Upcoming');
-  // Populate form fields if editing
+  // Populate form fields if editing or viewing
   useEffect(() => {
     if (location.state && location.state.project) {
       const p = location.state.project;
@@ -237,10 +239,12 @@ function ProjectManagement() {
             </Card>
 
             {/* 5. Save & Submit Section */}
-            <div className="d-flex justify-content-end gap-3">
-              <Button variant="secondary" type="button">Save</Button>
-              <Button variant="primary" type="submit">Submit</Button>
-            </div>
+            {(!location.state || isEdit) && (
+              <div className="d-flex justify-content-end gap-3">
+                <Button variant="secondary" type="button">Save</Button>
+                <Button variant="primary" type="submit">Submit</Button>
+              </div>
+            )}
           </Form>
         </Card.Body>
       </Card>

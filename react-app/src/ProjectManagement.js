@@ -23,7 +23,7 @@ function ProjectDetails() {
   }, []);
 
   const handleEdit = (project) => {
-    navigate('/ProjectManagementEntryForm', { state: { project } });
+    navigate('/ProjectManagementEntryForm', { state: { project, edit: true } });
   };
 
   const handleDelete = (projectName) => {
@@ -63,7 +63,7 @@ function ProjectDetails() {
               {projects.map((project, idx) => (
                 <tr key={project.id || idx}>
                   <td>
-                    <Link to="/project-management" state={{ project }} className="fw-bold text-decoration-underline">
+                    <Link to="/ProjectManagementEntryForm" state={{ project }} className="fw-bold text-decoration-underline">
                       {project.name}
                     </Link>
                   </td>
@@ -71,12 +71,14 @@ function ProjectDetails() {
                   <td>{project.startDate}</td>
                   <td>{project.endDate}</td>
                   <td className="text-center">
-                    <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEdit(project)} title="Edit">
-                      <FaEdit />
-                    </Button>
-                    <Button variant="outline-danger" size="sm" onClick={() => handleDelete(project.name)} title="Delete">
-                      <FaTrash />
-                    </Button>
+                    <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
+                      <Button variant="outline-primary" size="sm" onClick={() => handleEdit(project)} title="Edit">
+                        <FaEdit />
+                      </Button>
+                      <Button variant="outline-danger" size="sm" onClick={() => handleDelete(project.name)} title="Delete">
+                        <FaTrash />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
