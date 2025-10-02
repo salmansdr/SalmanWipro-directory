@@ -103,6 +103,7 @@ const PricingCalculator = () => {
 
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
+      <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
       {/* Step Indicator */}
       <div className="wizard-indicator">
         {[1,2,3,4].map(s => (
@@ -243,7 +244,7 @@ const PricingCalculator = () => {
                     onClick={() => toggleCategory(cat.category)}
                   >
                     <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
-                      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '120px', maxWidth: '180px' }}>
+                      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
                         <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
                           {isOpen ? <FaChevronDown /> : <FaChevronRight />}
                         </span>

@@ -49,9 +49,8 @@ function Reports() {
   return (
     <Container className="construction-report py-4">
       <Card className="mb-4 shadow-sm">
-        <Card.Header>
-          <h2 className="mb-0">Building Construction Report</h2>
-        </Card.Header>
+         <Card.Header as="h3" className="bg-primary text-white">Building Construction Report
+</Card.Header>
         <Card.Body>
           <Form.Group as={Row} className="mb-4 report-dropdown-section" controlId="project-select">
             <Form.Label column sm={3} className="dropdown-label">Select Project:</Form.Label>
