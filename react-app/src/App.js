@@ -15,6 +15,9 @@ import ProjectManagementEntryForm from './ProjectManagementEntryForm';
 import PricingCalculator from './PricingCalculator';
 import Login from './Login';
 
+// Global security feature toggle
+const SECURITY_ENABLED = true; // Set to false to disable security
+
 // Avatar dropdown with profile and logout
 function AvatarMenu({ onLogout }) {
   const [show, setShow] = useState(false);
@@ -51,10 +54,15 @@ function AvatarMenu({ onLogout }) {
 
 function App() {
   const [expanded, setExpanded] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // If security is disabled, always authenticated
+  const [isAuthenticated, setIsAuthenticated] = useState(!SECURITY_ENABLED ? true : false);
 
   // Handler for login success
   const handleLogin = (username, password) => {
+    if (!SECURITY_ENABLED) {
+      setIsAuthenticated(true);
+      return true;
+    }
     if (username === 'salmansdr' && password === 'Faresi@123') {
       setIsAuthenticated(true);
       return true;
@@ -64,6 +72,7 @@ function App() {
   };
   // Handler for logout
   const handleLogout = () => {
+    if (!SECURITY_ENABLED) return;
     setIsAuthenticated(false);
   };
 
@@ -83,23 +92,23 @@ function App() {
             <Navbar.Collapse id="mainNavbar">
               <Nav className="ms-auto mb-2 mb-lg-0 align-items-center">
                 <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)} style={{ color: 'white' }}>Home</Nav.Link>
-                {isAuthenticated && (
+                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
                   <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                   </NavDropdown>
                 )}
-                {isAuthenticated && (
+                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
                   <NavDropdown title={<span style={{ color: 'white' }}>Reports</span>} id="reports-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
                   </NavDropdown>
                 )}
                 <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)} style={{ color: 'white' }}>About</Nav.Link>
                 <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Contact</Nav.Link>
-                {!isAuthenticated && (
+                {(!isAuthenticated && SECURITY_ENABLED) && (
                   <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Login</Nav.Link>
                 )}
-                {isAuthenticated && <AvatarMenu onLogout={handleLogout} />}
+                {(isAuthenticated && SECURITY_ENABLED) && <AvatarMenu onLogout={handleLogout} />}
               </Nav>
             </Navbar.Collapse>
           </Container>

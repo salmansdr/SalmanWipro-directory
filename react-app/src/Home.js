@@ -48,6 +48,7 @@ function ProjectSection({ title, projects, showProgress = true }) {
 }
 
 function Home() {
+  // All hooks at the top
   const [tab, setTab] = useState('completed');
   const [projectsData, setProjectsData] = useState(null);
   const [searchLocation, setSearchLocation] = useState('');
@@ -55,6 +56,15 @@ function Home() {
   const [filteredProjects, setFilteredProjects] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  // Enquire Now form state
+  const [enqName, setEnqName] = useState('');
+  const [enqEmail, setEnqEmail] = useState('');
+  const [enqProject, setEnqProject] = useState('');
+  const [enqPhone, setEnqPhone] = useState('');
+  const [enqMessage, setEnqMessage] = useState('');
+  const [enqError, setEnqError] = useState('');
+  const [enqSuccess, setEnqSuccess] = useState('');
+
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
 
@@ -107,6 +117,33 @@ function Home() {
     if (location) filtered = filtered.filter(p => p.location === location);
     if (status) filtered = filtered.filter(p => p.status && p.status.toLowerCase() === status.toLowerCase());
     setFilteredProjects(filtered);
+  }
+
+  // Simple email and phone validation
+  function validateEmail(email) {
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  }
+  function validatePhone(phone) {
+    return /^[0-9]{10}$/.test(phone);
+  }
+
+  function handleEnquireSubmit(e) {
+    e.preventDefault();
+    setEnqError('');
+    setEnqSuccess('');
+    if (!enqName || !validateEmail(enqEmail) || !validatePhone(enqPhone) || !enqProject || !enqMessage) {
+      setEnqError('Please fill all fields with valid email and 10-digit phone number.');
+      return;
+    }
+    // Send email using mailto
+    const subject = encodeURIComponent(`Enquiry for ${enqProject}`);
+    const body = encodeURIComponent(`Name: ${enqName}\nEmail: ${enqEmail}\nPhone: ${enqPhone}\nProject: ${enqProject}\nMessage: ${enqMessage}`);
+    window.location.href = `mailto:${enqEmail}?subject=${subject}&body=${body}`;
+    // Send WhatsApp message
+    const whatsappMsg = encodeURIComponent(`Enquiry for ${enqProject}:\n${enqMessage}\nName: ${enqName}, Phone: ${enqPhone}, Email: ${enqEmail}`);
+    window.open(`https://wa.me/${enqPhone}?text=${whatsappMsg}`, '_blank');
+    setEnqSuccess('Your enquiry has been sent!');
+    setEnqName(''); setEnqEmail(''); setEnqProject(''); setEnqPhone(''); setEnqMessage('');
   }
 
   return (
@@ -166,22 +203,22 @@ function Home() {
         showProgress={currentTab.showProgress}
       />
 
-  {/* Enquire Now Section */}
-  <div className="container mt-3 mb-5">
+      {/* Enquire Now Section */}
+      <div className="container mt-3 mb-5">
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white">
             <h4 className="mb-0">Enquire Now</h4>
           </div>
           <div className="card-body">
-            <form className="row g-3">
+            <form className="row g-3" onSubmit={handleEnquireSubmit} autoComplete="off">
               <div className="col-12 col-md-6">
-                <input type="text" className="form-control" id="enq-name" placeholder="Name" required />
+                <input type="text" className="form-control" id="enq-name" placeholder="Name" required value={enqName} onChange={e => setEnqName(e.target.value)} />
               </div>
               <div className="col-12 col-md-6">
-                <input type="email" className="form-control" id="enq-email" placeholder="Email" required />
+                <input type="email" className="form-control" id="enq-email" placeholder="Email" required value={enqEmail} onChange={e => setEnqEmail(e.target.value)} />
               </div>
               <div className="col-12 col-md-6">
-                <select className="form-select" id="enq-project" required>
+                <select className="form-select" id="enq-project" required value={enqProject} onChange={e => setEnqProject(e.target.value)}>
                   <option value="">Select project</option>
                   {allProjects.map(p => (
                     <option key={p.id} value={p.name}>{p.name}</option>
@@ -189,11 +226,21 @@ function Home() {
                 </select>
               </div>
               <div className="col-12 col-md-6">
-                <input type="tel" className="form-control" id="enq-phone" placeholder="Phone No." pattern="[0-9]{10}" maxLength={10} required />
+                <input type="tel" className="form-control" id="enq-phone" placeholder="Phone No." pattern="[0-9]{10}" maxLength={10} required value={enqPhone} onChange={e => setEnqPhone(e.target.value)} />
               </div>
               <div className="col-12">
-                <textarea className="form-control" id="enq-message" placeholder="Message" rows="3" style={{resize: 'vertical'}}></textarea>
+                <textarea className="form-control" id="enq-message" placeholder="Message" rows="3" style={{resize: 'vertical'}} required value={enqMessage} onChange={e => setEnqMessage(e.target.value)}></textarea>
               </div>
+              {enqError && (
+                <div className="col-12">
+                  <div className="alert alert-danger py-2 mb-0">{enqError}</div>
+                </div>
+              )}
+              {enqSuccess && (
+                <div className="col-12">
+                  <div className="alert alert-success py-2 mb-0">{enqSuccess}</div>
+                </div>
+              )}
               <div className="col-12 d-flex justify-content-end">
                 <button type="submit" className="btn btn-success px-4">Submit</button>
               </div>
