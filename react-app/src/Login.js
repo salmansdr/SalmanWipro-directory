@@ -65,7 +65,7 @@ function Login({ onLogin, isAuthenticated }) {
                   />
                 </div>
                 <div className="col-12 text-end">
-                  <a href="#" className="text-primary small" style={{textDecoration: 'underline'}}>Forgot Password?</a>
+                  <button type="button" className="btn btn-link p-0 text-primary small" style={{textDecoration: 'underline'}} tabIndex={0}>Forgot Password?</button>
                 </div>
                 {error && (
                   <div className="col-12">
