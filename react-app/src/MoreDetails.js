@@ -185,6 +185,28 @@ function MoreDetails({ onBack, projectId, allProjects }) {
                   </div>
                 </Card.Body>
               </Card>
+              {/* Virtual Tours Section */}
+              <Card className="mb-3">
+                <Card.Body>
+                  <Card.Title>Virtual Tours</Card.Title>
+                  <div className="mb-3">
+                    <strong>360° Walkthrough & Video Tour</strong>
+                    <div className="ratio ratio-16x9 mt-2 mb-2" style={{ borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(33,150,243,0.08)' }}>
+                      <iframe
+                        src="https://www.youtube.com/embed/1La4QzGeaaQ"
+                        title="360° Virtual Tour Demo"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        style={{ width: '100%', height: '100%', border: 0 }}
+                      ></iframe>
+                    </div>
+                    <div className="mt-2">
+                      <a href="https://arvr.google.com/" target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">Try Augmented Reality (AR) Demo</a>
+                    </div>
+                  </div>
+                  <div className="text-secondary small">Experience immersive 360° walkthroughs and AR for your future home.</div>
+                </Card.Body>
+              </Card>
               <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>Location</Card.Title>
