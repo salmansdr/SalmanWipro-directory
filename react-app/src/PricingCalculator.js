@@ -64,16 +64,196 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
-  const [step, setStep] = useState(1);
-  const [selectedCity, setSelectedCity] = useState('');
+  // New state for build-up and carpet area percentages
+  const [buildupPercent, setBuildupPercent] = useState(90);
+  const [carpetPercent, setCarpetPercent] = useState(80);
+  // Responsive mobile detection
+  //const isMobile = window.innerWidth <= 600 || window.matchMedia('(max-width: 600px)').matches;
+  // Declare all required state variables
   const [width, setWidth] = useState('');
   const [depth, setDepth] = useState('');
+  const [step, setStep] = useState(1);
+  const [selectedCity, setSelectedCity] = useState('');
   const [floors, setFloors] = useState(1);
   const [lift, setLift] = useState(false);
   const [costLevel, setCostLevel] = useState('basic');
   const [openCategory, setOpenCategory] = useState([]);
 
+  // Rectangle visualization for Step 1
   const plotArea = width && depth ? Number(width) * Number(depth) : '';
+  let rectangleVisualization = null;
+  if (width && depth) {
+    // Responsive base sizes
+    const OUTER_WIDTH = Math.min(window.innerWidth * 0.96, 800);
+    const OUTER_HEIGHT = Math.min(window.innerWidth * 0.60, 320);
+    const MAX_WIDTH = OUTER_WIDTH * 0.8;
+    const MAX_HEIGHT = OUTER_HEIGHT * 0.8;
+    // Rectangle sizes (clamped for mobile)
+    const sbaWidth = Math.max(80, Math.min(MAX_WIDTH, Number(width) / 5));
+    const sbaHeight = Math.max(40, Math.min(MAX_HEIGHT, Number(depth) / 5));
+  const buaWidth = Math.max(60, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) / 5));
+  const buaHeight = Math.max(30, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) / 5));
+  const caWidth = Math.max(40, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) / 5));
+  const caHeight = Math.max(20, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) / 5));
+    rectangleVisualization = (
+      <div
+        className="ner"
+        style={{
+          margin: '2rem auto',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '320px',
+          width: '100%',
+          position: 'relative'
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: 'min(96vw, 800px)',
+            height: 'min(80vw, 280px)',
+            maxWidth: '800px',
+            maxHeight: '280px',
+            background: 'transparent',
+            borderRadius: '12px',
+            border: '1.5px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '0 auto',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ position: 'relative', width: `${sbaWidth}px`, height: `${sbaHeight}px`, margin: '0 auto' }}>
+            {/* SBA Rectangle */}
+            <div style={{
+              width: '100%',
+              height: '100%',
+              background: '#fffde7',
+              border: '3px solid #ffd600',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Super Built-up<br />{Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* SBA width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#616161', fontWeight: 400, background: '#fffde7', padding: '0 4px', borderRadius: '3px' }}>
+                {Number(width).toFixed(2)} ft
+              </span>
+              {/* SBA height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#616161',
+                fontWeight: 400,
+                background: '#fffde7',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {Number(depth).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Build-up area Rectangle */}
+            <div style={{
+              width: `${buaWidth}px`,
+              height: `${buaHeight}px`,
+              background: '#e3f2fd',
+              border: '2px solid #1976d2',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: `${(sbaHeight - buaHeight) / 2}px`,
+              left: `${(sbaWidth - buaWidth) / 2}px`,
+              zIndex: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Build-up Area<br />{(plotArea * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* BUA width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#1976d2', fontWeight: 400, background: '#e3f2fd', padding: '0 4px', borderRadius: '3px' }}>
+                {(Number(width) * (buildupPercent/100)).toFixed(2)} ft
+              </span>
+              {/* BUA height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#1976d2',
+                fontWeight: 400,
+                background: '#e3f2fd',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {(Number(depth) * (buildupPercent/100)).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Carpet area Rectangle */}
+            <div style={{
+              width: `${caWidth}px`,
+              height: `${caHeight}px`,
+              background: '#fce4ec',
+              border: '2px solid #d81b60',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: `${(sbaHeight - caHeight) / 2}px`,
+              left: `${(sbaWidth - caWidth) / 2}px`,
+              zIndex: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Carpet Area<br />{(plotArea * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* Carpet width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#d81b60', fontWeight: 400, background: '#fce4ec', padding: '0 4px', borderRadius: '3px' }}>
+                {(Number(width) * (carpetPercent/100)).toFixed(2)} ft
+              </span>
+              {/* Carpet height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#d81b60',
+                fontWeight: 400,
+                background: '#fce4ec',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {(Number(depth) * (carpetPercent/100)).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Grid below Carpet Area Rectangle */}
+            
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleCircleClick = (s) => setStep(s);
   const toggleCategory = (cat) => {
@@ -106,7 +286,7 @@ const PricingCalculator = () => {
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
       {/* Step Indicator */}
       <div className="wizard-indicator">
-        {[1,2,3,4].map(s => (
+        {[1,2,3].map(s => (
           <span
             key={s}
             className={`wizard-circle${step === s ? ' active' : ''}`}
@@ -118,65 +298,96 @@ const PricingCalculator = () => {
       <div className="wizard-step-content">
         {step === 1 && (
           <Form>
-            <Form.Group>
-              <Form.Label>Select City</Form.Label>
-              <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                <option value="">Select City</option>
-                {cities.map(city => <option key={city} value={city}>{city}</option>)}
-              </Form.Select>
-            </Form.Group>
+            <Row className="mb-3">
+              <Col md={4} sm={12}>
+                <Form.Group>
+                  <Form.Label style={{ fontSize: '0.95rem' }}>Select City</Form.Label>
+                  <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+                    <option value="">Select City</option>
+                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={2} sm={6}>
+                <Form.Group>
+                  <Form.Label style={{ fontSize: '0.95rem' }}>SBA Width (ft)</Form.Label>
+                  <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
+                </Form.Group>
+              </Col>
+              <Col md={2} sm={6}>
+                <Form.Group>
+                  <Form.Label style={{ fontSize: '0.95rem' }}>SBA Length (ft)</Form.Label>
+                  <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
+                </Form.Group>
+              </Col>
+              <Col md={2} sm={6}>
+                <Form.Group>
+                  <Form.Label style={{ fontSize: '0.95rem' }}>Build-up Area (%)</Form.Label>
+                  <Form.Control type="number" value={buildupPercent} min={1} max={100} onChange={e => setBuildupPercent(Number(e.target.value))} />
+                </Form.Group>
+              </Col>
+              <Col md={2} sm={6}>
+                <Form.Group>
+                  <Form.Label style={{ fontSize: '0.95rem' }}>Carpet Area (%)</Form.Label>
+                  <Form.Control type="number" value={carpetPercent} min={1} max={100} onChange={e => setCarpetPercent(Number(e.target.value))} />
+                </Form.Group>
+              </Col>
+            </Row>
+            {/* Out side Rectangle */}
+            {rectangleVisualization}
+
+ {/* Area Definitions Grid */}
+
+<div style={{
+  width: '100%',
+  maxWidth: '600px',
+  margin: '2rem auto',
+  background: '#fafafa',
+  borderRadius: '8px',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+  border: '1px solid #e0e0e0',
+  padding: '12px 8px',
+  fontSize: '.95rem',
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch'
+}}>
+  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <thead>
+      <tr style={{ background: '#f5f5f5' }}>
+        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Type</th>
+        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Definition</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style={{ padding: '8px', color: '#616161' }}>Super Built-up</td>
+        <td style={{ padding: '8px', color: '#616161' }}>
+          {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+        </td>
+        <td style={{ padding: '8px', color: '#616161' }}>Total area including common spaces (lobby, stairs, etc.)</td>
+      </tr>
+      <tr>
+        <td style={{ padding: '8px', color: '#1976d2' }}>Build-up Area</td>
+        <td style={{ padding: '8px', color: '#1976d2' }}>
+          {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+        </td>
+        <td style={{ padding: '8px', color: '#1976d2' }}>Usable area including walls, balcony, etc.</td>
+      </tr>
+      <tr>
+        <td style={{ padding: '8px', color: '#d81b60' }}>Carpet Area</td>
+        <td style={{ padding: '8px', color: '#d81b60' }}>
+          {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+        </td>
+        <td style={{ padding: '8px', color: '#d81b60' }}>Actual area within walls (where carpet can be laid)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+
           </Form>
-        )}
-        {step === 2 && (
-          <>
-            <Form>
-              <Row>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Width (ft)</Form.Label>
-                    <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
-                  </Form.Group>
-                </Col>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Depth (ft)</Form.Label>
-                    <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Form>
-            {(width && depth) && (
-              <div className="plot-rectangle-container" style={{ margin: '2rem auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px' }}>
-                <div style={{ position: 'relative', width: '340px', height: '220px', background: 'transparent', borderRadius: '12px', border: '1.5px solid #e0e0e0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {/* Left label (Depth) */}
-                  <div style={{ position: 'absolute', left: '-38px', top: '50%', transform: 'translateY(-50%)', color: '#757575', fontWeight: 500, fontSize: '1rem' }}>
-                    {Number(depth).toFixed(2)} ft
-                  </div>
-                  {/* Top label (Width) */}
-                  <div style={{ position: 'absolute', top: '-28px', left: '50%', transform: 'translateX(-50%)', color: '#757575', fontWeight: 500, fontSize: '1rem' }}>
-                    {Number(width).toFixed(2)} ft
-                  </div>
-                  {/* Rectangle */}
-                  <div style={{
-                    width: `${Math.max(80, Math.min(260, Number(width) / 5))}px`,
-                    height: `${Math.max(40, Math.min(140, Number(depth) / 5))}px`,
-                    background: '#fffde7',
-                    border: '3px solid #ffd600',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto',
-                    transition: 'width 0.3s, height 0.3s'
-                  }}>
-                    <span style={{ color: '#616161', fontWeight: 700, fontSize: '1.15rem' }}>
-                      {Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
         )}
         {step === 3 && (
           <>
@@ -222,95 +433,94 @@ const PricingCalculator = () => {
                 }).reverse()}
               </div>
             )}
+            {/* Wrap all cost-related elements in a fragment to avoid adjacent JSX error */}
+            <>
+              <div className="cost-level-selector mb-3 d-flex align-items-end justify-content-end">
+                <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
+                  <FaFileExcel size={22} style={{ verticalAlign: 'middle' }} />
+                </Button>
+              </div>
+              {sampleCostData.map(cat => {
+                // Per-category cost level state
+                const [catLevel, setCatLevel] = [cat._level || costLevel, (level) => { cat._level = level; setCostLevel(level); }];
+                const isOpen = openCategory.includes(cat.category);
+                const total = cat.details.reduce((sum, item) => sum + item.qty * item.rate[catLevel], 0);
+                return (
+                  <div key={cat.category} className="cost-category mb-4">
+                    <div
+                      className="cost-category-header d-flex align-items-center justify-content-between"
+                      style={{ cursor: 'pointer', background: '#f7f7f7', borderRadius: '8px', padding: '0.7rem 1.2rem', boxShadow: '0 1px 4px rgba(33,150,243,0.07)' }}
+                      onClick={() => toggleCategory(cat.category)}
+                    >
+                      <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
+                        <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
+                          <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
+                            {isOpen ? <FaChevronDown /> : <FaChevronRight />}
+                          </span>
+                          <h5 style={{ margin: 0 }}>{cat.category}</h5>
+                        </div>
+                        <div className="d-flex flex-column flex-md-row ms-md-4">
+                          {costLevels.map(level => (
+                            <div className="form-check mb-2 mb-md-0 me-md-3" key={level.key}>
+                              <input type="radio" className="form-check-input" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} />
+                              <label className="form-check-label ms-2">{level.label}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.15rem' }}>
+                        ₹{total.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <div className="cost-category-details" style={{ marginTop: '0.7rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.08)', padding: '0.7rem 1.2rem' }}>
+                        <table className="table table-bordered">
+                          <thead>
+                            <tr>
+                              <th>Item</th>
+                              <th>Qty</th>
+                              <th>Unit</th>
+                              <th>Rate</th>
+                              <th>Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cat.details.map((item, idx) => (
+                              <tr key={idx}>
+                                <td>{item.name}</td>
+                                <td>{item.qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                                <td>{item.unit}</td>
+                                <td>₹{item.rate[catLevel].toLocaleString('en-IN')}</td>
+                                <td style={{ color: '#388e3c', fontWeight: 600 }}>
+                                  ₹{(item.qty * item.rate[catLevel]).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Total Estimated Cost */}
+              <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1976d2', margin: '2rem 0 1.5rem 0', textAlign: 'right' }}>
+                Total Estimated Cost: ₹{
+                  sampleCostData.reduce((sum, cat) => sum + cat.details.reduce((catSum, item) => catSum + item.qty * item.rate[costLevel], 0), 0).toLocaleString('en-IN')
+                }
+              </div>
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <Button variant="primary" size="lg">Submit</Button>
+              </div>
+            </>
           </>
         )}
-        {step === 4 && (
-          <div>
-            <div className="cost-level-selector mb-3 d-flex align-items-end justify-content-end">
-              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
-                <FaFileExcel size={22} style={{ verticalAlign: 'middle' }} />
-              </Button>
-            </div>
-            {sampleCostData.map(cat => {
-              // Per-category cost level state
-              const [catLevel, setCatLevel] = [cat._level || costLevel, (level) => { cat._level = level; setCostLevel(level); }];
-              const isOpen = openCategory.includes(cat.category);
-              const total = cat.details.reduce((sum, item) => sum + item.qty * item.rate[catLevel], 0);
-              return (
-                <div key={cat.category} className="cost-category mb-4">
-                  <div
-                    className="cost-category-header d-flex align-items-center justify-content-between"
-                    style={{ cursor: 'pointer', background: '#f7f7f7', borderRadius: '8px', padding: '0.7rem 1.2rem', boxShadow: '0 1px 4px rgba(33,150,243,0.07)' }}
-                    onClick={() => toggleCategory(cat.category)}
-                  >
-                    <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
-                      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
-                        <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
-                          {isOpen ? <FaChevronDown /> : <FaChevronRight />}
-                        </span>
-                        <h5 style={{ margin: 0 }}>{cat.category}</h5>
-                      </div>
-                      <div className="d-flex flex-column flex-md-row ms-md-4">
-                        {costLevels.map(level => (
-                          <div className="form-check mb-2 mb-md-0 me-md-3" key={level.key}>
-                            <input type="radio" className="form-check-input" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} />
-                            <label className="form-check-label ms-2">{level.label}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.15rem' }}>
-                      ₹{total.toLocaleString('en-IN')}
-                    </div>
-                  </div>
-                  {isOpen && (
-                    <div className="cost-category-details" style={{ marginTop: '0.7rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.08)', padding: '0.7rem 1.2rem' }}>
-                      <table className="table table-bordered">
-                        <thead>
-                          <tr>
-                            <th>Item</th>
-                            <th>Qty</th>
-                            <th>Unit</th>
-                            <th>Rate</th>
-                            <th>Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cat.details.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{item.name}</td>
-                              <td>{item.qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                              <td>{item.unit}</td>
-                              <td>₹{item.rate[catLevel].toLocaleString('en-IN')}</td>
-                              <td style={{ color: '#388e3c', fontWeight: 600 }}>
-                                ₹{(item.qty * item.rate[catLevel]).toLocaleString('en-IN')}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Total Estimated Cost */}
-            <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1976d2', margin: '2rem 0 1.5rem 0', textAlign: 'right' }}>
-              Total Estimated Cost: ₹{
-                sampleCostData.reduce((sum, cat) => sum + cat.details.reduce((catSum, item) => catSum + item.qty * item.rate[costLevel], 0), 0).toLocaleString('en-IN')
-              }
-            </div>
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <Button variant="primary" size="lg">Submit</Button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
-        <Button disabled={step === 4} onClick={() => setStep(step+1)}>Next</Button>
+        <Button disabled={step === 3} onClick={() => setStep(step+1)}>Next</Button>
       </div>
     </div>
   );
