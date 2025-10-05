@@ -64,6 +64,16 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // Per-floor BHK configuration state
+  const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
+
+  // Handler to copy config from one floor to another
+  function copyFloorConfig(fromIdx, toIdx) {
+    setFloorBHKConfigs(prev => ({
+      ...prev,
+      [toIdx]: prev[fromIdx] ? [...prev[fromIdx]] : [...bhkRows]
+    }));
+  }
   // New state for build-up and carpet area percentages
   const [buildupPercent, setBuildupPercent] = useState(90);
   const [carpetPercent, setCarpetPercent] = useState(80);
@@ -92,7 +102,62 @@ const defaultBHKs = [
   { type: '2 BHK', units: 2, area: 600, rooms: '2 Bed, 1 Living, 1 Kitchen, 2 Bath' },
   { type: '3 BHK', units: 1, area: 900, rooms: '3 Bed, 1 Living, 1 Kitchen, 3 Bath' }
 ];
-const [bhkRows, setBhkRows] = useState(defaultBHKs);
+  // Default BHK config for new floors
+  const [bhkRows, setBhkRows] = useState(defaultBHKs);
+
+  // Helper to get BHK config for a floor
+  const getFloorRows = floorIdx => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs);
+
+  // Handler to update BHK config for a floor
+  function handleFloorCellChange(floorIdx, idx, field, value) {
+    if (floorIdx === 0) {
+      const updated = [...bhkRows];
+      updated[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
+      setBhkRows(updated);
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx)];
+        rows[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+
+  // Handler to add/remove row for a floor
+  function handleFloorAddRow(floorIdx) {
+    if (floorIdx === 0) {
+      setBhkRows([...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }]);
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }];
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+  function handleFloorRemoveRow(floorIdx, idx) {
+    if (floorIdx === 0) {
+      setBhkRows(getFloorRows(floorIdx).filter((_, i) => i !== idx));
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx)].filter((_, i) => i !== idx);
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+  function handleFloorAdjust(floorIdx) {
+    const rows = getFloorRows(floorIdx);
+    const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+    if (gridTotalArea === 0 || totalCarpetArea === 0) return;
+    const scale = totalCarpetArea / gridTotalArea;
+    if (floorIdx === 0) {
+      setBhkRows(rows.map(row => ({ ...row, area: Math.round(row.area * scale) })));
+    } else {
+      setFloorBHKConfigs(prev => ({
+        ...prev,
+        [floorIdx]: rows.map(row => ({ ...row, area: Math.round(row.area * scale) }))
+      }));
+    }
+  }
 const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(depth) * (carpetPercent/100) : 0;
 const gridTotalArea = bhkRows.reduce((sum, row) => sum + row.units * row.area, 0);
 const handleAddRow = () => {
@@ -477,7 +542,7 @@ const handleAdjust = () => {
                   </Row>
                   {/* Dynamic Section Rendering for Floors */}
                   <div style={{ marginBottom: '2rem' }}>
-                    {[...Array(Number(floors)).keys()].map(floorIdx => (
+                    {[...Array(Number(floors) + 1).keys()].map(floorIdx => (
                       <div key={floorIdx} className="section-responsive" style={{
                         background: floorIdx === 0 ? '#e3f2fd' : '#fff',
                         borderRadius: 8,
@@ -488,9 +553,11 @@ const handleAdjust = () => {
                         maxWidth: '100%',
                         overflowX: 'auto'
                       }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 12, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>
-                                          {floorIdx === 0 ? 'Ground Floor' : `Floor ${floorIdx}`}
-                                        </div>
+                        <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 12, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>
+                          {floorIdx === 0
+                            ? 'Ground Floor'
+                            : `${floorIdx === 1 ? '1st' : floorIdx === 2 ? '2nd' : floorIdx === 3 ? '3rd' : floorIdx + 'th'} Floor`}
+                        </div>
                         {floorIdx === 0 ? (
                           <div style={{ width: '100%', overflowX: 'auto' }}>
                             <table style={{ minWidth: 320, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
@@ -513,6 +580,14 @@ const handleAdjust = () => {
                         ) : (
                           <div style={{ marginTop: 0, width: '100%', overflowX: 'auto' }}>
                             <div style={{ fontWeight: 500, fontSize: '0.98rem', marginBottom: 8, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>BHK Configuration</div>
+                            {floorIdx > 1 && (
+                              <Form.Select size="sm" style={{ maxWidth: 140, marginBottom: 8 }} onChange={e => copyFloorConfig(Number(e.target.value), floorIdx)} defaultValue="">
+                                <option value="">Copy from...</option>
+                                {[...Array(Number(floors) + 1).keys()].filter(i => i !== 0 && i !== floorIdx).map(i => (
+                                  <option key={i} value={i}>{i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`}</option>
+                                ))}
+                              </Form.Select>
+                            )}
                             <table style={{ minWidth: 480, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
                               <thead>
                                 <tr style={{ background: '#f5f5f5' }}>
@@ -525,10 +600,10 @@ const handleAdjust = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {bhkRows.map((row, idx) => (
+                                {(floorBHKConfigs[floorIdx] || bhkRows).map((row, idx) => (
                                   <tr key={idx}>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Select value={row.type} onChange={e => handleCellChange(idx, 'type', e.target.value)} size="sm">
+                                      <Form.Select value={row.type} onChange={e => handleFloorCellChange(floorIdx, idx, 'type', e.target.value)} size="sm">
                                         <option value="">Select</option>
                                         <option value="1 BHK">1 BHK</option>
                                         <option value="2 BHK">2 BHK</option>
@@ -537,35 +612,46 @@ const handleAdjust = () => {
                                       </Form.Select>
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleCellChange(idx, 'units', e.target.value)} />
+                                      <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'units', e.target.value)} />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Control type="number" value={row.area} min={1} size="sm" onChange={e => handleCellChange(idx, 'area', e.target.value)} />
+                                      <Form.Control type="number" value={row.area} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'area', e.target.value)} />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                                       {(row.units * row.area).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleCellChange(idx, 'rooms', e.target.value)} />
+                                      <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'rooms', e.target.value)} />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
-                                      <Button variant="outline-danger" size="sm" onClick={() => handleRemoveRow(idx)} disabled={bhkRows.length === 1}>Remove</Button>
+                                      <Button variant="outline-danger" size="sm" onClick={() => handleFloorRemoveRow(floorIdx, idx)} disabled={getFloorRows(floorIdx).length === 1}>Remove</Button>
                                     </td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                             <div className="d-flex justify-content-between align-items-center mt-3">
-                              <Button variant="outline-primary" size="sm" onClick={handleAddRow}>Add Row</Button>
-                              <div style={{ fontWeight: 600, color: gridTotalArea === totalCarpetArea ? '#388e3c' : '#d81b60' }}>
-                                Total Area: {gridTotalArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                                {gridTotalArea !== totalCarpetArea && (
-                                  <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
-                                    (Carpet Area: {totalCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
-                                  </span>
-                                )}
+                              <Button variant="outline-primary" size="sm" onClick={() => handleFloorAddRow(floorIdx)}>Add Row</Button>
+                              <div style={{ fontWeight: 600, color: (() => {
+                                const rows = getFloorRows(floorIdx);
+                                const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                return gridTotalArea === totalCarpetArea ? '#388e3c' : '#d81b60';
+                              })() }}>
+                                Total Area: {(() => {
+                                  const rows = getFloorRows(floorIdx);
+                                  return rows.reduce((sum, row) => sum + row.units * row.area, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                                })()} sq ft
+                                {(() => {
+                                  const rows = getFloorRows(floorIdx);
+                                  const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                  return gridTotalArea !== totalCarpetArea ? (
+                                    <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
+                                      (Carpet Area: {totalCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
+                                    </span>
+                                  ) : null;
+                                })()}
                               </div>
-                              <Button variant="warning" size="sm" onClick={handleAdjust}>Adjust</Button>
+                              <Button variant="warning" size="sm" onClick={() => handleFloorAdjust(floorIdx)}>Adjust</Button>
                             </div>
                           </div>
                         )}
