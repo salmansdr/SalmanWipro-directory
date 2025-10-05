@@ -67,6 +67,8 @@ const PricingCalculator = () => {
   // New state for build-up and carpet area percentages
   const [buildupPercent, setBuildupPercent] = useState(90);
   const [carpetPercent, setCarpetPercent] = useState(80);
+
+  
   // Responsive mobile detection
   //const isMobile = window.innerWidth <= 600 || window.matchMedia('(max-width: 600px)').matches;
   // Declare all required state variables
@@ -82,6 +84,34 @@ const PricingCalculator = () => {
   // Rectangle visualization for Step 1
   const plotArea = width && depth ? Number(width) * Number(depth) : '';
   let rectangleVisualization = null;
+
+
+  // At the top of your component
+const defaultBHKs = [
+  { type: '1 BHK', units: 2, area: 400, rooms: '1 Bed, 1 Living, 1 Kitchen, 1 Bath' },
+  { type: '2 BHK', units: 2, area: 600, rooms: '2 Bed, 1 Living, 1 Kitchen, 2 Bath' },
+  { type: '3 BHK', units: 1, area: 900, rooms: '3 Bed, 1 Living, 1 Kitchen, 3 Bath' }
+];
+const [bhkRows, setBhkRows] = useState(defaultBHKs);
+const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(depth) * (carpetPercent/100) : 0;
+const gridTotalArea = bhkRows.reduce((sum, row) => sum + row.units * row.area, 0);
+const handleAddRow = () => {
+  setBhkRows([...bhkRows, { type: '', units: 1, area: 400, rooms: '' }]);
+};
+const handleRemoveRow = idx => {
+  setBhkRows(bhkRows.filter((_, i) => i !== idx));
+};
+const handleCellChange = (idx, field, value) => {
+  const updated = [...bhkRows];
+  updated[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
+  setBhkRows(updated);
+};
+const handleAdjust = () => {
+  if (gridTotalArea === 0 || totalCarpetArea === 0) return;
+  const scale = totalCarpetArea / gridTotalArea;
+  setBhkRows(bhkRows.map(row => ({ ...row, area: Math.round(row.area * scale) })));
+};
+
   if (width && depth) {
     // Responsive base sizes
     const OUTER_WIDTH = Math.min(window.innerWidth * 0.96, 800);
@@ -95,6 +125,10 @@ const PricingCalculator = () => {
   const buaHeight = Math.max(30, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) / 5));
   const caWidth = Math.max(40, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) / 5));
   const caHeight = Math.max(20, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) / 5));
+
+  
+
+
     rectangleVisualization = (
       <div
         className="ner"
@@ -389,50 +423,166 @@ const PricingCalculator = () => {
 
           </Form>
         )}
+
+        {step === 2 && (
+          <>
+            {/* Top summary section for area values */}
+            <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
+              <div className="row w-100" style={{ maxWidth: 600 }}>
+                <div className="col-12 col-md-4 mb-3 mb-md-0">
+                  <div style={{ background: '#e3f2fd', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(33,150,243,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#1976d2', fontSize: '0.85rem' }}>Super Built-up</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="col-12 col-md-4 mb-3 mb-md-0">
+                  <div style={{ background: '#e8f5e9', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(76,175,80,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#388e3c', fontSize: '0.85rem' }}>Build-up Area</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
+                  </div>
+                </div>
+                <div className="col-12 col-md-4">
+                  <div style={{ background: '#fce4ec', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(233,30,99,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#d81b60', fontSize: '0.85rem' }}>Carpet Area</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Controls section */}
+            <div className="d-flex justify-content-center">
+              <div style={{ width: '100%', maxWidth: 600, padding: '0 16px' }}>
+                <Form>
+                  <Row style={{ marginBottom: '2.5rem', marginTop: '-1.5rem' }}>
+                    <Col xs={12} md={6}>
+                      <Form.Group>
+                        <Form.Label>Number of Floors</Form.Label>
+                        <Form.Control type="number" value={floors} onChange={e => setFloors(e.target.value)} min={1} />
+                      </Form.Group>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Form.Group>
+                        <Form.Label>Lift Requirement</Form.Label>
+                        <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  {/* Dynamic Section Rendering for Floors */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    {[...Array(Number(floors)).keys()].map(floorIdx => (
+                      <div key={floorIdx} className="section-responsive" style={{
+                        background: floorIdx === 0 ? '#e3f2fd' : '#fff',
+                        borderRadius: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        border: '1px solid #e0e0e0',
+                        padding: '18px 8px',
+                        marginBottom: '1.5rem',
+                        maxWidth: '100%',
+                        overflowX: 'auto'
+                      }}>
+                                        <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 12, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>
+                                          {floorIdx === 0 ? 'Ground Floor' : `Floor ${floorIdx}`}
+                                        </div>
+                        {floorIdx === 0 ? (
+                          <div style={{ width: '100%', overflowX: 'auto' }}>
+                            <table style={{ minWidth: 320, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
+                              <thead>
+                                <tr style={{ background: '#f5f5f5' }}>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Type</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Super Built-up</td>
+                                  <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                    {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: 0, width: '100%', overflowX: 'auto' }}>
+                            <div style={{ fontWeight: 500, fontSize: '0.98rem', marginBottom: 8, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>BHK Configuration</div>
+                            <table style={{ minWidth: 480, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
+                              <thead>
+                                <tr style={{ background: '#f5f5f5' }}>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>BHK Type</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}># of Units</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Carpet Area (Sq ft)</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Typical Rooms</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {bhkRows.map((row, idx) => (
+                                  <tr key={idx}>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Select value={row.type} onChange={e => handleCellChange(idx, 'type', e.target.value)} size="sm">
+                                        <option value="">Select</option>
+                                        <option value="1 BHK">1 BHK</option>
+                                        <option value="2 BHK">2 BHK</option>
+                                        <option value="3 BHK">3 BHK</option>
+                                        <option value="4 BHK">4 BHK</option>
+                                      </Form.Select>
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleCellChange(idx, 'units', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="number" value={row.area} min={1} size="sm" onChange={e => handleCellChange(idx, 'area', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      {(row.units * row.area).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleCellChange(idx, 'rooms', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                                      <Button variant="outline-danger" size="sm" onClick={() => handleRemoveRow(idx)} disabled={bhkRows.length === 1}>Remove</Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <div className="d-flex justify-content-between align-items-center mt-3">
+                              <Button variant="outline-primary" size="sm" onClick={handleAddRow}>Add Row</Button>
+                              <div style={{ fontWeight: 600, color: gridTotalArea === totalCarpetArea ? '#388e3c' : '#d81b60' }}>
+                                Total Area: {gridTotalArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                                {gridTotalArea !== totalCarpetArea && (
+                                  <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
+                                    (Carpet Area: {totalCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
+                                  </span>
+                                )}
+                              </div>
+                              <Button variant="warning" size="sm" onClick={handleAdjust}>Adjust</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {/* BHK Grid Section (unchanged) */}
+                  
+                </Form>
+              </div>
+            </div>
+          </>
+        )}
+
+
         {step === 3 && (
           <>
-            <Form>
-              <Row>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Number of Floors</Form.Label>
-                    <Form.Control type="number" value={floors} onChange={e => setFloors(e.target.value)} min={1} />
-                  </Form.Group>
-                </Col>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Lift Requirement</Form.Label>
-                    <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Form>
-            {/* Building structure visual */}
-            {floors && Number(floors) > 0 && (
-              <div className="building-structure-stack" style={{ margin: '2rem auto', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '120px' }}>
-                {Array.from({ length: Number(floors) + 1 }, (_, i) => {
-                  const label = i === 0 ? 'Ground' : `${i} ${i === 1 ? 'Floor' : 'Floor'}`;
-                  return (
-                    <div key={label} style={{
-                      width: '120px',
-                      height: '38px',
-                      background: '#fffde7',
-                      border: '2.5px solid #ff9800',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      color: '#ff9800',
-                      fontSize: '1rem',
-                      marginBottom: '8px',
-                    }}>
-                      {i === 0 ? 'Ground' : `${i}${i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th'} Floor`}
-                    </div>
-                  );
-                }).reverse()}
-              </div>
-            )}
+            
+
             {/* Wrap all cost-related elements in a fragment to avoid adjacent JSX error */}
             <>
               <div className="cost-level-selector mb-3 d-flex align-items-end justify-content-end">

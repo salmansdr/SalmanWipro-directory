@@ -16,7 +16,7 @@ import PricingCalculator from './PricingCalculator';
 import Login from './Login';
 
 // Global security feature toggle
-const SECURITY_ENABLED = true; // Set to false to disable security
+const SECURITY_ENABLED = false; // Set to false to disable security
 
 // Avatar dropdown with profile and logout
 function AvatarMenu({ onLogout }) {
