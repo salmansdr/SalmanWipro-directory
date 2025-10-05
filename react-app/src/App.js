@@ -1,3 +1,4 @@
+import ProjectEstimation from './ProjectEstimation';
 
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -95,6 +96,7 @@ function App() {
                 {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
                   <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                   </NavDropdown>
                 )}
@@ -118,6 +120,7 @@ function App() {
               <Route path="/" element={<Home />} />
               {isAuthenticated && <Route path="/project-management" element={<ProjectManagement />} />}
               {isAuthenticated && <Route path="/ProjectManagementEntryForm" element={<ProjectManagementEntryForm />} />}
+              {isAuthenticated && <Route path="/project-estimation" element={<ProjectEstimation />} />}
               {isAuthenticated && <Route path="/pricing-calculator" element={<PricingCalculator />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
