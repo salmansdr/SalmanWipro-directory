@@ -64,6 +64,8 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // State for debug breakdown floor selection in Step 3
+  const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
   // State for number of lifts
   const [numLifts, setNumLifts] = useState(1);
   // Per-floor BHK configuration state
@@ -372,7 +374,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
       {/* Step Indicator */}
       <div className="wizard-indicator">
-        {[1,2,3].map(s => (
+        {[1,2,3,4].map(s => (
           <span
             key={s}
             className={`wizard-circle${step === s ? ' active' : ''}`}
@@ -478,6 +480,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
 
         {step === 2 && (
           <>
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Layout</h5>
+            </div>
             {/* Top summary section for area values */}
             <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
               <div className="row w-100" style={{ maxWidth: 600 }}>
@@ -671,96 +676,207 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
 
         {step === 3 && (
           <>
-            
-
-            {/* Wrap all cost-related elements in a fragment to avoid adjacent JSX error */}
-            <>
-              <div className="cost-level-selector mb-3 d-flex align-items-end justify-content-end">
-                <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
-                  <FaFileExcel size={22} style={{ verticalAlign: 'middle' }} />
-                </Button>
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
+            </div>
+              {/* Debug breakdown for Internal Walls calculation - now dynamic by floor */}
+              <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1rem auto', background: '#fffde7', border: '1px solid #ffe082', borderRadius: 6, padding: '10px 14px' }}>
+                <div style={{ fontWeight: 600, color: '#d81b60', marginBottom: 6 }}>Internal Walls Calculation Breakdown:</div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontWeight: 500, marginRight: 8 }}>Select Floor:</label>
+                  <select value={selectedDebugFloor || 0} onChange={e => setSelectedDebugFloor(Number(e.target.value))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ffe082' }}>
+                    {[...Array(Number(floors) + 1).keys()].map(i => (
+                      <option key={i} value={i}>{i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`}</option>
+                    ))}
+                  </select>
+                </div>
+                {(() => {
+                  const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
+                  function countRooms(roomsStr) {
+                    if (!roomsStr) return 0;
+                    const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+                    return roomsStr.split(',').reduce((sum, part) => {
+                      return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+                    }, 0);
+                  }
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.96rem', marginBottom: 0 }}>
+                      <thead>
+                        <tr style={{ background: '#fffde7' }}>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>BHK Type</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Units</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Rooms Counted</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Walls (Units × Rooms × 2)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bhkRowsForDebug.map((row, idx) => {
+                          const rooms = countRooms(row.rooms);
+                          const walls = row.units * rooms * 2;
+                          return (
+                            <tr key={idx}>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082' }}>{row.type || '-'}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{row.units}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{rooms}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right', fontWeight: 600 }}>{walls}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  );
+                })()}
               </div>
-              {sampleCostData.map(cat => {
-                // Per-category cost level state
-                const [catLevel, setCatLevel] = [cat._level || costLevel, (level) => { cat._level = level; setCostLevel(level); }];
-                const isOpen = openCategory.includes(cat.category);
-                const total = cat.details.reduce((sum, item) => sum + item.qty * item.rate[catLevel], 0);
-                return (
-                  <div key={cat.category} className="cost-category mb-4">
-                    <div
-                      className="cost-category-header d-flex align-items-center justify-content-between"
-                      style={{ cursor: 'pointer', background: '#f7f7f7', borderRadius: '8px', padding: '0.7rem 1.2rem', boxShadow: '0 1px 4px rgba(33,150,243,0.07)' }}
-                      onClick={() => toggleCategory(cat.category)}
-                    >
-                      <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
-                        <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
-                          <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
-                            {isOpen ? <FaChevronDown /> : <FaChevronRight />}
-                          </span>
-                          <h5 style={{ margin: 0 }}>{cat.category}</h5>
-                        </div>
-                        <div className="d-flex flex-column flex-md-row ms-md-4">
-                          {costLevels.map(level => (
-                            <div className="form-check mb-2 mb-md-0 me-md-3" key={level.key}>
-                              <input type="radio" className="form-check-input" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} />
-                              <label className="form-check-label ms-2">{level.label}</label>
-                            </div>
-                          ))}
-                        </div>
+            <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1.5rem auto', background: '#fafafa', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', padding: '18px 12px', fontSize: '.97rem', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.97rem' }}>
+                <thead>
+                  <tr style={{ background: '#f5f5f5' }}>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Component</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Logic</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area Per Floor (sq ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Internal Walls area based on BHK config and Typical Rooms for selected floor
+                    const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
+                    function countRooms(roomsStr) {
+                      if (!roomsStr) return 0;
+                      // Only count these room types
+                      const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+                      return roomsStr.split(',').reduce((sum, part) => {
+                        return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+                      }, 0);
+                    }
+                    const totalWalls = bhkRowsForDebug.reduce((sum, row) => {
+                      const rooms = countRooms(row.rooms);
+                      // Each room typically has 2 internal walls
+                      return sum + (row.units * rooms * 2);
+                    }, 0);
+                    const wallLength = 12; // ft
+                    const wallHeight = 10; // ft
+                    const internalWallArea = bhkRowsForDebug.reduce((sum, row) => {
+                      const rooms = countRooms(row.rooms);
+                      return sum + (row.units * rooms * 2 * wallLength * wallHeight);
+                    }, 0);
+                    return [
+                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+                      { name: 'External Walls', logic: '7% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.07) },
+                      { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: (width * depth) },
+                      { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: (width * depth) },
+                      { name: 'Beams & Columns', logic: '5% of Super Built-up Area', area: (width * depth * 0.05) },
+                      { name: 'Staircase Area', logic: '2% of Super Built-up Area', area: (width * depth * 0.02) },
+                      { name: 'Lift Shaft Area', logic: 'If lift required, 1.5% of Super Built-up Area', area: lift ? (width * depth * 0.015) : 0 },
+                      { name: 'Balcony Area', logic: '5% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.05) },
+                      { name: 'Utility Area', logic: '3% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.03) },
+                      { name: 'Toilet/Bath Area', logic: '8% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.08) },
+                      { name: 'Common Corridor', logic: '4% of Super Built-up Area', area: (width * depth * 0.04) },
+                      { name: 'Parking Area (Ground)', logic: '15% of Ground Floor SBA', area: (width * depth * 0.15) },
+                      { name: 'Foundation Area', logic: '12% of Super Built-up Area', area: (width * depth * 0.12) },
+                      { name: 'Parapet Walls', logic: '2% of Super Built-up Area', area: (width * depth * 0.02) }
+                    ];
+                  })().map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? (item.area * floors).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+        {step === 4 && (
+          <>
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Material Details</h5>
+            </div>
+            <div className="cost-level-selector mb-2 d-flex align-items-end justify-content-end" style={{ marginTop: '0.5rem' }}>
+              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
+                <FaFileExcel size={20} style={{ verticalAlign: 'middle' }} />
+              </Button>
+            </div>
+            {sampleCostData.map(cat => {
+              // Per-category cost level state
+              const [catLevel, setCatLevel] = [cat._level || costLevel, (level) => { cat._level = level; setCostLevel(level); }];
+              const isOpen = openCategory.includes(cat.category);
+              const total = cat.details.reduce((sum, item) => sum + item.qty * item.rate[catLevel], 0);
+              return (
+                <div key={cat.category} className="cost-category mb-4">
+                  <div
+                    className="cost-category-header d-flex align-items-center justify-content-between"
+                    style={{ cursor: 'pointer', background: '#f7f7f7', borderRadius: '8px', padding: '0.7rem 1.2rem', boxShadow: '0 1px 4px rgba(33,150,243,0.07)' }}
+                    onClick={() => toggleCategory(cat.category)}
+                  >
+                    <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
+                      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
+                        <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
+                          {isOpen ? <FaChevronDown /> : <FaChevronRight />}
+                        </span>
+                        <h5 style={{ margin: 0 }}>{cat.category}</h5>
                       </div>
-                      <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.15rem' }}>
-                        ₹{total.toLocaleString('en-IN')}
+                      <div className="d-flex flex-column flex-md-row ms-md-4">
+                        {costLevels.map(level => (
+                          <div className="form-check mb-2 mb-md-0 me-md-3" key={level.key}>
+                            <input type="radio" className="form-check-input" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} />
+                            <label className="form-check-label ms-2">{level.label}</label>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {isOpen && (
-                      <div className="cost-category-details" style={{ marginTop: '0.7rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.08)', padding: '0.7rem 1.2rem' }}>
-                        <table className="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th>Item</th>
-                              <th>Qty</th>
-                              <th>Unit</th>
-                              <th>Rate</th>
-                              <th>Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cat.details.map((item, idx) => (
-                              <tr key={idx}>
-                                <td>{item.name}</td>
-                                <td>{item.qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                                <td>{item.unit}</td>
-                                <td>₹{item.rate[catLevel].toLocaleString('en-IN')}</td>
-                                <td style={{ color: '#388e3c', fontWeight: 600 }}>
-                                  ₹{(item.qty * item.rate[catLevel]).toLocaleString('en-IN')}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.15rem' }}>
+                      ₹{total.toLocaleString('en-IN')}
+                    </div>
                   </div>
-                );
-              })}
-
-              {/* Total Estimated Cost */}
-              <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1976d2', margin: '2rem 0 1.5rem 0', textAlign: 'right' }}>
-                Total Estimated Cost: ₹{
-                  sampleCostData.reduce((sum, cat) => sum + cat.details.reduce((catSum, item) => catSum + item.qty * item.rate[costLevel], 0), 0).toLocaleString('en-IN')
-                }
-              </div>
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <Button variant="primary" size="lg">Submit</Button>
-              </div>
-            </>
+                  {isOpen && (
+                    <div className="cost-category-details" style={{ marginTop: '0.7rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.08)', padding: '0.7rem 1.2rem' }}>
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Unit</th>
+                            <th>Rate</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cat.details.map((item, idx) => (
+                            <tr key={idx}>
+                              <td>{item.name}</td>
+                              <td>{item.qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                              <td>{item.unit}</td>
+                              <td>₹{item.rate[catLevel].toLocaleString('en-IN')}</td>
+                              <td style={{ color: '#388e3c', fontWeight: 600 }}>
+                                ₹{(item.qty * item.rate[catLevel]).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1976d2', margin: '1.2rem 0 1rem 0', textAlign: 'right' }}>
+              Total Estimated Cost: ₹{
+                sampleCostData.reduce((sum, cat) => sum + cat.details.reduce((catSum, item) => catSum + item.qty * item.rate[costLevel], 0), 0).toLocaleString('en-IN')
+              }
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: '1.2rem' }}>
+              <Button variant="primary" size="lg">Submit</Button>
+            </div>
           </>
         )}
         </div>
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
-        <Button disabled={step === 3} onClick={() => setStep(step+1)}>Next</Button>
+        <Button disabled={step === 4} onClick={() => setStep(step+1)}>Next</Button>
       </div>
     </div>
   );
