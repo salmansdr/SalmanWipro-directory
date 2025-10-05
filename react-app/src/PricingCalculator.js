@@ -64,6 +64,8 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // State for number of lifts
+  const [numLifts, setNumLifts] = useState(1);
   // Per-floor BHK configuration state
   const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
 
@@ -518,8 +520,25 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     </Col>
                     <Col xs={12} md={6}>
                       <Form.Group>
-                        <Form.Label>Lift Requirement</Form.Label>
-                        <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+                          <div>
+                            <Form.Label>Lift Requirement</Form.Label>
+                            <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
+                          </div>
+                          {lift && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                              <Form.Label style={{ fontSize: '0.85rem', color: '#888', marginBottom: 2 }}>No. of Lifts</Form.Label>
+                              <Form.Control
+                                type="number"
+                                min={1}
+                                value={numLifts}
+                                onChange={e => setNumLifts(Math.max(1, Number(e.target.value)))}
+                                style={{ width: 48, fontSize: '0.95rem', padding: '2px 6px', height: 28, borderRadius: 4, border: '1px solid #bdbdbd' }}
+                                size="sm"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </Form.Group>
                     </Col>
                   </Row>
