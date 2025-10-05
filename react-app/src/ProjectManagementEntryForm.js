@@ -177,15 +177,31 @@ function ProjectManagement() {
                 <Row>
                   {docs.map((doc, idx) => (
                     <Col md={6} className="mb-3" key={doc.name}>
-                      <Form.Group className="d-flex align-items-center justify-content-between">
-                        <Form.Label className="mb-0">{doc.name}</Form.Label>
-                        <Form.Control
-                          type="file"
-                          accept=".pdf,.doc,.docx,image/*"
-                          capture="environment"
-                          style={{maxWidth: '60%'}}
-                          onChange={e => handleDocUpload(idx, e.target.files[0])}
-                        />
+                      <Form.Group className="d-flex flex-column align-items-start justify-content-between">
+                        <div className="d-flex w-100 align-items-center justify-content-between">
+                          <Form.Label className="mb-0">{doc.name}</Form.Label>
+                          <Form.Control
+                            type="file"
+                            accept=".pdf,.doc,.docx,image/*"
+                            capture="environment"
+                            style={{maxWidth: '60%'}}
+                            onChange={e => handleDocUpload(idx, e.target.files[0])}
+                          />
+                        </div>
+                        {/* Show preview or file name below input for better visibility */}
+                        {doc.file && (
+                          <div className="mt-2 w-100" style={{wordBreak: 'break-all'}}>
+                            {doc.file.type && doc.file.type.startsWith('image/') ? (
+                              <img
+                                src={URL.createObjectURL(doc.file)}
+                                alt="Preview"
+                                style={{maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.08)'}}
+                              />
+                            ) : (
+                              <span className="text-secondary">{doc.file.name}</span>
+                            )}
+                          </div>
+                        )}
                       </Form.Group>
                     </Col>
                   ))}
