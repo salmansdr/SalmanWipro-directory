@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FaChevronDown, FaChevronRight, FaFileExcel } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf } from 'react-icons/fa';
+import { generatePDFReport } from './pdfUtils';
 import { Button, Form, Row, Col } from 'react-bootstrap';
 import './Styles/WizardSteps.css';
 
@@ -64,6 +65,8 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // Rectangle visualization ref for PDF capture
+  const rectangleRef = React.useRef();
   // State for debug breakdown floor selection in Step 3
   const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
   // State for number of lifts
@@ -185,6 +188,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
 
     rectangleVisualization = (
       <div
+        ref={rectangleRef}
         className="ner"
         style={{
           margin: '2rem auto',
@@ -353,6 +357,81 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
   };
 
   // Excel download logic
+  const handleDownloadPDF = async () => {
+    // Gather all required data for the report
+    const locationDetails = `City: ${selectedCity}\nPlot Area: ${plotArea} sq ft`;
+    // Floor layout: collect BHK config for each floor
+    const floorSections = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => ({
+      floor: floorIdx === 0 ? 'Ground Floor' : `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+      bhkConfig: floorIdx === 0 ? bhkRows : (floorBHKConfigs[floorIdx] || defaultBHKs)
+    }));
+    // Floor components: use same logic as step 3's last grid
+    const floorComponentsData = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
+      // Use correct BHK config for each floor
+      let rows;
+      if (floorIdx === 0) {
+        rows = bhkRows;
+      } else if (floorBHKConfigs[floorIdx]) {
+        rows = floorBHKConfigs[floorIdx];
+      } else {
+        rows = defaultBHKs;
+      }
+      function countRooms(roomsStr) {
+        if (!roomsStr) return 0;
+        const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+        return roomsStr.split(',').reduce((sum, part) => {
+          return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+        }, 0);
+      }
+      // Calculate per-floor area values
+      const totalCarpetArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+      // Use per-floor SBA for calculations
+      const sba = totalCarpetArea / (carpetPercent/100);
+      if (floorIdx === 0) {
+        // Ground Floor: only show Super Built-up Area
+        return {
+          floor: 'Ground Floor',
+          components: [
+            { name: 'Super Built-up Area', logic: 'Total plot area (width × depth)', area: sba }
+          ]
+        };
+      }
+      // Other floors: show full breakdown
+      const totalWalls = rows.reduce((sum, row) => {
+        const rooms = countRooms(row.rooms);
+        return sum + (row.units * rooms * 2);
+      }, 0);
+      const wallLength = 12; // ft
+      const wallHeight = 10; // ft
+      const internalWallArea = rows.reduce((sum, row) => {
+        const rooms = countRooms(row.rooms);
+        return sum + (row.units * rooms * 2 * wallLength * wallHeight);
+      }, 0);
+      return {
+        floor: `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+        components: [
+          { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+          { name: 'External Walls', logic: '7% of Carpet Area', area: totalCarpetArea * 0.07 },
+          { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: sba },
+          { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: sba },
+          { name: 'Beams & Columns', logic: '5% of Super Built-up Area', area: sba * 0.05 },
+          { name: 'Staircase Area', logic: '2% of Super Built-up Area', area: sba * 0.02 },
+          { name: 'Lift Shaft Area', logic: 'If lift required, 1.5% of Super Built-up Area', area: lift ? (sba * 0.015) : 0 },
+          { name: 'Balcony Area', logic: '5% of Carpet Area', area: totalCarpetArea * 0.05 },
+          { name: 'Utility Area', logic: '3% of Carpet Area', area: totalCarpetArea * 0.03 },
+          { name: 'Toilet/Bath Area', logic: '8% of Carpet Area', area: totalCarpetArea * 0.08 },
+          { name: 'Common Corridor', logic: '4% of Super Built-up Area', area: sba * 0.04 },
+          { name: 'Parking Area (Ground)', logic: '15% of Ground Floor SBA', area: 0 },
+          { name: 'Foundation Area', logic: '12% of Super Built-up Area', area: sba * 0.12 },
+          { name: 'Parapet Walls', logic: '2% of Super Built-up Area', area: sba * 0.02 }
+        ]
+      };
+    });
+    const floorLayout = JSON.stringify(floorSections, null, 2);
+    const floorComponents = JSON.stringify(floorComponentsData, null, 2);
+    const materialDetails = JSON.stringify(sampleCostData, null, 2);
+    await generatePDFReport({ locationDetails, rectangleRef, floorLayout, floorComponents, materialDetails });
+  };
   const handleDownloadExcel = () => {
     let csv = 'Category,Item,Qty,Unit,Rate,Amount\n';
     sampleCostData.forEach(cat => {
@@ -385,97 +464,104 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       {/* Step Content */}
       <div className="wizard-step-content">
         {step === 1 && (
-          <Form>
-            <Row className="mb-3">
-              <Col md={4} sm={12}>
-                <Form.Group>
-                  <Form.Label style={{ fontSize: '0.95rem' }}>Select City</Form.Label>
-                  <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                    <option value="">Select City</option>
-                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={2} sm={6}>
-                <Form.Group>
-                  <Form.Label style={{ fontSize: '0.95rem' }}>SBA Width (ft)</Form.Label>
-                  <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
-                </Form.Group>
-              </Col>
-              <Col md={2} sm={6}>
-                <Form.Group>
-                  <Form.Label style={{ fontSize: '0.95rem' }}>SBA Length (ft)</Form.Label>
-                  <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
-                </Form.Group>
-              </Col>
-              <Col md={2} sm={6}>
-                <Form.Group>
-                  <Form.Label style={{ fontSize: '0.95rem' }}>Build-up Area (%)</Form.Label>
-                  <Form.Control type="number" value={buildupPercent} min={1} max={100} onChange={e => setBuildupPercent(Number(e.target.value))} />
-                </Form.Group>
-              </Col>
-              <Col md={2} sm={6}>
-                <Form.Group>
-                  <Form.Label style={{ fontSize: '0.95rem' }}>Carpet Area (%)</Form.Label>
-                  <Form.Control type="number" value={carpetPercent} min={1} max={100} onChange={e => setCarpetPercent(Number(e.target.value))} />
-                </Form.Group>
-              </Col>
-            </Row>
-            {/* Out side Rectangle */}
-            {rectangleVisualization}
+          <>
+            {/* Styled heading for Area Details - moved to top */}
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Area Details</h5>
+            </div>
+            <Form>
+              <Row className="mb-3">
+                <Col md={4} sm={12}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Select City</Form.Label>
+                    <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+                      <option value="">Select City</option>
+                      {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Width (ft)</Form.Label>
+                    <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Length (ft)</Form.Label>
+                    <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Build-up Area (%)</Form.Label>
+                    <Form.Control type="number" value={buildupPercent} min={1} max={100} onChange={e => setBuildupPercent(Number(e.target.value))} />
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Carpet Area (%)</Form.Label>
+                    <Form.Control type="number" value={carpetPercent} min={1} max={100} onChange={e => setCarpetPercent(Number(e.target.value))} />
+                  </Form.Group>
+                </Col>
+              </Row>
 
- {/* Area Definitions Grid */}
+              
+              {/* ...existing code for Step 1 form controls, including Select City ... */}
+              {rectangleVisualization}
 
-<div style={{
-  width: '100%',
-  maxWidth: '600px',
-  margin: '2rem auto',
-  background: '#fafafa',
-  borderRadius: '8px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-  border: '1px solid #e0e0e0',
-  padding: '12px 8px',
-  fontSize: '.95rem',
-  overflowX: 'auto',
-  WebkitOverflowScrolling: 'touch'
-}}>
-  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-    <thead>
-      <tr style={{ background: '#f5f5f5' }}>
-        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Type</th>
-        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Area (sq ft)</th>
-        <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Definition</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style={{ padding: '8px', color: '#616161' }}>Super Built-up</td>
-        <td style={{ padding: '8px', color: '#616161' }}>
-          {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-        </td>
-        <td style={{ padding: '8px', color: '#616161' }}>Total area including common spaces (lobby, stairs, etc.)</td>
-      </tr>
-      <tr>
-        <td style={{ padding: '8px', color: '#1976d2' }}>Build-up Area</td>
-        <td style={{ padding: '8px', color: '#1976d2' }}>
-          {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-        </td>
-        <td style={{ padding: '8px', color: '#1976d2' }}>Usable area including walls, balcony, etc.</td>
-      </tr>
-      <tr>
-        <td style={{ padding: '8px', color: '#d81b60' }}>Carpet Area</td>
-        <td style={{ padding: '8px', color: '#d81b60' }}>
-          {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-        </td>
-        <td style={{ padding: '8px', color: '#d81b60' }}>Actual area within walls (where carpet can be laid)</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+              {/* Area Definitions Grid */}
+              <div style={{
+                width: '100%',
+                maxWidth: '600px',
+                margin: '2rem auto',
+                background: '#fafafa',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                border: '1px solid #e0e0e0',
+                padding: '12px 8px',
+                fontSize: '.95rem',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f5f5f5' }}>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Definition</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#616161' }}>Super Built-up</td>
+                      <td style={{ padding: '8px', color: '#616161' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#616161' }}>Total area including common spaces (lobby, stairs, etc.)</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>Build-up Area</td>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>Usable area including walls, balcony, etc.</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>Carpet Area</td>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>Actual area within walls (where carpet can be laid)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
 
 
-          </Form>
+            </Form>
+          </>
         )}
 
         {step === 2 && (
@@ -792,11 +878,14 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
         {step === 4 && (
           <>
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
-              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Material Details</h5>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Estimation Details</h5>
             </div>
             <div className="cost-level-selector mb-2 d-flex align-items-end justify-content-end" style={{ marginTop: '0.5rem' }}>
-              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
+              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel" className="me-2">
                 <FaFileExcel size={20} style={{ verticalAlign: 'middle' }} />
+              </Button>
+              <Button variant="outline-danger" onClick={handleDownloadPDF} title="Download PDF Report">
+                <FaFilePdf size={20} style={{ verticalAlign: 'middle' }} />
               </Button>
             </div>
             {sampleCostData.map(cat => {
