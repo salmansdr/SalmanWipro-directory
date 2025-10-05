@@ -159,7 +159,6 @@ const defaultBHKs = [
     }
   }
 const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(depth) * (carpetPercent/100) : 0;
-const gridTotalArea = bhkRows.reduce((sum, row) => sum + row.units * row.area, 0);
 
   if (width && depth) {
     // Responsive base sizes
