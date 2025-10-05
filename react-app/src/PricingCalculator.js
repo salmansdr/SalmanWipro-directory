@@ -160,22 +160,6 @@ const defaultBHKs = [
   }
 const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(depth) * (carpetPercent/100) : 0;
 const gridTotalArea = bhkRows.reduce((sum, row) => sum + row.units * row.area, 0);
-const handleAddRow = () => {
-  setBhkRows([...bhkRows, { type: '', units: 1, area: 400, rooms: '' }]);
-};
-const handleRemoveRow = idx => {
-  setBhkRows(bhkRows.filter((_, i) => i !== idx));
-};
-const handleCellChange = (idx, field, value) => {
-  const updated = [...bhkRows];
-  updated[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
-  setBhkRows(updated);
-};
-const handleAdjust = () => {
-  if (gridTotalArea === 0 || totalCarpetArea === 0) return;
-  const scale = totalCarpetArea / gridTotalArea;
-  setBhkRows(bhkRows.map(row => ({ ...row, area: Math.round(row.area * scale) })));
-};
 
   if (width && depth) {
     // Responsive base sizes
