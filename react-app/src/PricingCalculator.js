@@ -119,12 +119,14 @@ const handleAdjust = () => {
     const MAX_WIDTH = OUTER_WIDTH * 0.8;
     const MAX_HEIGHT = OUTER_HEIGHT * 0.8;
     // Rectangle sizes (clamped for mobile)
-    const sbaWidth = Math.max(80, Math.min(MAX_WIDTH, Number(width) / 5));
-    const sbaHeight = Math.max(40, Math.min(MAX_HEIGHT, Number(depth) / 5));
-  const buaWidth = Math.max(60, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) / 5));
-  const buaHeight = Math.max(30, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) / 5));
-  const caWidth = Math.max(40, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) / 5));
-  const caHeight = Math.max(20, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) / 5));
+    // Increase scale so rectangles are always visible, even for small SBA
+  const SCALE_FACTOR = 0.5; // Even higher scale for maximum visibility
+    const sbaWidth = Math.max(120, Math.min(MAX_WIDTH, Number(width) * SCALE_FACTOR));
+    const sbaHeight = Math.max(60, Math.min(MAX_HEIGHT, Number(depth) * SCALE_FACTOR));
+    const buaWidth = Math.max(90, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) * SCALE_FACTOR));
+    const buaHeight = Math.max(45, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) * SCALE_FACTOR));
+    const caWidth = Math.max(60, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) * SCALE_FACTOR));
+    const caHeight = Math.max(30, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) * SCALE_FACTOR));
 
   
 
