@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FaChevronDown, FaChevronRight, FaFileExcel } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf } from 'react-icons/fa';
+import { generatePDFReport } from './pdfUtils';
 import { Button, Form, Row, Col } from 'react-bootstrap';
 import './Styles/WizardSteps.css';
 
@@ -64,16 +65,287 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
-  const [step, setStep] = useState(1);
-  const [selectedCity, setSelectedCity] = useState('');
+  // Rectangle visualization ref for PDF capture
+  const rectangleRef = React.useRef();
+  // State for debug breakdown floor selection in Step 3
+  const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
+  // State for number of lifts
+  const [numLifts, setNumLifts] = useState(1);
+  // Per-floor BHK configuration state
+  const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
+
+  // Handler to copy config from one floor to another
+  function copyFloorConfig(fromIdx, toIdx) {
+    setFloorBHKConfigs(prev => ({
+      ...prev,
+      [toIdx]: prev[fromIdx] ? [...prev[fromIdx]] : [...bhkRows]
+    }));
+  }
+  // New state for build-up and carpet area percentages
+  const [buildupPercent, setBuildupPercent] = useState(90);
+  const [carpetPercent, setCarpetPercent] = useState(80);
+
+  
+  // Responsive mobile detection
+  //const isMobile = window.innerWidth <= 600 || window.matchMedia('(max-width: 600px)').matches;
+  // Declare all required state variables
   const [width, setWidth] = useState('');
   const [depth, setDepth] = useState('');
+  const [step, setStep] = useState(1);
+  const [selectedCity, setSelectedCity] = useState('');
   const [floors, setFloors] = useState(1);
   const [lift, setLift] = useState(false);
   const [costLevel, setCostLevel] = useState('basic');
   const [openCategory, setOpenCategory] = useState([]);
 
+  // Rectangle visualization for Step 1
   const plotArea = width && depth ? Number(width) * Number(depth) : '';
+  let rectangleVisualization = null;
+
+
+  // At the top of your component
+const defaultBHKs = [
+  { type: '1 BHK', units: 2, area: 400, rooms: '1 Bed, 1 Living, 1 Kitchen, 1 Bath' },
+  { type: '2 BHK', units: 2, area: 600, rooms: '2 Bed, 1 Living, 1 Kitchen, 2 Bath' },
+  { type: '3 BHK', units: 1, area: 900, rooms: '3 Bed, 1 Living, 1 Kitchen, 3 Bath' }
+];
+  // Default BHK config for new floors
+  const [bhkRows, setBhkRows] = useState(defaultBHKs);
+
+  // Helper to get BHK config for a floor
+  const getFloorRows = floorIdx => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs);
+
+  // Handler to update BHK config for a floor
+  function handleFloorCellChange(floorIdx, idx, field, value) {
+    if (floorIdx === 0) {
+      const updated = [...bhkRows];
+      updated[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
+      setBhkRows(updated);
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx)];
+        rows[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+
+  // Handler to add/remove row for a floor
+  function handleFloorAddRow(floorIdx) {
+    if (floorIdx === 0) {
+      setBhkRows([...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }]);
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }];
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+  function handleFloorRemoveRow(floorIdx, idx) {
+    if (floorIdx === 0) {
+      setBhkRows(getFloorRows(floorIdx).filter((_, i) => i !== idx));
+    } else {
+      setFloorBHKConfigs(prev => {
+        const rows = [...getFloorRows(floorIdx)].filter((_, i) => i !== idx);
+        return { ...prev, [floorIdx]: rows };
+      });
+    }
+  }
+  function handleFloorAdjust(floorIdx) {
+    const rows = getFloorRows(floorIdx);
+    const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+    if (gridTotalArea === 0 || totalCarpetArea === 0) return;
+    const scale = totalCarpetArea / gridTotalArea;
+    if (floorIdx === 0) {
+      setBhkRows(rows.map(row => ({ ...row, area: Math.round(row.area * scale) })));
+    } else {
+      setFloorBHKConfigs(prev => ({
+        ...prev,
+        [floorIdx]: rows.map(row => ({ ...row, area: Math.round(row.area * scale) }))
+      }));
+    }
+  }
+const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(depth) * (carpetPercent/100) : 0;
+
+  if (width && depth) {
+    // Responsive base sizes
+    const OUTER_WIDTH = Math.min(window.innerWidth * 0.96, 800);
+    const OUTER_HEIGHT = Math.min(window.innerWidth * 0.60, 320);
+    const MAX_WIDTH = OUTER_WIDTH * 0.8;
+    const MAX_HEIGHT = OUTER_HEIGHT * 0.8;
+    // Rectangle sizes (clamped for mobile)
+    // Increase scale so rectangles are always visible, even for small SBA
+  const SCALE_FACTOR = 0.5; // Even higher scale for maximum visibility
+    const sbaWidth = Math.max(120, Math.min(MAX_WIDTH, Number(width) * SCALE_FACTOR));
+    const sbaHeight = Math.max(60, Math.min(MAX_HEIGHT, Number(depth) * SCALE_FACTOR));
+    const buaWidth = Math.max(90, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) * SCALE_FACTOR));
+    const buaHeight = Math.max(45, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) * SCALE_FACTOR));
+    const caWidth = Math.max(60, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) * SCALE_FACTOR));
+    const caHeight = Math.max(30, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) * SCALE_FACTOR));
+
+  
+
+
+    rectangleVisualization = (
+      <div
+        ref={rectangleRef}
+        className="ner"
+        style={{
+          margin: '2rem auto',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '320px',
+          width: '100%',
+          position: 'relative'
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: 'min(96vw, 800px)',
+            height: 'min(80vw, 280px)',
+            maxWidth: '800px',
+            maxHeight: '280px',
+            background: 'transparent',
+            borderRadius: '12px',
+            border: '1.5px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '0 auto',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ position: 'relative', width: `${sbaWidth}px`, height: `${sbaHeight}px`, margin: '0 auto' }}>
+            {/* SBA Rectangle */}
+            <div style={{
+              width: '100%',
+              height: '100%',
+              background: '#fffde7',
+              border: '3px solid #ffd600',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Super Built-up<br />{Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* SBA width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#616161', fontWeight: 400, background: '#fffde7', padding: '0 4px', borderRadius: '3px' }}>
+                {Number(width).toFixed(2)} ft
+              </span>
+              {/* SBA height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#616161',
+                fontWeight: 400,
+                background: '#fffde7',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {Number(depth).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Build-up area Rectangle */}
+            <div style={{
+              width: `${buaWidth}px`,
+              height: `${buaHeight}px`,
+              background: '#e3f2fd',
+              border: '2px solid #1976d2',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: `${(sbaHeight - buaHeight) / 2}px`,
+              left: `${(sbaWidth - buaWidth) / 2}px`,
+              zIndex: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Build-up Area<br />{(plotArea * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* BUA width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#1976d2', fontWeight: 400, background: '#e3f2fd', padding: '0 4px', borderRadius: '3px' }}>
+                {(Number(width) * (buildupPercent/100)).toFixed(2)} ft
+              </span>
+              {/* BUA height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#1976d2',
+                fontWeight: 400,
+                background: '#e3f2fd',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {(Number(depth) * (buildupPercent/100)).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Carpet area Rectangle */}
+            <div style={{
+              width: `${caWidth}px`,
+              height: `${caHeight}px`,
+              background: '#fce4ec',
+              border: '2px solid #d81b60',
+              borderRadius: '6px',
+              position: 'absolute',
+              top: `${(sbaHeight - caHeight) / 2}px`,
+              left: `${(sbaWidth - caWidth) / 2}px`,
+              zIndex: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column'
+            }}>
+              <span style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                Carpet Area<br />{(plotArea * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+              </span>
+              {/* Carpet width label (top edge) */}
+              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#d81b60', fontWeight: 400, background: '#fce4ec', padding: '0 4px', borderRadius: '3px' }}>
+                {(Number(width) * (carpetPercent/100)).toFixed(2)} ft
+              </span>
+              {/* Carpet height label (left border, vertical) */}
+              <span style={{
+                position: 'absolute',
+                left: '-23px',
+                top: '50%',
+                transform: 'translateY(-50%) rotate(-90deg)',
+                fontSize: '0.55rem',
+                color: '#d81b60',
+                fontWeight: 400,
+                background: '#fce4ec',
+                padding: '0 4px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap'
+              }}>
+                {(Number(depth) * (carpetPercent/100)).toFixed(2)} ft
+              </span>
+            </div>
+            {/* Grid below Carpet Area Rectangle */}
+            
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleCircleClick = (s) => setStep(s);
   const toggleCategory = (cat) => {
@@ -85,6 +357,81 @@ const PricingCalculator = () => {
   };
 
   // Excel download logic
+  const handleDownloadPDF = async () => {
+    // Gather all required data for the report
+    const locationDetails = `City: ${selectedCity}\nPlot Area: ${plotArea} sq ft`;
+    // Floor layout: collect BHK config for each floor
+    const floorSections = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => ({
+      floor: floorIdx === 0 ? 'Ground Floor' : `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+      bhkConfig: floorIdx === 0 ? bhkRows : (floorBHKConfigs[floorIdx] || defaultBHKs)
+    }));
+    // Floor components: use same logic as step 3's last grid
+    const floorComponentsData = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
+      // Use correct BHK config for each floor
+      let rows;
+      if (floorIdx === 0) {
+        rows = bhkRows;
+      } else if (floorBHKConfigs[floorIdx]) {
+        rows = floorBHKConfigs[floorIdx];
+      } else {
+        rows = defaultBHKs;
+      }
+      function countRooms(roomsStr) {
+        if (!roomsStr) return 0;
+        const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+        return roomsStr.split(',').reduce((sum, part) => {
+          return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+        }, 0);
+      }
+      // Calculate per-floor area values
+      const totalCarpetArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+      // Use per-floor SBA for calculations
+      const sba = totalCarpetArea / (carpetPercent/100);
+      if (floorIdx === 0) {
+        // Ground Floor: only show Super Built-up Area
+        return {
+          floor: 'Ground Floor',
+          components: [
+            { name: 'Super Built-up Area', logic: 'Total plot area (width × depth)', area: sba }
+          ]
+        };
+      }
+      // Other floors: show full breakdown
+      const totalWalls = rows.reduce((sum, row) => {
+        const rooms = countRooms(row.rooms);
+        return sum + (row.units * rooms * 2);
+      }, 0);
+      const wallLength = 12; // ft
+      const wallHeight = 10; // ft
+      const internalWallArea = rows.reduce((sum, row) => {
+        const rooms = countRooms(row.rooms);
+        return sum + (row.units * rooms * 2 * wallLength * wallHeight);
+      }, 0);
+      return {
+        floor: `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+        components: [
+          { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+          { name: 'External Walls', logic: '7% of Carpet Area', area: totalCarpetArea * 0.07 },
+          { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: sba },
+          { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: sba },
+          { name: 'Beams & Columns', logic: '5% of Super Built-up Area', area: sba * 0.05 },
+          { name: 'Staircase Area', logic: '2% of Super Built-up Area', area: sba * 0.02 },
+          { name: 'Lift Shaft Area', logic: 'If lift required, 1.5% of Super Built-up Area', area: lift ? (sba * 0.015) : 0 },
+          { name: 'Balcony Area', logic: '5% of Carpet Area', area: totalCarpetArea * 0.05 },
+          { name: 'Utility Area', logic: '3% of Carpet Area', area: totalCarpetArea * 0.03 },
+          { name: 'Toilet/Bath Area', logic: '8% of Carpet Area', area: totalCarpetArea * 0.08 },
+          { name: 'Common Corridor', logic: '4% of Super Built-up Area', area: sba * 0.04 },
+          { name: 'Parking Area (Ground)', logic: '15% of Ground Floor SBA', area: 0 },
+          { name: 'Foundation Area', logic: '12% of Super Built-up Area', area: sba * 0.12 },
+          { name: 'Parapet Walls', logic: '2% of Super Built-up Area', area: sba * 0.02 }
+        ]
+      };
+    });
+    const floorLayout = JSON.stringify(floorSections, null, 2);
+    const floorComponents = JSON.stringify(floorComponentsData, null, 2);
+    const materialDetails = JSON.stringify(sampleCostData, null, 2);
+    await generatePDFReport({ locationDetails, rectangleRef, floorLayout, floorComponents, materialDetails });
+  };
   const handleDownloadExcel = () => {
     let csv = 'Category,Item,Qty,Unit,Rate,Amount\n';
     sampleCostData.forEach(cat => {
@@ -103,6 +450,7 @@ const PricingCalculator = () => {
 
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
+      <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
       {/* Step Indicator */}
       <div className="wizard-indicator">
         {[1,2,3,4].map(s => (
@@ -116,118 +464,428 @@ const PricingCalculator = () => {
       {/* Step Content */}
       <div className="wizard-step-content">
         {step === 1 && (
-          <Form>
-            <Form.Group>
-              <Form.Label>Select City</Form.Label>
-              <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                <option value="">Select City</option>
-                {cities.map(city => <option key={city} value={city}>{city}</option>)}
-              </Form.Select>
-            </Form.Group>
-          </Form>
-        )}
-        {step === 2 && (
           <>
+            {/* Styled heading for Area Details - moved to top */}
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Area Details</h5>
+            </div>
             <Form>
-              <Row>
-                <Col xs={6}>
+              <Row className="mb-3">
+                <Col md={4} sm={12}>
                   <Form.Group>
-                    <Form.Label>Width (ft)</Form.Label>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Select City</Form.Label>
+                    <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+                      <option value="">Select City</option>
+                      {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Width (ft)</Form.Label>
                     <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
                   </Form.Group>
                 </Col>
-                <Col xs={6}>
+                <Col md={2} sm={6}>
                   <Form.Group>
-                    <Form.Label>Depth (ft)</Form.Label>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Length (ft)</Form.Label>
                     <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
                   </Form.Group>
                 </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Build-up Area (%)</Form.Label>
+                    <Form.Control type="number" value={buildupPercent} min={1} max={100} onChange={e => setBuildupPercent(Number(e.target.value))} />
+                  </Form.Group>
+                </Col>
+                <Col md={2} sm={6}>
+                  <Form.Group>
+                    <Form.Label style={{ fontSize: '0.95rem' }}>Carpet Area (%)</Form.Label>
+                    <Form.Control type="number" value={carpetPercent} min={1} max={100} onChange={e => setCarpetPercent(Number(e.target.value))} />
+                  </Form.Group>
+                </Col>
               </Row>
+
+              
+              {/* ...existing code for Step 1 form controls, including Select City ... */}
+              {rectangleVisualization}
+
+              {/* Area Definitions Grid */}
+              <div style={{
+                width: '100%',
+                maxWidth: '600px',
+                margin: '2rem auto',
+                background: '#fafafa',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                border: '1px solid #e0e0e0',
+                padding: '12px 8px',
+                fontSize: '.95rem',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f5f5f5' }}>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Definition</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#616161' }}>Super Built-up</td>
+                      <td style={{ padding: '8px', color: '#616161' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#616161' }}>Total area including common spaces (lobby, stairs, etc.)</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>Build-up Area</td>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#1976d2' }}>Usable area including walls, balcony, etc.</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>Carpet Area</td>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>
+                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                      <td style={{ padding: '8px', color: '#d81b60' }}>Actual area within walls (where carpet can be laid)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+
+
             </Form>
-            {(width && depth) && (
-              <div className="plot-rectangle-container" style={{ margin: '2rem auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px' }}>
-                <div style={{ position: 'relative', width: '340px', height: '220px', background: 'transparent', borderRadius: '12px', border: '1.5px solid #e0e0e0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {/* Left label (Depth) */}
-                  <div style={{ position: 'absolute', left: '-38px', top: '50%', transform: 'translateY(-50%)', color: '#757575', fontWeight: 500, fontSize: '1rem' }}>
-                    {Number(depth).toFixed(2)} ft
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Layout</h5>
+            </div>
+            {/* Top summary section for area values */}
+            <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
+              <div className="row w-100" style={{ maxWidth: 600 }}>
+                <div className="col-12 col-md-4 mb-3 mb-md-0">
+                  <div style={{ background: '#e3f2fd', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(33,150,243,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#1976d2', fontSize: '0.85rem' }}>Super Built-up</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
                   </div>
-                  {/* Top label (Width) */}
-                  <div style={{ position: 'absolute', top: '-28px', left: '50%', transform: 'translateX(-50%)', color: '#757575', fontWeight: 500, fontSize: '1rem' }}>
-                    {Number(width).toFixed(2)} ft
+                </div>
+                <div className="col-12 col-md-4 mb-3 mb-md-0">
+                  <div style={{ background: '#e8f5e9', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(76,175,80,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#388e3c', fontSize: '0.85rem' }}>Build-up Area</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
                   </div>
-                  {/* Rectangle */}
-                  <div style={{
-                    width: `${Math.max(80, Math.min(260, Number(width) / 5))}px`,
-                    height: `${Math.max(40, Math.min(140, Number(depth) / 5))}px`,
-                    background: '#fffde7',
-                    border: '3px solid #ffd600',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto',
-                    transition: 'width 0.3s, height 0.3s'
-                  }}>
-                    <span style={{ color: '#616161', fontWeight: 700, fontSize: '1.15rem' }}>
-                      {Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                    </span>
+                </div>
+                <div className="col-12 col-md-4">
+                  <div style={{ background: '#fce4ec', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(233,30,99,0.07)', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#d81b60', fontSize: '0.85rem' }}>Carpet Area</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
+                      {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+            {/* Controls section */}
+            <div className="d-flex justify-content-center">
+              <div style={{ width: '100%', maxWidth: 600, padding: '0 16px' }}>
+                <Form>
+                  <Row style={{ marginBottom: '2.5rem', marginTop: '-1.5rem' }}>
+                    <Col xs={12} md={6}>
+                      <Form.Group>
+                        <Form.Label>Number of Floors</Form.Label>
+                        <Form.Control type="number" value={floors} onChange={e => setFloors(e.target.value)} min={1} />
+                      </Form.Group>
+                    </Col>
+                    <Col xs={12} md={6}>
+                      <Form.Group>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+                          <div>
+                            <Form.Label>Lift Requirement</Form.Label>
+                            <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
+                          </div>
+                          {lift && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                              <Form.Label style={{ fontSize: '0.85rem', color: '#888', marginBottom: 2 }}>No. of Lifts</Form.Label>
+                              <Form.Control
+                                type="number"
+                                min={1}
+                                value={numLifts}
+                                onChange={e => setNumLifts(Math.max(1, Number(e.target.value)))}
+                                style={{ width: 48, fontSize: '0.95rem', padding: '2px 6px', height: 28, borderRadius: 4, border: '1px solid #bdbdbd' }}
+                                size="sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  {/* Dynamic Section Rendering for Floors */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    {[...Array(Number(floors) + 1).keys()].map(floorIdx => (
+                      <div key={floorIdx} className="section-responsive" style={{
+                        background: floorIdx === 0 ? '#e3f2fd' : '#fff',
+                        borderRadius: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        border: '1px solid #e0e0e0',
+                        padding: '18px 8px',
+                        marginBottom: '1.5rem',
+                        maxWidth: '100%',
+                        overflowX: 'auto'
+                      }}>
+                        <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 12, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>
+                          {floorIdx === 0
+                            ? 'Ground Floor'
+                            : `${floorIdx === 1 ? '1st' : floorIdx === 2 ? '2nd' : floorIdx === 3 ? '3rd' : floorIdx + 'th'} Floor`}
+                        </div>
+                        {floorIdx === 0 ? (
+                          <div style={{ width: '100%', overflowX: 'auto' }}>
+                            <table style={{ minWidth: 320, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
+                              <thead>
+                                <tr style={{ background: '#f5f5f5' }}>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Type</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Super Built-up</td>
+                                  <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                    {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: 0, width: '100%', overflowX: 'auto' }}>
+                            <div style={{ fontWeight: 500, fontSize: '0.98rem', marginBottom: 8, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>BHK Configuration</div>
+                            {floorIdx > 1 && (
+                              <Form.Select size="sm" style={{ maxWidth: 140, marginBottom: 8 }} onChange={e => copyFloorConfig(Number(e.target.value), floorIdx)} defaultValue="">
+                                <option value="">Copy from...</option>
+                                {[...Array(Number(floors) + 1).keys()].filter(i => i !== 0 && i !== floorIdx).map(i => (
+                                  <option key={i} value={i}>{i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`}</option>
+                                ))}
+                              </Form.Select>
+                            )}
+                            <table style={{ minWidth: 480, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
+                              <thead>
+                                <tr style={{ background: '#f5f5f5' }}>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>BHK Type</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}># of Units</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Carpet Area (Sq ft)</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Typical Rooms</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(floorBHKConfigs[floorIdx] || bhkRows).map((row, idx) => (
+                                  <tr key={idx}>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Select value={row.type} onChange={e => handleFloorCellChange(floorIdx, idx, 'type', e.target.value)} size="sm">
+                                        <option value="">Select</option>
+                                        <option value="1 BHK">1 BHK</option>
+                                        <option value="2 BHK">2 BHK</option>
+                                        <option value="3 BHK">3 BHK</option>
+                                        <option value="4 BHK">4 BHK</option>
+                                      </Form.Select>
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'units', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="number" value={row.area} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'area', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      {(row.units * row.area).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                                      <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'rooms', e.target.value)} />
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                                      <Button variant="outline-danger" size="sm" onClick={() => handleFloorRemoveRow(floorIdx, idx)} disabled={getFloorRows(floorIdx).length === 1}>Remove</Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <div className="d-flex justify-content-between align-items-center mt-3">
+                              <Button variant="outline-primary" size="sm" onClick={() => handleFloorAddRow(floorIdx)}>Add Row</Button>
+                              <div style={{ fontWeight: 600, color: (() => {
+                                const rows = getFloorRows(floorIdx);
+                                const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                return gridTotalArea === totalCarpetArea ? '#388e3c' : '#d81b60';
+                              })() }}>
+                                Total Area: {(() => {
+                                  const rows = getFloorRows(floorIdx);
+                                  return rows.reduce((sum, row) => sum + row.units * row.area, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                                })()} sq ft
+                                {(() => {
+                                  const rows = getFloorRows(floorIdx);
+                                  const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                  return gridTotalArea !== totalCarpetArea ? (
+                                    <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
+                                      (Carpet Area: {totalCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
+                                    </span>
+                                  ) : null;
+                                })()}
+                              </div>
+                              <Button variant="warning" size="sm" onClick={() => handleFloorAdjust(floorIdx)}>Adjust</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {/* BHK Grid Section (unchanged) */}
+                  
+                </Form>
+              </div>
+            </div>
           </>
         )}
+
+
         {step === 3 && (
           <>
-            <Form>
-              <Row>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Number of Floors</Form.Label>
-                    <Form.Control type="number" value={floors} onChange={e => setFloors(e.target.value)} min={1} />
-                  </Form.Group>
-                </Col>
-                <Col xs={6}>
-                  <Form.Group>
-                    <Form.Label>Lift Requirement</Form.Label>
-                    <Form.Check type="switch" label="Lift Required" checked={lift} onChange={e => setLift(e.target.checked)} />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Form>
-            {/* Building structure visual */}
-            {floors && Number(floors) > 0 && (
-              <div className="building-structure-stack" style={{ margin: '2rem auto', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '120px' }}>
-                {Array.from({ length: Number(floors) + 1 }, (_, i) => {
-                  const label = i === 0 ? 'Ground' : `${i} ${i === 1 ? 'Floor' : 'Floor'}`;
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
+            </div>
+              {/* Debug breakdown for Internal Walls calculation - now dynamic by floor */}
+              <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1rem auto', background: '#fffde7', border: '1px solid #ffe082', borderRadius: 6, padding: '10px 14px' }}>
+                <div style={{ fontWeight: 600, color: '#d81b60', marginBottom: 6 }}>Internal Walls Calculation Breakdown:</div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontWeight: 500, marginRight: 8 }}>Select Floor:</label>
+                  <select value={selectedDebugFloor || 0} onChange={e => setSelectedDebugFloor(Number(e.target.value))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ffe082' }}>
+                    {[...Array(Number(floors) + 1).keys()].map(i => (
+                      <option key={i} value={i}>{i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`}</option>
+                    ))}
+                  </select>
+                </div>
+                {(() => {
+                  const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
+                  function countRooms(roomsStr) {
+                    if (!roomsStr) return 0;
+                    const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+                    return roomsStr.split(',').reduce((sum, part) => {
+                      return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+                    }, 0);
+                  }
                   return (
-                    <div key={label} style={{
-                      width: '120px',
-                      height: '38px',
-                      background: '#fffde7',
-                      border: '2.5px solid #ff9800',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      color: '#ff9800',
-                      fontSize: '1rem',
-                      marginBottom: '8px',
-                    }}>
-                      {i === 0 ? 'Ground' : `${i}${i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th'} Floor`}
-                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.96rem', marginBottom: 0 }}>
+                      <thead>
+                        <tr style={{ background: '#fffde7' }}>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>BHK Type</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Units</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Rooms Counted</th>
+                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Walls (Units × Rooms × 2)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bhkRowsForDebug.map((row, idx) => {
+                          const rooms = countRooms(row.rooms);
+                          const walls = row.units * rooms * 2;
+                          return (
+                            <tr key={idx}>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082' }}>{row.type || '-'}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{row.units}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{rooms}</td>
+                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right', fontWeight: 600 }}>{walls}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   );
-                }).reverse()}
+                })()}
               </div>
-            )}
+            <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1.5rem auto', background: '#fafafa', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', padding: '18px 12px', fontSize: '.97rem', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.97rem' }}>
+                <thead>
+                  <tr style={{ background: '#f5f5f5' }}>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Component</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Logic</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area Per Floor (sq ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Internal Walls area based on BHK config and Typical Rooms for selected floor
+                    const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
+                    function countRooms(roomsStr) {
+                      if (!roomsStr) return 0;
+                      // Only count these room types
+                      const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
+                      return roomsStr.split(',').reduce((sum, part) => {
+                        return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
+                      }, 0);
+                    }
+                    const totalWalls = bhkRowsForDebug.reduce((sum, row) => {
+                      const rooms = countRooms(row.rooms);
+                      // Each room typically has 2 internal walls
+                      return sum + (row.units * rooms * 2);
+                    }, 0);
+                    const wallLength = 12; // ft
+                    const wallHeight = 10; // ft
+                    const internalWallArea = bhkRowsForDebug.reduce((sum, row) => {
+                      const rooms = countRooms(row.rooms);
+                      return sum + (row.units * rooms * 2 * wallLength * wallHeight);
+                    }, 0);
+                    return [
+                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+                      { name: 'External Walls', logic: '7% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.07) },
+                      { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: (width * depth) },
+                      { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: (width * depth) },
+                      { name: 'Beams & Columns', logic: '5% of Super Built-up Area', area: (width * depth * 0.05) },
+                      { name: 'Staircase Area', logic: '2% of Super Built-up Area', area: (width * depth * 0.02) },
+                      { name: 'Lift Shaft Area', logic: 'If lift required, 1.5% of Super Built-up Area', area: lift ? (width * depth * 0.015) : 0 },
+                      { name: 'Balcony Area', logic: '5% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.05) },
+                      { name: 'Utility Area', logic: '3% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.03) },
+                      { name: 'Toilet/Bath Area', logic: '8% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.08) },
+                      { name: 'Common Corridor', logic: '4% of Super Built-up Area', area: (width * depth * 0.04) },
+                      { name: 'Parking Area (Ground)', logic: '15% of Ground Floor SBA', area: (width * depth * 0.15) },
+                      { name: 'Foundation Area', logic: '12% of Super Built-up Area', area: (width * depth * 0.12) },
+                      { name: 'Parapet Walls', logic: '2% of Super Built-up Area', area: (width * depth * 0.02) }
+                    ];
+                  })().map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? (item.area * floors).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
         {step === 4 && (
-          <div>
-            <div className="cost-level-selector mb-3 d-flex align-items-end justify-content-end">
-              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel">
-                <FaFileExcel size={22} style={{ verticalAlign: 'middle' }} />
+          <>
+            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Estimation Details</h5>
+            </div>
+            <div className="cost-level-selector mb-2 d-flex align-items-end justify-content-end" style={{ marginTop: '0.5rem' }}>
+              <Button variant="outline-success" onClick={handleDownloadExcel} title="Download to Excel" className="me-2">
+                <FaFileExcel size={20} style={{ verticalAlign: 'middle' }} />
+              </Button>
+              <Button variant="outline-danger" onClick={handleDownloadPDF} title="Download PDF Report">
+                <FaFilePdf size={20} style={{ verticalAlign: 'middle' }} />
               </Button>
             </div>
             {sampleCostData.map(cat => {
@@ -242,18 +900,21 @@ const PricingCalculator = () => {
                     style={{ cursor: 'pointer', background: '#f7f7f7', borderRadius: '8px', padding: '0.7rem 1.2rem', boxShadow: '0 1px 4px rgba(33,150,243,0.07)' }}
                     onClick={() => toggleCategory(cat.category)}
                   >
-                    <div className="d-flex align-items-center">
-                      <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
-                        {isOpen ? <FaChevronDown /> : <FaChevronRight />}
-                      </span>
-                      <h5 style={{ margin: 0 }}>{cat.category}</h5>
-                      <span style={{ marginLeft: '1.2rem', color: '#a1887f', fontWeight: 500 }}>
+                    <div className="d-flex flex-column flex-md-row align-items-md-center w-100">
+                      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '170px', maxWidth: '240px' }}>
+                        <span style={{ marginRight: '1rem', fontSize: '1.2rem', color: '#1976d2' }}>
+                          {isOpen ? <FaChevronDown /> : <FaChevronRight />}
+                        </span>
+                        <h5 style={{ margin: 0 }}>{cat.category}</h5>
+                      </div>
+                      <div className="d-flex flex-column flex-md-row ms-md-4">
                         {costLevels.map(level => (
-                          <span key={level.key} style={{ marginRight: '1.2rem' }}>
-                            <input type="radio" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} /> {level.label}
-                          </span>
+                          <div className="form-check mb-2 mb-md-0 me-md-3" key={level.key}>
+                            <input type="radio" className="form-check-input" name={`level-${cat.category}`} checked={catLevel === level.key} onChange={() => setCatLevel(level.key)} />
+                            <label className="form-check-label ms-2">{level.label}</label>
+                          </div>
                         ))}
-                      </span>
+                      </div>
                     </div>
                     <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.15rem' }}>
                       ₹{total.toLocaleString('en-IN')}
@@ -290,19 +951,17 @@ const PricingCalculator = () => {
                 </div>
               );
             })}
-
-            {/* Total Estimated Cost */}
-            <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1976d2', margin: '2rem 0 1.5rem 0', textAlign: 'right' }}>
+            <div className="total-estimated-cost" style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1976d2', margin: '1.2rem 0 1rem 0', textAlign: 'right' }}>
               Total Estimated Cost: ₹{
                 sampleCostData.reduce((sum, cat) => sum + cat.details.reduce((catSum, item) => catSum + item.qty * item.rate[costLevel], 0), 0).toLocaleString('en-IN')
               }
             </div>
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.2rem' }}>
               <Button variant="primary" size="lg">Submit</Button>
             </div>
-          </div>
+          </>
         )}
-      </div>
+        </div>
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>

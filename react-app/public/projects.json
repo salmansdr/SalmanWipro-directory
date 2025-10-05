@@ -1,11 +1,10 @@
 {
   "completed": [
-    {
+   {
       "id": 101,
       "name": "Sunrise Residency",
       "location": "Beliaghata",
       "progress": 100,
-      
       "image": "ConstructionImage/Sunrise_Residency.PNG",
       "floors": 10,
       "flatsPerFloor": 5,
@@ -14,13 +13,36 @@
       "endDate": "2025-01-01",
       "status": "Completed",
       "stages": [
-        "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing", "Fixtures and Fitting", "Handover"
+        "Approval process",
+        "Planning & Design",
+        "Foundation work",
+        "Structural Framing",
+        "Roofing and Exterior",
+        "Interior Finishing",
+        "Fixtures and Fitting",
+        "Handover"
+      ],
+      "projectdocuments": [
+        { "name": "Master Plan", "url": "ProjectDocuments/MasterPlan.pdf" },
+        { "name": "Site Plan", "url": "ProjectDocuments/SitePlan.pdf" },
+        { "name": "Booking Form", "url": "ProjectDocuments/BookingForm.pdf" },
+        { "name": "Brochure", "url": "ProjectDocuments/Brochure.pdf" }
+      ],
+      "amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
       ]
     },
     {
       "id": 102,
       "name": "Lakeview Apartments",
-      "location": "Near Ruby,EM bypass",
+      "location": "EM Bypass",
       "progress": 100,
       "image": "ConstructionImage/Lakeview_Apartments.PNG",
       "floors": 12,
@@ -31,6 +53,22 @@
       "status": "Completed",
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing", "Fixtures and Fitting", "Handover"
+      ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "#" },
+        { "name": "Site Plan", "url": "#" },
+        { "name": "Booking Form", "url": "#" },
+        { "name": "Brochure", "url": "#" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": [ "Garden", "Children Play Area"]
+        }
       ]
     },
     {
@@ -48,6 +86,22 @@
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing", "Fixtures and Fitting", "Handover"
       ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "#" },
+        { "name": "Site Plan", "url": "#" },
+        { "name": "Booking Form", "url": "#" },
+        { "name": "Brochure", "url": "#" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
+      ]
     },
     {
       "id": 104,
@@ -63,6 +117,22 @@
       "status": "Completed",
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing", "Fixtures and Fitting", "Handover"
+      ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "#" },
+        { "name": "Site Plan", "url": "#" },
+        { "name": "Booking Form", "url": "#" },
+        { "name": "Brochure", "url": "#" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
       ]
     }
   ],
@@ -82,6 +152,22 @@
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing"
       ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "#" },
+        { "name": "Site Plan", "url": "#" },
+        { "name": "Booking Form", "url": "#" },
+        { "name": "Brochure", "url": "#" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
+      ]
     },
     {
       "id": 2,
@@ -97,6 +183,22 @@
       "status": "running",
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior"
+      ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "ProjectDocuments/MasterPlan.pdf" },
+        { "name": "Site Plan", "url": "ProjectDocuments/SitePlan.pdf" },
+        { "name": "Booking Form", "url": "ProjectDocuments/BookingForm.pdf" },
+        { "name": "Brochure", "url": "ProjectDocuments/Brochure.pdf" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
       ]
     },
     {
@@ -114,6 +216,22 @@
       "stages": [
         "Approval process", "Planning & Design", "Foundation work", "Structural Framing", "Roofing and Exterior", "Interior Finishing", "Fixtures and Fitting", "Handover"
       ]
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "ProjectDocuments/MasterPlan.pdf" },
+        { "name": "Site Plan", "url": "ProjectDocuments/SitePlan.pdf" },
+        { "name": "Booking Form", "url": "ProjectDocuments/BookingForm.pdf" },
+        { "name": "Brochure", "url": "ProjectDocuments/Brochure.pdf" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
+      ]
     }
   ],
   "upcoming": [
@@ -130,6 +248,22 @@
       "endDate": "2028-06-30",
       "status": "upcoming",
       "stages": []
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "ProjectDocuments/MasterPlan.pdf" },
+        { "name": "Site Plan", "url": "ProjectDocuments/SitePlan.pdf" },
+        { "name": "Booking Form", "url": "ProjectDocuments/BookingForm.pdf" },
+        { "name": "Brochure", "url": "ProjectDocuments/Brochure.pdf" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
+      ]
     },
     {
       "id": 202,
@@ -144,6 +278,22 @@
       "endDate": "2029-02-28",
       "status": "upcoming",
       "stages": []
+      ,"projectdocuments": [
+        { "name": "Master Plan", "url": "#" },
+        { "name": "Site Plan", "url": "#" },
+        { "name": "Booking Form", "url": "#" },
+        { "name": "Brochure", "url": "#" }
+      ]
+      ,"amenities": [
+        {
+          "type": "indoor",
+          "items": ["Gym1", "Club House", "Indoor Games"]
+        },
+        {
+          "type": "outdoor",
+          "items": ["Swimming Pool1", "Garden", "Children Play Area"]
+        }
+      ]
     }
   ]
 }

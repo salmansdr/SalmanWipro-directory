@@ -49,9 +49,8 @@ function Reports() {
   return (
     <Container className="construction-report py-4">
       <Card className="mb-4 shadow-sm">
-        <Card.Header>
-          <h2 className="mb-0">Building Construction Report</h2>
-        </Card.Header>
+         <Card.Header as="h3" className="bg-primary text-white">Building Construction Report
+</Card.Header>
         <Card.Body>
           <Form.Group as={Row} className="mb-4 report-dropdown-section" controlId="project-select">
             <Form.Label column sm={3} className="dropdown-label">Select Project:</Form.Label>
@@ -77,8 +76,8 @@ function Reports() {
               <Card.Body>
                 <Row className="summary-grid">
                   <Col><span className="summary-label">Location:</span> {selectedProject.location}</Col>
-                  <Col><span className="summary-label">Start Date:</span> {selectedProject.startDate}</Col>
-                  <Col><span className="summary-label">End Date:</span> {selectedProject.endDate}</Col>
+                  <Col><span className="summary-label">Start Date:</span> {selectedProject.startDate ? new Date(selectedProject.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}</Col>
+                  <Col><span className="summary-label">End Date:</span> {selectedProject.endDate ? new Date(selectedProject.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}</Col>
                 </Row>
               </Card.Body>
             </Card>
