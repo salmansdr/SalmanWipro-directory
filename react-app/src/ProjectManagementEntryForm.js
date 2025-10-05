@@ -179,7 +179,13 @@ function ProjectManagement() {
                     <Col md={6} className="mb-3" key={doc.name}>
                       <Form.Group className="d-flex align-items-center justify-content-between">
                         <Form.Label className="mb-0">{doc.name}</Form.Label>
-                        <Form.Control type="file" accept=".pdf,.doc,.docx" style={{maxWidth: '60%'}} onChange={e => handleDocUpload(idx, e.target.files[0])} />
+                        <Form.Control
+                          type="file"
+                          accept=".pdf,.doc,.docx,image/*"
+                          capture="environment"
+                          style={{maxWidth: '60%'}}
+                          onChange={e => handleDocUpload(idx, e.target.files[0])}
+                        />
                       </Form.Group>
                     </Col>
                   ))}
