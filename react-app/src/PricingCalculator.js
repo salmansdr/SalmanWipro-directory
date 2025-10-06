@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome } from 'react-icons/fa';
 import { generatePDFReport } from './pdfUtils';
-import { Button, Form, Row, Col } from 'react-bootstrap';
+import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
 import './Styles/WizardSteps.css';
+
+// Room columns for grid (make available globally)
+export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "Store"];
+// Default grid rows (make available globally)
+export const gridRows = ["Count", "Width (ft)", "Height (ft)"];
 
 const cities = [
   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',
@@ -97,6 +102,12 @@ const PricingCalculator = () => {
   const [lift, setLift] = useState(false);
   const [costLevel, setCostLevel] = useState('basic');
   const [openCategory, setOpenCategory] = useState([]);
+  // State for popup modal
+  const [showBHKModal, setShowBHKModal] = useState(false);
+  const [bhkModalIdx, setBhkModalIdx] = useState(null);
+  const [bhkModalFloorIdx, setBhkModalFloorIdx] = useState(null);
+  // Room details state for modal (per BHK type)
+  const [bhkRoomDetails, setBhkRoomDetails] = useState({});
 
   // Rectangle visualization for Step 1
   const plotArea = width && depth ? Number(width) * Number(depth) : '';
@@ -448,6 +459,115 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     window.URL.revokeObjectURL(url);
   };
 
+  // Default room sizes for each BHK type
+  const defaultRoomSizes = {
+    '1 BHK': {
+      'BedRoom': { count: 1, width: 10, height: 12 },
+      'Living Room': { count: 1, width: 12, height: 14 },
+      'Kitchen': { count: 1, width: 8, height: 10 },
+      'Bathroom': { count: 1, width: 6, height: 8 },
+      'Store': { count: 0, width: 0, height: 0 }
+    },
+    '2 BHK': {
+      'BedRoom': { count: 2, width: 10, height: 12 },
+      'Living Room': { count: 1, width: 14, height: 16 },
+      'Kitchen': { count: 1, width: 8, height: 10 },
+      'Bathroom': { count: 2, width: 6, height: 8 },
+      'Store': { count: 1, width: 6, height: 8 }
+    },
+    '3 BHK': {
+      'BedRoom': { count: 3, width: 10, height: 12 },
+      'Living Room': { count: 1, width: 16, height: 18 },
+      'Kitchen': { count: 1, width: 8, height: 10 },
+      'Bathroom': { count: 3, width: 6, height: 8 },
+      'Store': { count: 1, width: 6, height: 8 }
+    },
+    '4 BHK': {
+      'BedRoom': { count: 4, width: 10, height: 12 },
+      'Living Room': { count: 1, width: 18, height: 20 },
+      'Kitchen': { count: 1, width: 8, height: 10 },
+      'Bathroom': { count: 4, width: 6, height: 8 },
+      'Store': { count: 1, width: 6, height: 8 }
+    }
+  };
+
+  // Handler to open modal
+  function handleOpenBHKModal(floorIdx, idx) {
+    setBhkModalFloorIdx(floorIdx);
+    setBhkModalIdx(idx);
+    // Set default data if not already present
+    const rows = getFloorRows(floorIdx);
+    const bhkType = rows[idx]?.type;
+    const key = `${floorIdx}-${idx}`;
+    if (bhkType && !bhkRoomDetails[key]) {
+      const defaults = defaultRoomSizes[bhkType] || {};
+      setBhkRoomDetails(prev => {
+        const newDetails = { ...prev };
+        newDetails[key] = {
+          'Count': {},
+          'Width (ft)': {},
+          'Height (ft)': {}
+        };
+        roomColumns.forEach(col => {
+          newDetails[key]['Count'][col] = defaults[col]?.count || 0;
+          newDetails[key]['Width (ft)'][col] = defaults[col]?.width || 0;
+          newDetails[key]['Height (ft)'][col] = defaults[col]?.height || 0;
+        });
+        return newDetails;
+      });
+    }
+    setShowBHKModal(true);
+  }
+  // Handler to close modal
+  function handleCloseBHKModal() {
+    setShowBHKModal(false);
+    setBhkModalIdx(null);
+    setBhkModalFloorIdx(null);
+  }
+  // Handler to update grid cell
+  function handleRoomDetailChange(row, col, value) {
+    setBhkRoomDetails(prev => {
+      const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+      const details = prev[key] || {};
+      const updated = { ...details };
+      if (!updated[row]) updated[row] = {};
+      updated[row][col] = value;
+      return { ...prev, [key]: updated };
+    });
+  }
+
+  // Handler for OK button in modal
+  function handleOkBHKModal() {
+    // Calculate sum of Total Area (sq ft) from modal
+    const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+    let totalAreaSum = 0;
+    if (bhkRoomDetails[key]) {
+      roomColumns.forEach(col => {
+        const count = Number(bhkRoomDetails[key]['Count']?.[col] || 0);
+        const width = Number(bhkRoomDetails[key]['Width (ft)']?.[col] || 0);
+        const height = Number(bhkRoomDetails[key]['Height (ft)']?.[col] || 0);
+        totalAreaSum += count * width * height;
+      });
+    }
+    // Update Carpet Area (Sq ft) in main grid for the corresponding row
+    if (bhkModalFloorIdx !== null && bhkModalIdx !== null) {
+      if (bhkModalFloorIdx === 0) {
+        setBhkRows(prev => {
+          const updated = [...prev];
+          updated[bhkModalIdx] = { ...updated[bhkModalIdx], area: totalAreaSum };
+          return updated;
+        });
+      } else {
+        setFloorBHKConfigs(prev => {
+          const rows = [...getFloorRows(bhkModalFloorIdx)];
+          rows[bhkModalIdx] = { ...rows[bhkModalIdx], area: totalAreaSum };
+          return { ...prev, [bhkModalFloorIdx]: rows };
+        });
+      }
+    }
+    handleCloseBHKModal();
+  }
+
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
@@ -695,14 +815,15 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                               <tbody>
                                 {(floorBHKConfigs[floorIdx] || bhkRows).map((row, idx) => (
                                   <tr key={idx}>
-                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Select value={row.type} onChange={e => handleFloorCellChange(floorIdx, idx, 'type', e.target.value)} size="sm">
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <Form.Select value={row.type} onChange={e => handleFloorCellChange(floorIdx, idx, 'type', e.target.value)} size="sm" style={{ minWidth: 90 }}>
                                         <option value="">Select</option>
                                         <option value="1 BHK">1 BHK</option>
                                         <option value="2 BHK">2 BHK</option>
                                         <option value="3 BHK">3 BHK</option>
                                         <option value="4 BHK">4 BHK</option>
                                       </Form.Select>
+                                      <FaHome style={{ color: '#1976d2', marginLeft: '6px', cursor: 'pointer' }} title="BHK Details" onClick={() => handleOpenBHKModal(floorIdx, idx)} />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                                       <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'units', e.target.value)} />
@@ -961,12 +1082,81 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             </div>
           </>
         )}
-        </div>
+      </div>
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
         <Button disabled={step === 4} onClick={() => setStep(step+1)}>Next</Button>
       </div>
+
+      {/* BHK Details Modal */}
+      <Modal show={showBHKModal} onHide={handleCloseBHKModal} centered size="lg">
+        <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
+          <Modal.Title style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.18rem', letterSpacing: '0.5px' }}>
+            {(() => {
+              if (bhkModalFloorIdx == null || bhkModalIdx == null) return '';
+              const rows = getFloorRows(bhkModalFloorIdx);
+              return rows[bhkModalIdx]?.type || 'BHK Details';
+            })()}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#fafafa', padding: '2rem 2.5rem' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '1rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0' }}>
+              <thead>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <th style={{ padding: '10px', border: '1px solid #e0e0e0', minWidth: 90 }}></th>
+                  {roomColumns.map(col => (
+                    <th key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', minWidth: 120, fontWeight: 600, color: '#1976d2', textAlign: 'center' }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gridRows.map(rowLabel => (
+                  <tr key={rowLabel}>
+                    <td style={{ padding: '10px', border: '1px solid #e0e0e0', fontWeight: 600, background: '#f5f5f5', textAlign: 'right' }}>{rowLabel}</td>
+                    {roomColumns.map(col => (
+                      <td key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                        <Form.Control
+                          type="number"
+                          min={0}
+                          value={(() => {
+                            const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                            return bhkRoomDetails[key]?.[rowLabel]?.[col] || '';
+                          })()}
+                          onChange={e => handleRoomDetailChange(rowLabel, col, e.target.value)}
+                          size="sm"
+                          style={{ maxWidth: 90, margin: '0 auto', fontSize: '0.98rem', borderRadius: 6, border: '1px solid #bdbdbd', background: '#fff' }}
+                          placeholder={rowLabel === 'Count' ? '0' : 'ft'}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {/* Summary row for Total Area (sq ft) */}
+                <tr style={{ background: '#e3f2fd' }}>
+                  <td style={{ padding: '10px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#1976d2' }}>Total Area (sq ft)</td>
+                  {roomColumns.map(col => {
+                    const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                    const count = Number(bhkRoomDetails[key]?.['Count']?.[col] || 0);
+                    const width = Number(bhkRoomDetails[key]?.['Width (ft)']?.[col] || 0);
+                    const height = Number(bhkRoomDetails[key]?.['Height (ft)']?.[col] || 0);
+                    const total = count * width * height;
+                    return (
+                      <td key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', textAlign: 'center', fontWeight: 700, color: '#388e3c', background: '#e8f5e9' }}>
+                        {total > 0 ? total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <Button variant="primary" size="lg" style={{ minWidth: 120, fontWeight: 600, letterSpacing: '0.5px' }} onClick={handleOkBHKModal}>OK</Button>
+          </div>
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };
