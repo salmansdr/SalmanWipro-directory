@@ -55,26 +55,33 @@ function AvatarMenu({ onLogout }) {
 
 function App() {
   const [expanded, setExpanded] = useState(false);
-  // If security is disabled, always authenticated
-  const [isAuthenticated, setIsAuthenticated] = useState(!SECURITY_ENABLED ? true : false);
+  // Persist login state in localStorage
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (!SECURITY_ENABLED) return true;
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
 
   // Handler for login success
   const handleLogin = (username, password) => {
     if (!SECURITY_ENABLED) {
       setIsAuthenticated(true);
+      localStorage.setItem('isAuthenticated', 'true');
       return true;
     }
     if (username === 'salmansdr' && password === 'Faresi@123') {
       setIsAuthenticated(true);
+      localStorage.setItem('isAuthenticated', 'true');
       return true;
     }
     setIsAuthenticated(false);
+    localStorage.setItem('isAuthenticated', 'false');
     return false;
   };
   // Handler for logout
   const handleLogout = () => {
     if (!SECURITY_ENABLED) return;
     setIsAuthenticated(false);
+    localStorage.setItem('isAuthenticated', 'false');
   };
 
   return (

@@ -568,6 +568,23 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     handleCloseBHKModal();
   }
 
+  // New state and handlers for Site Plan upload
+  const [sitePlanUrl, setSitePlanUrl] = useState(process.env.PUBLIC_URL + '/Image/IMG_20251006_132101.jpg');
+  const [showSitePlanModal, setShowSitePlanModal] = useState(false);
+  function handleSitePlanUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        setSitePlanUrl(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+  function handleSitePlanDoubleClick() {
+    setShowSitePlanModal(true);
+  }
+
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
@@ -718,6 +735,61 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 </div>
               </div>
             </div>
+
+{/* File upload section */}
+            {/* Site Plan Upload Section */}
+<div className="d-flex justify-content-center align-items-center" style={{ marginBottom: '2rem', gap: '2rem' }}>
+  <div style={{ maxWidth: 320 }}>
+    <Form.Group controlId="sitePlanUpload">
+      <Form.Label style={{ fontWeight: 600, color: '#1976d2' }}>Upload Site Plan</Form.Label>
+      <Form.Control type="file" accept="image/*" onChange={handleSitePlanUpload} />
+    </Form.Group>
+  </div>
+  <div style={{
+    maxWidth: 320,
+    minHeight: 90,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #e0e0e0',
+    borderRadius: 8,
+    background: '#fafafa',
+    boxShadow: '0 2px 8px rgba(33,150,243,0.07)'
+  }}>
+    {sitePlanUrl ? (
+        <img
+          src={sitePlanUrl}
+          alt="Site Plan"
+          style={{
+            width: 200,
+            height: 120,
+            objectFit: 'cover',
+            borderRadius: 6,
+            cursor: 'pointer',
+            boxShadow: '0 1px 4px rgba(33,150,243,0.10)'
+          }}
+          onClick={handleSitePlanDoubleClick}
+        />
+    ) : (
+      <span style={{ color: '#888', fontSize: '1rem' }}>No Site Plan Uploaded</span>
+    )}
+  </div>
+  <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1.5rem' }}>
+    <Button variant="secondary" style={{ height: '38px' }}>Process</Button>
+  </div>
+</div>
+
+{/* Large Site Plan Modal */}
+<Modal show={showSitePlanModal} onHide={() => setShowSitePlanModal(false)} centered size="lg">
+  <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
+    <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>Site Plan</Modal.Title>
+  </Modal.Header>
+  <Modal.Body style={{ background: '#fafafa', textAlign: 'center' }}>
+    {sitePlanUrl && (
+      <img src={sitePlanUrl} alt="Site Plan Large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }} />
+    )}
+  </Modal.Body>
+</Modal>
             {/* Controls section */}
             <div className="d-flex justify-content-center">
               <div style={{ width: '100%', maxWidth: 600, padding: '0 16px' }}>
@@ -1155,6 +1227,18 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           <div style={{ textAlign: 'center', marginTop: '2rem' }}>
             <Button variant="primary" size="lg" style={{ minWidth: 120, fontWeight: 600, letterSpacing: '0.5px' }} onClick={handleOkBHKModal}>OK</Button>
           </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* Large Site Plan Modal */}
+      <Modal show={showSitePlanModal} onHide={() => setShowSitePlanModal(false)} centered size="lg">
+        <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
+          <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>Site Plan</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#fafafa', textAlign: 'center' }}>
+          {sitePlanUrl && (
+            <img src={sitePlanUrl} alt="Site Plan Large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }} />
+          )}
         </Modal.Body>
       </Modal>
     </div>
