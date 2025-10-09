@@ -95,6 +95,7 @@ const PricingCalculator = () => {
   // Exported and used in button, so keep definition
   // Removed unused function: handleProcessImage
   // Removed unused function: handleProcessImage
+  {/*}
   async function handleProcessImage() {
     setBhkLoading(true);
     setBhkError(null);
@@ -144,7 +145,7 @@ const PricingCalculator = () => {
     }
     setBhkLoading(false);
   }
-
+*/}
   // Removed unused state: ocrText
 
 
