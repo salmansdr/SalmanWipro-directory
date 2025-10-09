@@ -89,7 +89,8 @@ const PricingCalculator = () => {
   // State for extracted tokens
   const [bhkTokens, setBhkTokens] = useState([]);
   // Add state for parsed room details from tokens
-  // Removed unused state: roomDetailsFromTokens
+  // Removed unused state: roomDetailsFromTokens by salman
+  
 
   // Exported and used in button, so keep definition
   async function handleProcessImage() {
