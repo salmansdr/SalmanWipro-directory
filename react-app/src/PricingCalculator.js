@@ -70,24 +70,18 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
-  // Store the uploaded file object
-  const [sitePlanFile, setSitePlanFile] = useState(null);
+  // Removed unused state: sitePlanFile
 
   // Update file and preview URL on upload
   function handleSitePlanUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      setSitePlanFile(file);
       setSitePlanUrl(URL.createObjectURL(file));
     }
   }
 
   // Process button handler: send image to Flask backend
-  const [bhkExtracted] = useState(null); // Removed unused setter
-  const [bhkLoading, setBhkLoading] = useState(false);
-  const [bhkError, setBhkError] = useState(null);
-  // State for extracted tokens
-  const [bhkTokens, setBhkTokens] = useState([]);
+  // Removed unused state: bhkLoading, bhkError, bhkTokens
   // Add state for OCR and Pollination results used in rendering
   const [pollinationText] = useState(''); // Removed unused setter
   const [ocrText] = useState(''); // Removed unused setter
@@ -95,57 +89,7 @@ const PricingCalculator = () => {
   // Exported and used in button, so keep definition
   // Removed unused function: handleProcessImage
   // Removed unused function: handleProcessImage
-  {/*}
-  async function handleProcessImage() {
-    setBhkLoading(true);
-    setBhkError(null);
-    let fileToSend = sitePlanFile;
-    // If no uploaded file, try to fetch the default image as blob
-    if (!fileToSend && sitePlanUrl) {
-      const response = await fetch(sitePlanUrl);
-      const blob = await response.blob();
-      fileToSend = new File([blob], 'default.jpg', { type: blob.type });
-    }
-    if (!fileToSend) {
-      setBhkLoading(false);
-      setBhkError('No image available to process.');
-      return;
-    }
-    try {
-      // Use ocr.space API to get OCR text
-      const formData = new FormData();
-      formData.append('file', fileToSend);
-      formData.append('apikey', 'K85443053788957'); // Use your API key
-      formData.append('language', 'eng');
-      const response = await fetch('https://api.ocr.space/parse/image', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        setBhkError('API request failed: ' + errorText);
-        setBhkLoading(false);
-        return;
-      }
-      const data = await response.json();
-      const text = data?.ParsedResults?.[0]?.ParsedText || '';
-      //const bhkInfo = parseBHKText(text);
-      // Extract tokens from the entire OCR text for robust output
-      const allTokens = text.split(/\n|\||-|,|;|\s{2,}/).map(t => t.trim()).filter(Boolean); // Remove unnecessary escape for -
-      setBhkTokens(allTokens);
-      // Parse room details from tokens, grouped by BHK
-      //const parsedDetailsGrouped = parseRoomTokensGrouped(allTokens);
-      //setRoomDetailsFromTokens(parsedDetailsGrouped);
-      // Fallback: if bhkInfo is empty, use grouped parsedDetails for BHK extraction result
-      //const isBhkInfoEmpty = !bhkInfo || Object.keys(bhkInfo).length === 0 || Object.values(bhkInfo).every(obj => !obj || Object.keys(obj).length === 0);
-      //setBhkExtracted(isBhkInfoEmpty ? parsedDetailsGrouped : bhkInfo);
-      //setOcrText(text);
-    } catch (err) {
-      setBhkError('OCR failed: ' + err.message);
-    }
-    setBhkLoading(false);
-  }
-*/}
+  // Removed unused function: handleProcessImage
   // Removed unused state: ocrText
 
 
@@ -670,17 +614,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
       {/* OCR and BHK Extraction Results - always visible */}
-      {bhkLoading && (
-        <div style={{ margin: '2rem auto', maxWidth: 600, textAlign: 'center' }}>
-          <span>Processing image, please wait...</span>
-        </div>
-      )}
-      {bhkError && (
-        <div style={{ margin: '2rem auto', maxWidth: 600, color: 'red', textAlign: 'center' }}>
-          <span>{bhkError}</span>
-        </div>
-      )}
-      {pollinationText  && !bhkError && (
+      {/* Removed bhkLoading, bhkError, bhkTokens references */}
+      {pollinationText && (
         <div style={{ margin: '2rem auto', maxWidth: 600 }}>
           <h5>OCR Raw Text</h5>
           <textarea
@@ -689,26 +624,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             rows={10}
             style={{ width: '100%', fontFamily: 'monospace', fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 8 }}
           />
-           {/* Display extracted tokens in a separate textarea */}
-           {bhkTokens.length > 0 && (
-             <div style={{ marginTop: '1rem' }}>
-               <h5>BHK Tokens (each line is a token)</h5>
-               <textarea
-                 value={bhkTokens.join('\n')}
-                 readOnly
-                 rows={Math.max(10, bhkTokens.length)}
-                 style={{ width: '100%', fontFamily: 'monospace', fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 8 }}
-               />
-             </div>
-           )}
         </div>
       )}
-      {bhkExtracted && !bhkLoading && !bhkError && (
-        <div style={{ margin: '2rem auto', maxWidth: 600, background: '#f9f9f9', border: '1px solid #eee', borderRadius: 8, padding: 16 }}>
-          <h5>BHK Extraction Result</h5>
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(bhkExtracted, null, 2)}</pre>
-        </div>
-      )}
+      {/* Removed bhkExtracted, bhkLoading, bhkError references */}
       {/* Step Indicator */}
       <div className="wizard-indicator">
         {[1,2,3,4].map(s => (
