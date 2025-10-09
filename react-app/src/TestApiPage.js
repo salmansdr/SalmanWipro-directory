@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { BiLogoBlogger } from 'react-icons/bi';
+// Removed unused import: BiLogoBlogger
 import Modal from 'react-bootstrap/Modal';
 //import { usePollinationsImage } from '@pollinations/react';
 const TestApiPage = () => {
@@ -9,7 +9,7 @@ const TestApiPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [croppedDataUrl, setCroppedDataUrl] = useState('');
+  //const [croppedDataUrl, setCroppedDataUrl] = useState('');
   const [generatedText, setGeneratedText] = useState('');
 
   async function handleTestApi() {
@@ -33,7 +33,8 @@ const TestApiPage = () => {
     setLoading(true);
     setError(null);
     setImageUrl('');
-    setCroppedDataUrl('');
+    //setCroppedDataUrl('');
+
     try {
       // Example Gemini API endpoint and prompt usage
       // Replace with your actual Gemini API endpoint and authentication if needed
