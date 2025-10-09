@@ -83,16 +83,18 @@ const PricingCalculator = () => {
   }
 
   // Process button handler: send image to Flask backend
-  const [bhkExtracted, setBhkExtracted] = useState(null);
+  const [bhkExtracted] = useState(null); // Removed unused setter
   const [bhkLoading, setBhkLoading] = useState(false);
   const [bhkError, setBhkError] = useState(null);
   // State for extracted tokens
   const [bhkTokens, setBhkTokens] = useState([]);
-  // Add state for parsed room details from tokens
-  // Removed unused state: roomDetailsFromTokens by salman
-  
+  // Add state for OCR and Pollination results used in rendering
+  const [pollinationText] = useState(''); // Removed unused setter
+  const [ocrText] = useState(''); // Removed unused setter
 
   // Exported and used in button, so keep definition
+  // Removed unused function: handleProcessImage
+  // Removed unused function: handleProcessImage
   async function handleProcessImage() {
     setBhkLoading(true);
     setBhkError(null);
@@ -128,7 +130,7 @@ const PricingCalculator = () => {
       const text = data?.ParsedResults?.[0]?.ParsedText || '';
       //const bhkInfo = parseBHKText(text);
       // Extract tokens from the entire OCR text for robust output
-  const allTokens = text.split(/\n|\||-|,|;|\s{2,}/).map(t => t.trim()).filter(Boolean); // Remove unnecessary escape for -
+      const allTokens = text.split(/\n|\||-|,|;|\s{2,}/).map(t => t.trim()).filter(Boolean); // Remove unnecessary escape for -
       setBhkTokens(allTokens);
       // Parse room details from tokens, grouped by BHK
       //const parsedDetailsGrouped = parseRoomTokensGrouped(allTokens);
@@ -143,7 +145,7 @@ const PricingCalculator = () => {
     setBhkLoading(false);
   }
 
-  const [ocrText, setOcrText] = useState(null);
+  // Removed unused state: ocrText
 
 
 
@@ -654,101 +656,13 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     setShowSitePlanModal(true);
   }
 
-  const [pollinationText, setPollinationText] = useState('');
+  // Removed unused state: pollinationText
   // Removed unused state: pollinationLoading, pollinationError
 
-  {/*}
-  async function handlePollinationReadImage() {
-    console.log('DEBUG: handlePollinationReadImage called');
-    //setPollinationLoading(true);
-    //setPollinationError(null);
-    let file = sitePlanFile;
-    if (!file && sitePlanUrl) {
-      try {
-        const response = await fetch(sitePlanUrl);
-        const blob = await response.blob();
-        file = new File([blob], 'default.jpg', { type: blob.type });
-      } catch (err) {
-        setPollinationError('Failed to fetch default image: ' + err.message);
-        setPollinationLoading(false);
-        return;
-      }
-    }
-    if (!file) {
-      setPollinationError('No image available to process.');
-      setPollinationLoading(false);
-      return;
-    }
-    console.log('DEBUG1: handlePollinationReadImage called');
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('apikey', 'K85443053788957'); // Using provided API key
-      formData.append('language', 'eng');
-      const response = await fetch('https://api.ocr.space/parse/image', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        setPollinationError('API request failed: ' + errorText);
-        setPollinationLoading(false);
-        return;
-      }
-      
-      const data = await response.json();
-      
-      // Extract the parsed text from the response
-      const parsedText = data?.ParsedResults?.[0]?.ParsedText || JSON.stringify(data);
+  // Removed redundant nested block and commented function
+// Removed unused variables: roomTypes, unitTypes
 
-
-      //setPollinationText(JSON.stringify(parseRoomData(parsedText), null, 2));
-
-     console.log(JSON.stringify(parsedText, null, 2));
-    } catch (err) {
-      setPollinationError('Network or API error: ' + (err.message || 'Unknown error'));
-    }
-    setPollinationLoading(false);
-  }
-*/}
-const roomTypes = ['BEDROOM', 'BATH', 'KITCHEN', 'LIVING', 'DINING', 'BALCONY'];
-const unitTypes = ['1 BHK', '2 BHK', '3 BHK', '4 BHK'];
-
-{/*}
-function parseRoomData(rawInput) {
-  const lines = rawInput.split('\n').map(line => line.trim()).filter(Boolean);
-  const units = [];
-  let currentUnit = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (unitTypes.includes(line)) {
-      // Start a new unit
-      currentUnit = { unitType: line, rooms: [] };
-      units.push(currentUnit);
-    } else if (roomTypes.includes(line)) {
-      // Check if next line is a dimension
-      const nextLine = lines[i + 1];
-      const dimensionMatch = nextLine && /^(\d{1,2}'?\s*x\s*\d{1,2}'?)$/i.test(nextLine);
-      if (dimensionMatch) {
-        currentUnit?.rooms.push({ type: line, size: nextLine });
-        i++; // Skip next line since it's used
-      } else {
-        currentUnit?.rooms.push({ type: line });
-      }
-    } else if (/^\d{1,2}'?\s*x\s*\d{1,2}'?$/i.test(line)) {
-      // Orphan dimension, assign to last room if possible
-      const lastRoom = currentUnit?.rooms[currentUnit.rooms.length - 1];
-      if (lastRoom && !lastRoom.size) {
-        lastRoom.size = line;
-      }
-    }
-  }
-
-  return units;
-}
-*/}
+// Removed redundant nested block and unused function parseRoomData
   // ...existing code...
   // Move all rendering code inside the PricingCalculator function
   return (
@@ -1449,6 +1363,6 @@ function parseRoomData(rawInput) {
       </Modal>
     </div>
   );
-// ...existing code...
 }
+
 export default PricingCalculator;
