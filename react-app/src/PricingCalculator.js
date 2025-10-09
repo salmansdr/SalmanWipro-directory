@@ -70,6 +70,207 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // Store the uploaded file object
+  const [sitePlanFile, setSitePlanFile] = useState(null);
+
+  // Update file and preview URL on upload
+  function handleSitePlanUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setSitePlanFile(file);
+      setSitePlanUrl(URL.createObjectURL(file));
+    }
+  }
+
+  // Process button handler: send image to Flask backend
+  const [bhkExtracted, setBhkExtracted] = useState(null);
+  const [bhkLoading, setBhkLoading] = useState(false);
+  const [bhkError, setBhkError] = useState(null);
+  // State for extracted tokens
+  const [bhkTokens, setBhkTokens] = useState([]);
+  // Add state for parsed room details from tokens
+  const [roomDetailsFromTokens, setRoomDetailsFromTokens] = useState(null);
+
+  async function handleProcessImage() {
+    setBhkLoading(true);
+    setBhkError(null);
+    let fileToSend = sitePlanFile;
+    // If no uploaded file, try to fetch the default image as blob
+    if (!fileToSend && sitePlanUrl) {
+      const response = await fetch(sitePlanUrl);
+      const blob = await response.blob();
+      fileToSend = new File([blob], 'default.jpg', { type: blob.type });
+    }
+    if (!fileToSend) {
+      setBhkLoading(false);
+      setBhkError('No image available to process.');
+      return;
+    }
+    try {
+      // Use ocr.space API to get OCR text
+      const formData = new FormData();
+      formData.append('file', fileToSend);
+      formData.append('apikey', 'K85443053788957'); // Use your API key
+      formData.append('language', 'eng');
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        setBhkError('API request failed: ' + errorText);
+        setBhkLoading(false);
+        return;
+      }
+      const data = await response.json();
+      const text = data?.ParsedResults?.[0]?.ParsedText || '';
+      const bhkInfo = parseBHKText(text);
+      // Extract tokens from the entire OCR text for robust output
+      const allTokens = text.split(/\n|\||\-|,|;|\s{2,}/).map(t => t.trim()).filter(Boolean);
+      setBhkTokens(allTokens);
+      // Parse room details from tokens, grouped by BHK
+      const parsedDetailsGrouped = parseRoomTokensGrouped(allTokens);
+      setRoomDetailsFromTokens(parsedDetailsGrouped);
+      // Fallback: if bhkInfo is empty, use grouped parsedDetails for BHK extraction result
+      const isBhkInfoEmpty = !bhkInfo || Object.keys(bhkInfo).length === 0 || Object.values(bhkInfo).every(obj => !obj || Object.keys(obj).length === 0);
+      setBhkExtracted(isBhkInfoEmpty ? parsedDetailsGrouped : bhkInfo);
+      setOcrText(text);
+    } catch (err) {
+      setBhkError('OCR failed: ' + err.message);
+    }
+    setBhkLoading(false);
+  }
+
+  const [ocrText, setOcrText] = useState(null);
+
+
+function parseBHKText(text) {
+  // Find all BHK blocks (tolerant to extra spaces, symbols)
+  const bhkPattern = /(\d+\s*-?\s*BHK)[\s\S]*?(?=(?:\d+\s*-?\s*BHK|$))/gi;
+  // Room types to extract
+  const roomTypes = ['Bedroom', 'Living', 'Bathroom', 'Bath', 'Kitchen', 'Dining', 'Balcony', 'BAT'];
+  // Flexible dimension pattern
+  const dimensionPattern = /(\d{1,2}\s*[xX'’ft]{1,3}\s*\d{1,2})/;
+  let result = {};
+  let match;
+  while ((match = bhkPattern.exec(text)) !== null) {
+    const bhkType = match[1].replace(/\s/g, '').toUpperCase(); // e.g. "1BHK"
+    const bhkBlock = match[0];
+    let rooms = {};
+    let bedroomCount = 1;
+    // Tokenize block by lines and symbols
+    let tokens = bhkBlock.split(/\n|\||\-|,|;|\s{2,}/).map(t => t.trim()).filter(Boolean);
+    for (let i = 0; i < tokens.length; i++) {
+      let token = tokens[i];
+      let roomType = roomTypes.find(rt => token.toLowerCase().includes(rt.toLowerCase()));
+      if (roomType) {
+        // Look ahead for a dimension in the next few tokens
+        let foundSize = null;
+        for (let j = i; j < Math.min(i+3, tokens.length); j++) {
+          let dimMatch = tokens[j].match(dimensionPattern);
+          if (dimMatch) {
+            foundSize = dimMatch[1];
+            break;
+          }
+        }
+        if (roomType === 'Bedroom') {
+          if (foundSize) {
+            rooms[`Bedroom${bedroomCount}`] = foundSize;
+            bedroomCount++;
+          }
+        } else if (roomType === 'Balcony') {
+          rooms['Balcony'] = true;
+        } else if (foundSize) {
+          rooms[roomType] = foundSize;
+        }
+      }
+    }
+    result[bhkType] = rooms;
+  }
+  return result;
+}
+
+function parseRoomTokens(tokens) {
+  const roomTypes = ['Bedroom', 'Living', 'Bathroom', 'Bath', 'Kitchen', 'Dining', 'Balcony', 'BAT'];
+  const dimensionPattern = /\d{1,2}\s*[xX'’ft]{1,3}\s*\d{1,2}/;
+  let result = {};
+  let bedroomCount = 1;
+  for (let i = 0; i < tokens.length; i++) {
+    let token = tokens[i];
+    let roomType = roomTypes.find(rt => token.toLowerCase().includes(rt.toLowerCase()));
+    if (roomType) {
+      // Look ahead for a dimension in the next few tokens
+      let foundSize = null;
+      for (let j = i + 1; j < Math.min(i + 4, tokens.length); j++) {
+        let dimMatch = tokens[j].match(dimensionPattern);
+        if (dimMatch) {
+          foundSize = dimMatch[0];
+          break;
+        }
+      }
+      if (roomType === 'Bedroom') {
+        if (foundSize) {
+          result[`Bedroom${bedroomCount}`] = foundSize;
+          bedroomCount++;
+        }
+      } else if (roomType === 'Balcony') {
+        result['Balcony'] = true;
+      } else if (foundSize) {
+        result[roomType] = foundSize;
+      }
+    }
+  }
+  return result;
+}
+
+function parseRoomTokensGrouped(tokens) {
+  const roomTypes = ['Bedroom', 'Living', 'Bathroom', 'Bath', 'Kitchen', 'Dining', 'Balcony', 'BAT'];
+  const dimensionPattern = /\d{1,2}\s*[xX'’ft]{1,3}\s*\d{1,2}/;
+  const bhkPattern = /(\d+\s*-?\s*BHK)/i;
+  let result = {};
+  let currentBHK = null;
+  let bedroomCount = 1;
+  for (let i = 0; i < tokens.length; i++) {
+    let token = tokens[i];
+    // Detect BHK heading
+    const bhkMatch = token.match(bhkPattern);
+    if (bhkMatch) {
+      currentBHK = bhkMatch[1].replace(/\s/g, '').toUpperCase();
+      if (!result[currentBHK]) result[currentBHK] = {};
+      bedroomCount = 1;
+      continue;
+    }
+    let roomType = roomTypes.find(rt => token.toLowerCase().includes(rt.toLowerCase()));
+    if (roomType) {
+      // Look ahead for a dimension in the next few tokens
+      let foundSize = null;
+      for (let j = i + 1; j < Math.min(i + 4, tokens.length); j++) {
+        let dimMatch = tokens[j].match(dimensionPattern);
+        if (dimMatch) {
+          foundSize = dimMatch[0];
+          break;
+        }
+      }
+      let target = currentBHK ? result[currentBHK] : (result['Ungrouped'] = result['Ungrouped'] || {});
+      if (roomType === 'Bedroom') {
+        if (foundSize) {
+          target[`Bedroom${bedroomCount}`] = foundSize;
+          bedroomCount++;
+        }
+      } else if (roomType === 'Balcony') {
+        target['Balcony'] = true;
+      } else if (foundSize) {
+        target[roomType] = foundSize;
+      }
+    }
+  }
+  return result;
+}
+
+
+
+
+
   // Rectangle visualization ref for PDF capture
   const rectangleRef = React.useRef();
   // State for debug breakdown floor selection in Step 3
@@ -585,9 +786,144 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     setShowSitePlanModal(true);
   }
 
+  const [pollinationText, setPollinationText] = useState('');
+  const [pollinationLoading, setPollinationLoading] = useState(false);
+  const [pollinationError, setPollinationError] = useState(null);
+
+  async function handlePollinationReadImage() {
+    console.log('DEBUG: handlePollinationReadImage called');
+    setPollinationLoading(true);
+    setPollinationError(null);
+    let file = sitePlanFile;
+    if (!file && sitePlanUrl) {
+      try {
+        const response = await fetch(sitePlanUrl);
+        const blob = await response.blob();
+        file = new File([blob], 'default.jpg', { type: blob.type });
+      } catch (err) {
+        setPollinationError('Failed to fetch default image: ' + err.message);
+        setPollinationLoading(false);
+        return;
+      }
+    }
+    if (!file) {
+      setPollinationError('No image available to process.');
+      setPollinationLoading(false);
+      return;
+    }
+    console.log('DEBUG1: handlePollinationReadImage called');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('apikey', 'K85443053788957'); // Using provided API key
+      formData.append('language', 'eng');
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        setPollinationError('API request failed: ' + errorText);
+        setPollinationLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Extract the parsed text from the response
+      const parsedText = data?.ParsedResults?.[0]?.ParsedText || JSON.stringify(data);
+
+
+      setPollinationText(JSON.stringify(parseRoomData(parsedText), null, 2));
+
+     console.log(JSON.stringify(parsedText, null, 2));
+    } catch (err) {
+      setPollinationError('Network or API error: ' + (err.message || 'Unknown error'));
+    }
+    setPollinationLoading(false);
+  }
+
+const roomTypes = ['BEDROOM', 'BATH', 'KITCHEN', 'LIVING', 'DINING', 'BALCONY'];
+const unitTypes = ['1 BHK', '2 BHK', '3 BHK', '4 BHK'];
+
+function parseRoomData(rawInput) {
+  const lines = rawInput.split('\n').map(line => line.trim()).filter(Boolean);
+  const units = [];
+  let currentUnit = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (unitTypes.includes(line)) {
+      // Start a new unit
+      currentUnit = { unitType: line, rooms: [] };
+      units.push(currentUnit);
+    } else if (roomTypes.includes(line)) {
+      // Check if next line is a dimension
+      const nextLine = lines[i + 1];
+      const dimensionMatch = nextLine && /^(\d{1,2}'?\s*x\s*\d{1,2}'?)$/i.test(nextLine);
+      if (dimensionMatch) {
+        currentUnit?.rooms.push({ type: line, size: nextLine });
+        i++; // Skip next line since it's used
+      } else {
+        currentUnit?.rooms.push({ type: line });
+      }
+    } else if (/^\d{1,2}'?\s*x\s*\d{1,2}'?$/i.test(line)) {
+      // Orphan dimension, assign to last room if possible
+      const lastRoom = currentUnit?.rooms[currentUnit.rooms.length - 1];
+      if (lastRoom && !lastRoom.size) {
+        lastRoom.size = line;
+      }
+    }
+  }
+
+  return units;
+}
+
+
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
       <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
+      {/* OCR and BHK Extraction Results - always visible */}
+      {bhkLoading && (
+        <div style={{ margin: '2rem auto', maxWidth: 600, textAlign: 'center' }}>
+          <span>Processing image, please wait...</span>
+        </div>
+      )}
+      {bhkError && (
+        <div style={{ margin: '2rem auto', maxWidth: 600, color: 'red', textAlign: 'center' }}>
+          <span>{bhkError}</span>
+        </div>
+      )}
+      {pollinationText  && !bhkError && (
+        <div style={{ margin: '2rem auto', maxWidth: 600 }}>
+          <h5>OCR Raw Text</h5>
+          <textarea
+            value={pollinationText || ocrText || ''}
+            readOnly
+            rows={10}
+            style={{ width: '100%', fontFamily: 'monospace', fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 8 }}
+          />
+           {/* Display extracted tokens in a separate textarea */}
+           {bhkTokens.length > 0 && (
+             <div style={{ marginTop: '1rem' }}>
+               <h5>BHK Tokens (each line is a token)</h5>
+               <textarea
+                 value={bhkTokens.join('\n')}
+                 readOnly
+                 rows={Math.max(10, bhkTokens.length)}
+                 style={{ width: '100%', fontFamily: 'monospace', fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 8 }}
+               />
+             </div>
+           )}
+        </div>
+      )}
+      {bhkExtracted && !bhkLoading && !bhkError && (
+        <div style={{ margin: '2rem auto', maxWidth: 600, background: '#f9f9f9', border: '1px solid #eee', borderRadius: 8, padding: 16 }}>
+          <h5>BHK Extraction Result</h5>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(bhkExtracted, null, 2)}</pre>
+        </div>
+      )}
       {/* Step Indicator */}
       <div className="wizard-indicator">
         {[1,2,3,4].map(s => (
@@ -775,7 +1111,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     )}
   </div>
   <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1.5rem' }}>
-    <Button variant="secondary" style={{ height: '38px' }}>Process</Button>
+    <Button variant="secondary" style={{ height: '38px' }} onClick={handlePollinationReadImage}>Process</Button>
   </div>
 </div>
 

@@ -1,4 +1,5 @@
 import ProjectEstimation from './ProjectEstimation';
+import TestApiPage from './TestApiPage';
 
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -45,13 +46,6 @@ function AvatarMenu({ onLogout }) {
     </NavDropdown>
   );
 }
-
-
-
-
-
-
-
 
 function App() {
   const [expanded, setExpanded] = useState(false);
@@ -105,6 +99,7 @@ function App() {
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/TestApiPage" onClick={() => setExpanded(false)}>Test Pollinations API</NavDropdown.Item>
                   </NavDropdown>
                 )}
                 {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
@@ -134,6 +129,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login onLogin={handleLogin} isAuthenticated={isAuthenticated} />} />
+              <Route path="/TestApiPage" element={<TestApiPage />} />
               <Route path="*" element={<Home />} />
             </Routes>
             <a
