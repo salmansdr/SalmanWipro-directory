@@ -157,7 +157,8 @@ const TestApiPage = () => {
       setAreaValue('');
     }
   };
-
+  
+/*
   // Optimize prompt for API reliability
   const optimizePrompt = (prompt) => {
     // Limit prompt length to prevent timeouts
@@ -185,7 +186,7 @@ const TestApiPage = () => {
     
     return optimized;
   };
-
+*/
   // BHK processing function
   const handleBHKProcessing = useCallback(async () => {
     // Prevent multiple simultaneous processing
@@ -375,8 +376,8 @@ const TestApiPage = () => {
       await new Promise(resolve => setTimeout(resolve, 600));
       
       // Optimize prompt for better API reliability
-      const optimizedPrompt = optimizePrompt(currentPrompt);
-      const encodedPrompt = encodeURIComponent(optimizedPrompt);
+      //const optimizedPrompt = optimizePrompt(currentPrompt);
+      const encodedPrompt = encodeURIComponent(currentPrompt);
       
       // Stage 3: Connecting to AI service
       setGenerationStatus('Connecting to AI image generation service...');
@@ -384,8 +385,8 @@ const TestApiPage = () => {
       
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
-      const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
-      
+      //const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
+      const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana`;
       console.log(`Generating image with nanobanana model`);
       setImageUrl(imageApiUrl);
       
