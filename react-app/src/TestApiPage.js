@@ -388,23 +388,30 @@ const TestApiPage = () => {
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
       // Force HTTPS for production to avoid mixed content issues
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://image.pollinations.ai' 
-        : 'https://image.pollinations.ai'; // Use HTTPS for both
+      const baseUrl = 'https://image.pollinations.ai';
       const originalImageUrl = `${baseUrl}/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
-      
-      // Create CORS-safe URL
-      const imageApiUrl = createCORSSafeImageUrl(originalImageUrl);
       
       console.log(`Generating image with nanobanana model`);
       console.log(`Original URL: ${originalImageUrl}`);
-      console.log(`Final URL: ${imageApiUrl}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
       console.log(`Current protocol: ${window.location.protocol}`);
       
-      // Skip validation and set image directly (CORS proxy handles the issues)
-      setImageUrl(imageApiUrl);
-      setGenerationStatus('Rendering your room plan...');
+      // Try to download image as blob first (best CORS workaround)
+      try {
+        setGenerationStatus('Downloading generated image...');
+        const blobUrl = await downloadImageAsBlob(originalImageUrl);
+        setImageUrl(blobUrl);
+        setGenerationStatus('Rendering your room plan...');
+      } catch (blobError) {
+        console.error('Blob download failed, trying CORS proxy:', blobError);
+        
+        // Fallback to CORS proxy
+        const imageApiUrl = createCORSSafeImageUrl(originalImageUrl);
+        console.log(`Fallback URL: ${imageApiUrl}`);
+        
+        setImageUrl(imageApiUrl);
+        setGenerationStatus('Rendering your room plan...');
+      }
       
     } catch (err) {
       clearInterval(progressInterval);
@@ -428,18 +435,51 @@ const TestApiPage = () => {
     }
   }
 
+  // Function to download image and create blob URL (CORS workaround)
+  const downloadImageAsBlob = async (imageUrl) => {
+    try {
+      console.log('Attempting to download image as blob:', imageUrl);
+      
+      // Try to fetch the image
+      const response = await fetch(imageUrl, {
+        mode: 'cors',
+        headers: {
+          'Accept': 'image/*',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      console.log('Successfully created blob URL:', blobUrl);
+      return blobUrl;
+    } catch (error) {
+      console.error('Failed to download image as blob:', error);
+      throw error;
+    }
+  };
+
   // Function to create CORS-safe image URL
   const createCORSSafeImageUrl = (originalUrl) => {
-    // If in production and CORS issues persist, use a CORS proxy
+    // For production, try alternative CORS proxies or direct URL
     if (process.env.NODE_ENV === 'production') {
-      // Option 1: Use a CORS proxy service
-      const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${originalUrl}`;
+      // Try multiple CORS proxy options
+      const corsProxies = [
+        // Option 1: allorigins proxy
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`,
+        // Option 2: corsproxy.io
+        `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`,
+        // Option 3: Direct URL (fallback)
+        originalUrl
+      ];
       
-      // Option 2: Use your own backend proxy endpoint (recommended)
-      // const proxyUrl = `${window.location.origin}/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
-      
-      console.log('Using CORS proxy for production:', corsProxyUrl);
-      return corsProxyUrl;
+      console.log('Production mode: Using CORS proxy');
+      console.log('Available proxies:', corsProxies);
+      return corsProxies[0]; // Start with first proxy
     }
     
     return originalUrl;
@@ -467,7 +507,7 @@ const TestApiPage = () => {
     console.error('Retry count:', retryCount);
     
     // Prevent infinite retries
-    if (retryCount >= 3) {
+    if (retryCount >= 4) {
       setImageLoaded(false);
       setProgressValue(0);
       setImageGenerating(false);
@@ -477,43 +517,48 @@ const TestApiPage = () => {
       return;
     }
     
-    // First retry: Try without CORS proxy (direct URL)
-    if (retryCount === 0 && imageUrl.includes('cors-anywhere')) {
-      console.log('Retry 1: Trying direct URL without CORS proxy...');
-      const directUrl = imageUrl.replace('https://cors-anywhere.herokuapp.com/', '');
-      console.log('Direct URL:', directUrl);
-      setRetryCount(1);
-      setImageUrl(directUrl);
-      return;
+    // Get the original URL without any proxy
+    const getOriginalUrl = (url) => {
+      if (url.includes('allorigins.win')) {
+        return decodeURIComponent(url.split('url=')[1]);
+      }
+      if (url.includes('corsproxy.io')) {
+        return decodeURIComponent(url.replace('https://corsproxy.io/?', ''));
+      }
+      if (url.includes('cors-anywhere.herokuapp.com')) {
+        return url.replace('https://cors-anywhere.herokuapp.com/', '');
+      }
+      return url;
+    };
+    
+    const originalUrl = getOriginalUrl(imageUrl);
+    
+    // Try different CORS proxies and fallbacks
+    let nextUrl;
+    
+    if (retryCount === 0) {
+      // Try corsproxy.io
+      nextUrl = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
+      console.log('Retry 1: Trying corsproxy.io...');
+    } else if (retryCount === 1) {
+      // Try direct URL without proxy
+      nextUrl = originalUrl;
+      console.log('Retry 2: Trying direct URL...');
+    } else if (retryCount === 2) {
+      // Try without enhance parameter
+      const urlWithoutEnhance = originalUrl.replace('&enhance=true', '');
+      nextUrl = urlWithoutEnhance;
+      console.log('Retry 3: Trying without enhance parameter...');
+    } else if (retryCount === 3) {
+      // Try basic URL without dimensions
+      const basicUrl = originalUrl.split('?')[0] + '?' + originalUrl.split('?')[1].split('&')[0];
+      nextUrl = basicUrl;
+      console.log('Retry 4: Trying basic URL...');
     }
     
-    // Second retry: Try alternative URL without enhance parameter
-    if (retryCount === 1 && imageUrl.includes('enhance=true')) {
-      console.log('Retry 2: Removing enhance parameter...');
-      const fallbackUrl = imageUrl.replace('&enhance=true', '');
-      console.log('Fallback URL:', fallbackUrl);
-      setRetryCount(2);
-      setImageUrl(fallbackUrl);
-      return;
-    }
-    
-    // Third retry: Try without dimensions
-    if (retryCount === 2 && imageUrl.includes('width=') && imageUrl.includes('height=')) {
-      console.log('Retry 3: Removing dimensions...');
-      const basicUrl = imageUrl.split('?')[0] + '?' + imageUrl.split('?')[1].split('&')[0]; // Keep only model parameter
-      console.log('Basic URL:', basicUrl);
-      setRetryCount(3);
-      setImageUrl(basicUrl);
-      return;
-    }
-    
-    // Final failure
-    setImageLoaded(false);
-    setProgressValue(0);
-    setImageGenerating(false);
-    setLoading(false);
-    setRetryCount(0);
-    setError(`Failed to load the generated image after multiple attempts. Please try generating again.`);
+    console.log('Next URL to try:', nextUrl);
+    setRetryCount(retryCount + 1);
+    setImageUrl(nextUrl);
   };
 
   /* 
