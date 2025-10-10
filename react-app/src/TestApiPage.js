@@ -23,6 +23,7 @@ const TestApiPage = () => {
   const [progressValue, setProgressValue] = useState(0);
   // eslint-disable-next-line no-unused-vars
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Ref to prevent multiple simultaneous processing
   const isProcessingRef = useRef(false);
@@ -349,6 +350,7 @@ const TestApiPage = () => {
     setImageUrl('');
     setProgressValue(0);
     setImageLoaded(false);
+    setRetryCount(0); // Reset retry count for new generation
     
     // Start gradual progress that continues until image loads
     const progressInterval = setInterval(() => {
@@ -385,24 +387,24 @@ const TestApiPage = () => {
       
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
-      const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
+      // Force HTTPS for production to avoid mixed content issues
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://image.pollinations.ai' 
+        : 'https://image.pollinations.ai'; // Use HTTPS for both
+      const originalImageUrl = `${baseUrl}/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
+      
+      // Create CORS-safe URL
+      const imageApiUrl = createCORSSafeImageUrl(originalImageUrl);
       
       console.log(`Generating image with nanobanana model`);
-      console.log(`Image URL: ${imageApiUrl}`);
+      console.log(`Original URL: ${originalImageUrl}`);
+      console.log(`Final URL: ${imageApiUrl}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
       console.log(`Current protocol: ${window.location.protocol}`);
       
-      // Validate image URL before setting it
-      try {
-        setGenerationStatus('Validating generated image...');
-        await validateImageUrl(imageApiUrl);
-        setImageUrl(imageApiUrl);
-        setGenerationStatus('Rendering your room plan...');
-      } catch (validationError) {
-        clearInterval(progressInterval);
-        console.error('Image validation failed:', validationError);
-        throw new Error(`Generated image is not accessible. This might be due to CORS, network issues, or the image generation service being unavailable.`);
-      }
+      // Skip validation and set image directly (CORS proxy handles the issues)
+      setImageUrl(imageApiUrl);
+      setGenerationStatus('Rendering your room plan...');
       
     } catch (err) {
       clearInterval(progressInterval);
@@ -426,18 +428,49 @@ const TestApiPage = () => {
     }
   }
 
-  // Function to validate image URL
-  const validateImageUrl = (url) => {
+  // Function to create CORS-safe image URL
+  const createCORSSafeImageUrl = (originalUrl) => {
+    // If in production and CORS issues persist, use a CORS proxy
+    if (process.env.NODE_ENV === 'production') {
+      // Option 1: Use a CORS proxy service
+      const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${originalUrl}`;
+      
+      // Option 2: Use your own backend proxy endpoint (recommended)
+      // const proxyUrl = `${window.location.origin}/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
+      
+      console.log('Using CORS proxy for production:', corsProxyUrl);
+      return corsProxyUrl;
+    }
+    
+    return originalUrl;
+  };
+
+  // Function to validate image URL with timeout
+  const validateImageUrl = (url, timeout = 30000) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      
+      // Set up timeout
+      const timeoutId = setTimeout(() => {
+        img.onload = null;
+        img.onerror = null;
+        reject(new Error(`Image validation timeout after ${timeout}ms`));
+      }, timeout);
+      
       img.onload = () => {
+        clearTimeout(timeoutId);
         console.log('Image validation successful:', url);
         resolve(true);
       };
+      
       img.onerror = (error) => {
+        clearTimeout(timeoutId);
         console.error('Image validation failed:', url, error);
         reject(error);
       };
+      
+      // Add crossOrigin attribute to handle CORS
+      img.crossOrigin = 'anonymous';
       img.src = url;
     });
   };
@@ -461,11 +494,56 @@ const TestApiPage = () => {
   const handleImageError = (event) => {
     console.error('Image load error:', event);
     console.error('Image URL that failed:', imageUrl);
+    console.error('Retry count:', retryCount);
+    
+    // Prevent infinite retries
+    if (retryCount >= 3) {
+      setImageLoaded(false);
+      setProgressValue(0);
+      setImageGenerating(false);
+      setLoading(false);
+      setRetryCount(0);
+      setError(`Failed to load the generated image after multiple attempts. This might be due to CORS, HTTPS mixed content, or network issues. Try refreshing the page or contact support if the issue persists.`);
+      return;
+    }
+    
+    // First retry: Try without CORS proxy (direct URL)
+    if (retryCount === 0 && imageUrl.includes('cors-anywhere')) {
+      console.log('Retry 1: Trying direct URL without CORS proxy...');
+      const directUrl = imageUrl.replace('https://cors-anywhere.herokuapp.com/', '');
+      console.log('Direct URL:', directUrl);
+      setRetryCount(1);
+      setImageUrl(directUrl);
+      return;
+    }
+    
+    // Second retry: Try alternative URL without enhance parameter
+    if (retryCount === 1 && imageUrl.includes('enhance=true')) {
+      console.log('Retry 2: Removing enhance parameter...');
+      const fallbackUrl = imageUrl.replace('&enhance=true', '');
+      console.log('Fallback URL:', fallbackUrl);
+      setRetryCount(2);
+      setImageUrl(fallbackUrl);
+      return;
+    }
+    
+    // Third retry: Try without dimensions
+    if (retryCount === 2 && imageUrl.includes('width=') && imageUrl.includes('height=')) {
+      console.log('Retry 3: Removing dimensions...');
+      const basicUrl = imageUrl.split('?')[0] + '?' + imageUrl.split('?')[1].split('&')[0]; // Keep only model parameter
+      console.log('Basic URL:', basicUrl);
+      setRetryCount(3);
+      setImageUrl(basicUrl);
+      return;
+    }
+    
+    // Final failure
     setImageLoaded(false);
     setProgressValue(0);
     setImageGenerating(false);
     setLoading(false);
-    setError(`Failed to load the generated image. URL: ${imageUrl}. This might be due to CORS, HTTPS mixed content, or network issues. Please try again.`);
+    setRetryCount(0);
+    setError(`Failed to load the generated image after multiple attempts. Please try generating again.`);
   };
 
   /* 
