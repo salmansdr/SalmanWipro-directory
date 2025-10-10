@@ -445,36 +445,6 @@ const TestApiPage = () => {
     return originalUrl;
   };
 
-  // Function to validate image URL with timeout
-  const validateImageUrl = (url, timeout = 30000) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      
-      // Set up timeout
-      const timeoutId = setTimeout(() => {
-        img.onload = null;
-        img.onerror = null;
-        reject(new Error(`Image validation timeout after ${timeout}ms`));
-      }, timeout);
-      
-      img.onload = () => {
-        clearTimeout(timeoutId);
-        console.log('Image validation successful:', url);
-        resolve(true);
-      };
-      
-      img.onerror = (error) => {
-        clearTimeout(timeoutId);
-        console.error('Image validation failed:', url, error);
-        reject(error);
-      };
-      
-      // Add crossOrigin attribute to handle CORS
-      img.crossOrigin = 'anonymous';
-      img.src = url;
-    });
-  };
-
   // Function to handle when image is loaded
   const handleImageLoad = () => {
     setImageLoaded(true);
