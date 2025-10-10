@@ -99,7 +99,7 @@ function App() {
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/TestApiPage" onClick={() => setExpanded(false)}>Test Pollinations API</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/TestApiPage" onClick={() => setExpanded(false)}>Room Plan</NavDropdown.Item>
                   </NavDropdown>
                 )}
                 {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (

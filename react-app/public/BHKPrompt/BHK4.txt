@@ -1,0 +1,9 @@
+A detailed 2D architectural floor plan for a 4 BHK apartment, {total_carpet_area_sqft} sq ft total area. Includes: 
+- 4 bedrooms (Master Bedroom: {Bedroom 1} ft, Second Bedroom: {Bedroom 2} ft, Third Bedroom: {Bedroom 3} ft, Fourth Bedroom: {Bedroom 4} ft, all with wardrobes), 
+- 1 spacious living room ({Living Room} ft, with sofa and TV unit), 
+- 1 modular kitchen ({Kitchen} ft, with cabinets and sink), 
+- 3-4 bathrooms ({Bathroom} ft each, Master attached bathroom, guest bathrooms), 
+- 1 store/utility room ({Store} ft, for storage and utilities),
+- 1-2 balconies ({Balcony} ft, adjacent to living room and master bedroom). 
+Layout: Central living room connects to kitchen and balcony; Master Bedroom with attached bathroom, other bedrooms with shared/individual bathrooms distributed across the floor plan. 
+Style: Clean, black-and-white line drawing, top-down view, with clear room labels, measurements in feet, and basic furniture outlines. Include doors, windows, and walls.
