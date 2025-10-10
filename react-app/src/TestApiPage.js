@@ -385,13 +385,24 @@ const TestApiPage = () => {
       
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
-      //const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
-      const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana`;
-      console.log(`Generating image with nanobanana model`);
-      setImageUrl(imageApiUrl);
+      const imageApiUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
       
-      // Progress will continue until image onLoad event fires
-      setGenerationStatus('Rendering your room plan...');
+      console.log(`Generating image with nanobanana model`);
+      console.log(`Image URL: ${imageApiUrl}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`Current protocol: ${window.location.protocol}`);
+      
+      // Validate image URL before setting it
+      try {
+        setGenerationStatus('Validating generated image...');
+        await validateImageUrl(imageApiUrl);
+        setImageUrl(imageApiUrl);
+        setGenerationStatus('Rendering your room plan...');
+      } catch (validationError) {
+        clearInterval(progressInterval);
+        console.error('Image validation failed:', validationError);
+        throw new Error(`Generated image is not accessible. This might be due to CORS, network issues, or the image generation service being unavailable.`);
+      }
       
     } catch (err) {
       clearInterval(progressInterval);
@@ -415,6 +426,22 @@ const TestApiPage = () => {
     }
   }
 
+  // Function to validate image URL
+  const validateImageUrl = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        console.log('Image validation successful:', url);
+        resolve(true);
+      };
+      img.onerror = (error) => {
+        console.error('Image validation failed:', url, error);
+        reject(error);
+      };
+      img.src = url;
+    });
+  };
+
   // Function to handle when image is loaded
   const handleImageLoad = () => {
     setImageLoaded(true);
@@ -431,12 +458,14 @@ const TestApiPage = () => {
   };
 
   // Function to handle image load error
-  const handleImageError = () => {
+  const handleImageError = (event) => {
+    console.error('Image load error:', event);
+    console.error('Image URL that failed:', imageUrl);
     setImageLoaded(false);
     setProgressValue(0);
     setImageGenerating(false);
     setLoading(false);
-    setError('Failed to load the generated image. Please try again.');
+    setError(`Failed to load the generated image. URL: ${imageUrl}. This might be due to CORS, HTTPS mixed content, or network issues. Please try again.`);
   };
 
   /* 
@@ -686,7 +715,9 @@ const TestApiPage = () => {
                 zIndex: 1050,
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                padding: '0.5rem 1rem',
+                minHeight: '50px'
               }}
             >
               <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>Generated Image</Modal.Title>
@@ -706,9 +737,9 @@ const TestApiPage = () => {
                 display: 'flex', 
                 justifyContent: 'center', 
                 alignItems: 'center', 
-                padding: '1rem',
-                minHeight: 'calc(100vh - 60px)', // Account for header
-                overflow: 'auto',
+                padding: '2vh 2vw',
+                minHeight: 'calc(100vh - 50px)', // Account for smaller header
+                overflow: 'hidden',
                 position: 'relative'
               }}
             >
@@ -716,13 +747,13 @@ const TestApiPage = () => {
                 src={imageUrl} 
                 alt="Large Generated" 
                 style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: '100%', 
+                  maxWidth: '96vw', 
+                  maxHeight: 'calc(96vh - 50px)', 
+                  width: 'auto',
+                  height: 'auto',
                   objectFit: 'contain', 
                   borderRadius: 0, 
                   boxShadow: 'none',
-                  margin: 'auto',
-                  display: 'block',
                   cursor: 'pointer'
                 }} 
                 onClick={() => setShowModal(false)}
