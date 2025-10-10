@@ -387,30 +387,90 @@ const TestApiPage = () => {
       
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
-      // Force HTTPS for production to avoid mixed content issues
-      const baseUrl = 'https://image.pollinations.ai';
-      const originalImageUrl = `${baseUrl}/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`;
       
-      console.log(`Generating image with nanobanana model`);
-      console.log(`Original URL: ${originalImageUrl}`);
+      // Try multiple image generation services
+      const imageServices = [
+        {
+          name: 'Pollinations.ai (Enhanced)',
+          url: `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`
+        },
+        {
+          name: 'Pollinations.ai (Basic)',
+          url: `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana`
+        },
+        {
+          name: 'Pollinations.ai (Alternative)',
+          url: `https://pollinations.ai/p/${encodedPrompt}`
+        }
+      ];
+      
+      console.log(`Generating image with multiple services`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
       console.log(`Current protocol: ${window.location.protocol}`);
+      console.log('Available services:', imageServices);
       
-      // Try to download image as blob first (best CORS workaround)
-      try {
-        setGenerationStatus('Downloading generated image...');
-        const blobUrl = await downloadImageAsBlob(originalImageUrl);
-        setImageUrl(blobUrl);
-        setGenerationStatus('Rendering your room plan...');
-      } catch (blobError) {
-        console.error('Blob download failed, trying CORS proxy:', blobError);
+      let imageGenerated = false;
+      
+      // Try each service until one works
+      for (let i = 0; i < imageServices.length && !imageGenerated; i++) {
+        const service = imageServices[i];
+        console.log(`\n--- Trying ${service.name} ---`);
+        console.log(`URL: ${service.url}`);
         
-        // Fallback to CORS proxy
-        const imageApiUrl = createCORSSafeImageUrl(originalImageUrl);
-        console.log(`Fallback URL: ${imageApiUrl}`);
-        
-        setImageUrl(imageApiUrl);
-        setGenerationStatus('Rendering your room plan...');
+        try {
+          setGenerationStatus(`Trying ${service.name}...`);
+          
+          // First, try blob download approach
+          try {
+            setGenerationStatus(`Downloading from ${service.name}...`);
+            const blobUrl = await downloadImageAsBlob(service.url);
+            setImageUrl(blobUrl);
+            setGenerationStatus('Image loaded successfully!');
+            imageGenerated = true;
+            console.log(`✅ Success with ${service.name} via blob download`);
+            break;
+          } catch (blobError) {
+            console.warn(`❌ Blob download failed for ${service.name}:`, blobError);
+          }
+          
+          // If blob fails, try CORS proxy
+          try {
+            setGenerationStatus(`Trying CORS proxy for ${service.name}...`);
+            const proxyUrl = createCORSSafeImageUrl(service.url);
+            console.log(`Proxy URL: ${proxyUrl}`);
+            setImageUrl(proxyUrl);
+            setGenerationStatus('Loading via proxy...');
+            imageGenerated = true;
+            console.log(`✅ Fallback to proxy for ${service.name}`);
+            break;
+          } catch (proxyError) {
+            console.warn(`❌ CORS proxy failed for ${service.name}:`, proxyError);
+          }
+          
+        } catch (serviceError) {
+          console.error(`❌ Complete failure for ${service.name}:`, serviceError);
+        }
+      }
+      
+      if (!imageGenerated) {
+        // Final fallback: Try a simple test URL to see if any external images work
+        console.log('🔍 Testing if external images work at all...');
+        try {
+          setGenerationStatus('Testing external image loading...');
+          const testImageUrl = 'https://via.placeholder.com/512x512/ffffff/000000?text=Test+Image';
+          const testBlobUrl = await downloadImageAsBlob(testImageUrl);
+          setImageUrl(testBlobUrl);
+          setGenerationStatus('External images work, but AI service is unavailable');
+          setError('⚠️ AI image generation service is currently unavailable. Showing test image to confirm your setup works. Please try again later.');
+          imageGenerated = true;
+        } catch (testError) {
+          console.error('❌ Even test image failed:', testError);
+          throw new Error('Complete network failure. Cannot load any external images. Check your internet connection and firewall settings.');
+        }
+      }
+      
+      if (!imageGenerated) {
+        throw new Error('All image generation services failed. The service might be temporarily unavailable.');
       }
       
     } catch (err) {
@@ -440,23 +500,48 @@ const TestApiPage = () => {
     try {
       console.log('Attempting to download image as blob:', imageUrl);
       
-      // Try to fetch the image
-      const response = await fetch(imageUrl, {
-        mode: 'cors',
-        headers: {
-          'Accept': 'image/*',
-        }
-      });
+      // Try multiple fetch configurations
+      const fetchConfigs = [
+        // Config 1: Basic CORS request
+        {
+          mode: 'cors',
+          headers: {
+            'Accept': 'image/*',
+          }
+        },
+        // Config 2: No-cors mode (limited but sometimes works)
+        {
+          mode: 'no-cors',
+        },
+        // Config 3: Simple request
+        {}
+      ];
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      for (let i = 0; i < fetchConfigs.length; i++) {
+        try {
+          console.log(`Trying fetch config ${i + 1}:`, fetchConfigs[i]);
+          const response = await fetch(imageUrl, fetchConfigs[i]);
+          
+          console.log(`Response status: ${response.status}, type: ${response.type}`);
+          
+          if (response.ok || response.type === 'opaque') {
+            const blob = await response.blob();
+            
+            if (blob.size > 0) {
+              const blobUrl = URL.createObjectURL(blob);
+              console.log('Successfully created blob URL:', blobUrl, 'Size:', blob.size);
+              return blobUrl;
+            } else {
+              console.warn('Blob size is 0, trying next config...');
+            }
+          }
+        } catch (configError) {
+          console.warn(`Fetch config ${i + 1} failed:`, configError);
+        }
       }
       
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
+      throw new Error('All fetch configurations failed');
       
-      console.log('Successfully created blob URL:', blobUrl);
-      return blobUrl;
     } catch (error) {
       console.error('Failed to download image as blob:', error);
       throw error;
@@ -502,63 +587,50 @@ const TestApiPage = () => {
 
   // Function to handle image load error
   const handleImageError = (event) => {
-    console.error('Image load error:', event);
-    console.error('Image URL that failed:', imageUrl);
-    console.error('Retry count:', retryCount);
+    console.error('🚨 Image load error event:', event);
+    console.error('🚨 Image URL that failed:', imageUrl);
+    console.error('🚨 Retry count:', retryCount);
+    console.error('🚨 Image element error details:', event.target.error);
     
-    // Prevent infinite retries
-    if (retryCount >= 4) {
+    // Check if this is a blob URL that failed
+    if (imageUrl.startsWith('blob:')) {
+      console.error('🚨 Blob URL failed - this is unusual');
       setImageLoaded(false);
       setProgressValue(0);
       setImageGenerating(false);
       setLoading(false);
       setRetryCount(0);
-      setError(`Failed to load the generated image after multiple attempts. This might be due to CORS, HTTPS mixed content, or network issues. Try refreshing the page or contact support if the issue persists.`);
+      setError(`Blob image failed to load. This indicates a serious issue with image processing. Please try refreshing the page.`);
       return;
     }
     
-    // Get the original URL without any proxy
-    const getOriginalUrl = (url) => {
-      if (url.includes('allorigins.win')) {
-        return decodeURIComponent(url.split('url=')[1]);
-      }
-      if (url.includes('corsproxy.io')) {
-        return decodeURIComponent(url.replace('https://corsproxy.io/?', ''));
-      }
-      if (url.includes('cors-anywhere.herokuapp.com')) {
-        return url.replace('https://cors-anywhere.herokuapp.com/', '');
-      }
-      return url;
-    };
-    
-    const originalUrl = getOriginalUrl(imageUrl);
-    
-    // Try different CORS proxies and fallbacks
-    let nextUrl;
-    
-    if (retryCount === 0) {
-      // Try corsproxy.io
-      nextUrl = `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`;
-      console.log('Retry 1: Trying corsproxy.io...');
-    } else if (retryCount === 1) {
-      // Try direct URL without proxy
-      nextUrl = originalUrl;
-      console.log('Retry 2: Trying direct URL...');
-    } else if (retryCount === 2) {
-      // Try without enhance parameter
-      const urlWithoutEnhance = originalUrl.replace('&enhance=true', '');
-      nextUrl = urlWithoutEnhance;
-      console.log('Retry 3: Trying without enhance parameter...');
-    } else if (retryCount === 3) {
-      // Try basic URL without dimensions
-      const basicUrl = originalUrl.split('?')[0] + '?' + originalUrl.split('?')[1].split('&')[0];
-      nextUrl = basicUrl;
-      console.log('Retry 4: Trying basic URL...');
+    // Check if this is a test image
+    if (imageUrl.includes('placeholder.com')) {
+      setImageLoaded(false);
+      setProgressValue(0);
+      setImageGenerating(false);
+      setLoading(false);
+      setRetryCount(0);
+      setError(`Even test images are failing. This indicates network/firewall issues. Check your internet connection.`);
+      return;
     }
     
-    console.log('Next URL to try:', nextUrl);
+    // Prevent infinite retries
+    if (retryCount >= 2) {
+      setImageLoaded(false);
+      setProgressValue(0);
+      setImageGenerating(false);
+      setLoading(false);
+      setRetryCount(0);
+      setError(`🚨 DEBUGGING INFO:\n- Failed URL: ${imageUrl}\n- Environment: ${process.env.NODE_ENV}\n- Protocol: ${window.location.protocol}\n- User Agent: ${navigator.userAgent.substring(0, 100)}...\n\nTry: 1) Refresh page 2) Check network 3) Try different browser 4) Check firewall/VPN`);
+      return;
+    }
+    
+    // Simple retry with direct URL
+    console.log(`🔄 Retry ${retryCount + 1}: Trying direct image URL...`);
+    const directUrl = 'https://image.pollinations.ai/prompt/simple%20floor%20plan?model=nanobanana';
     setRetryCount(retryCount + 1);
-    setImageUrl(nextUrl);
+    setImageUrl(directUrl);
   };
 
   /* 
