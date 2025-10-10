@@ -388,19 +388,36 @@ const TestApiPage = () => {
       // Stage 4: Generating image
       setGenerationStatus(`AI is creating your room plan...`);
       
-      // Try multiple image generation services
+      // Simplify and clean the prompt for better URL compatibility
+      const cleanPrompt = currentPrompt
+        .replace(/[^\w\s\-\.]/g, ' ') // Remove special characters
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim()
+        .substring(0, 200); // Limit length
+      
+      const encodedCleanPrompt = encodeURIComponent(cleanPrompt);
+      
+      console.log('Original prompt:', currentPrompt);
+      console.log('Cleaned prompt:', cleanPrompt);
+      console.log('Encoded prompt:', encodedCleanPrompt);
+      
+      // Try simpler, more reliable image generation services/URLs
       const imageServices = [
         {
-          name: 'Pollinations.ai (Enhanced)',
-          url: `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana&width=2048&height=2048&enhance=true`
+          name: 'Pollinations.ai (Nanobanana - Primary)',
+          url: `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=nanobanana`
         },
         {
-          name: 'Pollinations.ai (Basic)',
-          url: `https://image.pollinations.ai/prompt/${encodedPrompt}?model=nanobanana`
+          name: 'Pollinations.ai (Nanobanana - Basic)',
+          url: `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=nanobanana&width=800&height=600`
         },
         {
-          name: 'Pollinations.ai (Alternative)',
-          url: `https://pollinations.ai/p/${encodedPrompt}`
+          name: 'Pollinations.ai (Nanobanana - Enhanced)',
+          url: `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=nanobanana&enhance=true&nologo=true`
+        },
+        {
+          name: 'Simple Test (Nanobanana)',
+          url: `https://image.pollinations.ai/prompt/floor%20plan?model=nanobanana`
         }
       ];
       
@@ -419,6 +436,15 @@ const TestApiPage = () => {
         
         try {
           setGenerationStatus(`Trying ${service.name}...`);
+          console.log(`\n🔄 Testing: ${service.name}`);
+          console.log(`📍 URL: ${service.url}`);
+          console.log(`📏 URL Length: ${service.url.length}`);
+          
+          // Check if URL is reasonable length (Pollinations has limits)
+          if (service.url.length > 2000) {
+            console.warn(`⚠️ URL too long (${service.url.length} chars), skipping...`);
+            continue;
+          }
           
           // First, try blob download approach
           try {
@@ -427,24 +453,30 @@ const TestApiPage = () => {
             setImageUrl(blobUrl);
             setGenerationStatus('Image loaded successfully!');
             imageGenerated = true;
-            console.log(`✅ Success with ${service.name} via blob download`);
+            console.log(`✅ SUCCESS with ${service.name} via blob download`);
             break;
           } catch (blobError) {
-            console.warn(`❌ Blob download failed for ${service.name}:`, blobError);
+            console.warn(`❌ Blob download failed for ${service.name}:`, blobError.message);
+            
+            // If it's a 404, don't try proxy - the URL is wrong
+            if (blobError.message.includes('404')) {
+              console.warn(`🚫 404 error - skipping proxy attempt for ${service.name}`);
+              continue;
+            }
           }
           
-          // If blob fails, try CORS proxy
+          // Only try proxy if it wasn't a 404 error
           try {
             setGenerationStatus(`Trying CORS proxy for ${service.name}...`);
             const proxyUrl = createCORSSafeImageUrl(service.url);
-            console.log(`Proxy URL: ${proxyUrl}`);
+            console.log(`🔄 Proxy URL: ${proxyUrl}`);
             setImageUrl(proxyUrl);
             setGenerationStatus('Loading via proxy...');
             imageGenerated = true;
             console.log(`✅ Fallback to proxy for ${service.name}`);
             break;
           } catch (proxyError) {
-            console.warn(`❌ CORS proxy failed for ${service.name}:`, proxyError);
+            console.warn(`❌ CORS proxy failed for ${service.name}:`, proxyError.message);
           }
           
         } catch (serviceError) {
@@ -453,24 +485,38 @@ const TestApiPage = () => {
       }
       
       if (!imageGenerated) {
-        // Final fallback: Try a simple test URL to see if any external images work
-        console.log('🔍 Testing if external images work at all...');
+        // Final fallback: Try a working test service to confirm functionality
+        console.log('🔍 All AI services failed. Testing with known working service...');
         try {
-          setGenerationStatus('Testing external image loading...');
-          const testImageUrl = 'https://via.placeholder.com/512x512/ffffff/000000?text=Test+Image';
-          const testBlobUrl = await downloadImageAsBlob(testImageUrl);
-          setImageUrl(testBlobUrl);
-          setGenerationStatus('External images work, but AI service is unavailable');
-          setError('⚠️ AI image generation service is currently unavailable. Showing test image to confirm your setup works. Please try again later.');
-          imageGenerated = true;
+          setGenerationStatus('Testing with backup service...');
+          
+          // Use a different service that's known to work
+          const backupServices = [
+            `https://picsum.photos/800/600?random=${Date.now()}`, // Random image service
+            'https://via.placeholder.com/800x600/f0f0f0/333333?text=Service+Unavailable', // Placeholder service
+          ];
+          
+          for (const backupUrl of backupServices) {
+            try {
+              console.log(`🔄 Trying backup: ${backupUrl}`);
+              const testBlobUrl = await downloadImageAsBlob(backupUrl);
+              setImageUrl(testBlobUrl);
+              setGenerationStatus('Using backup service');
+              setError('⚠️ AI image generation service is currently unavailable. Showing test image. Please try again later.');
+              imageGenerated = true;
+              break;
+            } catch (backupError) {
+              console.warn(`❌ Backup service failed: ${backupError.message}`);
+            }
+          }
+          
         } catch (testError) {
-          console.error('❌ Even test image failed:', testError);
-          throw new Error('Complete network failure. Cannot load any external images. Check your internet connection and firewall settings.');
+          console.error('❌ All backup services failed:', testError);
         }
       }
       
       if (!imageGenerated) {
-        throw new Error('All image generation services failed. The service might be temporarily unavailable.');
+        throw new Error('🚨 DIAGNOSIS: All services returned 404 errors. This indicates:\n1. Pollinations.ai API has changed\n2. Service is temporarily down\n3. Model names have changed\n\nSuggested fixes:\n1. Check Pollinations.ai documentation\n2. Try different model names\n3. Use alternative AI image services\n4. Implement your own backend proxy');
       }
       
     } catch (err) {
@@ -524,6 +570,10 @@ const TestApiPage = () => {
           
           console.log(`Response status: ${response.status}, type: ${response.type}`);
           
+          if (response.status === 404) {
+            throw new Error(`404 - Service endpoint not found`);
+          }
+          
           if (response.ok || response.type === 'opaque') {
             const blob = await response.blob();
             
@@ -534,6 +584,8 @@ const TestApiPage = () => {
             } else {
               console.warn('Blob size is 0, trying next config...');
             }
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
         } catch (configError) {
           console.warn(`Fetch config ${i + 1} failed:`, configError);
