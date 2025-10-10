@@ -377,10 +377,6 @@ const TestApiPage = () => {
       setGenerationStatus('Optimizing prompt for better results...');
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      // Optimize prompt for better API reliability
-      //const optimizedPrompt = optimizePrompt(currentPrompt);
-      const encodedPrompt = encodeURIComponent(currentPrompt);
-      
       // Stage 3: Connecting to AI service
       setGenerationStatus('Connecting to AI image generation service...');
       await new Promise(resolve => setTimeout(resolve, 400));
@@ -390,7 +386,7 @@ const TestApiPage = () => {
       
       // Simplify and clean the prompt for better URL compatibility
       const cleanPrompt = currentPrompt
-        .replace(/[^\w\s\-\.]/g, ' ') // Remove special characters
+        .replace(/[^\w\s-.]/g, ' ') // Remove special characters (fixed escape)
         .replace(/\s+/g, ' ') // Normalize spaces
         .trim()
         .substring(0, 200); // Limit length
