@@ -26,6 +26,9 @@ const TestApiPage = () => {
 
   // Ref to prevent multiple simultaneous processing
   const isProcessingRef = useRef(false);
+  // Ref for cancellation functionality
+  const abortControllerRef = useRef(null);
+  const progressIntervalRef = useRef(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -105,6 +108,30 @@ const TestApiPage = () => {
     }
   }, [imageUrl, processedPrompt, selectedBHK, areaValue, error]); // Dependencies for useCallback
 
+  // Cancel image generation function
+  const cancelImageGeneration = useCallback(() => {
+    // Cancel the fetch request if it's in progress
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Clear the progress interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    // Reset all states
+    setLoading(false);
+    setImageGenerating(false);
+    setProgressValue(0);
+    setGenerationStatus('');
+    setError('Image generation cancelled by user');
+    
+    console.log('Image generation cancelled by user');
+  }, []);
+
   // Handle keyboard shortcuts for download
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -120,6 +147,20 @@ const TestApiPage = () => {
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [showModal, imageUrl, downloadImage]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Load available areas based on selected BHK type
   const loadAvailableAreas = async (bhkType) => {
@@ -256,7 +297,51 @@ const TestApiPage = () => {
       // Replace {total_carpet_area_sqft} with the area value
       processedContent = processedContent.replace(/{total_carpet_area_sqft}/g, area.toString());
 
-      // Replace room variables with dimensions
+      console.log('Available rooms in configuration:', matchedConfig.rooms.map(r => r.name));
+
+      // First, handle special cases for common room name variations
+      const roomMappings = {
+        'living room': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('living')),
+        'kitchen': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('kitchen')),
+        'bathroom': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('bathroom')),
+        'balcony': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('balcony')),
+        'store': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('store')),
+        'utility': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('store') || r.name.toLowerCase().includes('utility'))
+      };
+
+      console.log('Room mappings found:', Object.entries(roomMappings).map(([key, room]) => ({
+        key,
+        found: !!room,
+        roomName: room?.name,
+        dimensions: room?.dimensions_ft
+      })));
+
+      Object.entries(roomMappings).forEach(([key, room]) => {
+        if (room && room.dimensions_ft) {
+          const dimensionString = `${room.dimensions_ft.length} x ${room.dimensions_ft.width}`;
+          // Try multiple variations of the key
+          const keyVariations = [
+            key,
+            key.charAt(0).toUpperCase() + key.slice(1), // Capitalize first letter
+            key.toUpperCase(), // All uppercase
+            key.replace(/\s+/g, ''), // Remove spaces
+            key.replace(/\s+/g, '').charAt(0).toUpperCase() + key.replace(/\s+/g, '').slice(1) // PascalCase
+          ];
+          
+          keyVariations.forEach(variation => {
+            const pattern = new RegExp(`{${variation}}`, 'gi');
+            const beforeReplace = processedContent;
+            processedContent = processedContent.replace(pattern, dimensionString);
+            if (beforeReplace !== processedContent) {
+              console.log(`Successfully replaced {${variation}} with ${dimensionString}`);
+            }
+          });
+        } else {
+          console.warn(`No room found for mapping: ${key}`);
+        }
+      });
+
+      // Then, replace exact room name matches (for named bedrooms, etc.)
       matchedConfig.rooms.forEach(room => {
         const roomName = room.name;
         const dimensions = room.dimensions_ft;
@@ -277,24 +362,12 @@ const TestApiPage = () => {
         ];
 
         patterns.forEach(pattern => {
+          const beforeReplace = processedContent;
           processedContent = processedContent.replace(pattern, dimensionString);
+          if (beforeReplace !== processedContent) {
+            console.log(`Successfully replaced ${pattern.source} with ${dimensionString} for room: ${roomName}`);
+          }
         });
-      });
-
-      // Handle special cases for common room name variations
-      const roomMappings = {
-        'living room': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('living')),
-        'kitchen': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('kitchen')),
-        'bathroom': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('bathroom')),
-        'balcony': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('balcony')),
-        'store': matchedConfig.rooms.find(r => r.name.toLowerCase().includes('store'))
-      };
-
-      Object.entries(roomMappings).forEach(([key, room]) => {
-        if (room && room.dimensions_ft) {
-          const dimensionString = `${room.dimensions_ft.length} x ${room.dimensions_ft.width}`;
-          processedContent = processedContent.replace(new RegExp(`{${key}}`, 'gi'), dimensionString);
-        }
       });
 
       if (processedContent === textContent) {
@@ -343,6 +416,14 @@ const TestApiPage = () => {
   }, [selectedBHK, areaValue, availableAreas, handleBHKProcessing]);
 
   async function handleTestApi() {
+    // Cancel any existing generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    
     setLoading(true);
     setImageGenerating(true);
     setError(null);
@@ -351,7 +432,7 @@ const TestApiPage = () => {
     setImageLoaded(false);
     
     // Start gradual progress that continues until image loads
-    const progressInterval = setInterval(() => {
+    progressIntervalRef.current = setInterval(() => {
       setProgressValue(prev => {
         if (prev >= 95) return 95; // Cap at 95% until image loads
         return prev + Math.random() * 3 + 1; // Increase by 1-4% randomly
@@ -359,11 +440,16 @@ const TestApiPage = () => {
     }, 200); // Update every 200ms
     
     try {
+      // Check if cancelled before starting
+      if (abortControllerRef.current?.signal.aborted) {
+        throw new Error('Generation cancelled');
+      }
+      
       // Validate prompt
       const currentPrompt = processedPrompt || prompt;
       
       if (!currentPrompt.trim()) {
-        clearInterval(progressInterval);
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
         throw new Error('Please enter a prompt or process BHK configuration first');
       }
       
@@ -376,18 +462,28 @@ const TestApiPage = () => {
       
       const encodedCleanPrompt = encodeURIComponent(cleanPrompt);
       
-      // Generate image with nanobanana model
-      setGenerationStatus('Generating image with nanobanana model...');
+      // Generate image 
+      setGenerationStatus('Generating image...');
       const directImageUrl = `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=nanobanana`;
       
       console.log('Direct Image URL:', directImageUrl);
       
+      // Check if cancelled before making request
+      if (abortControllerRef.current?.signal.aborted) {
+        throw new Error('Generation cancelled');
+      }
+      
       // Try direct URL first, then fallback to CORS proxy if needed
       try {
-        const blobUrl = await downloadImageAsBlob(directImageUrl);
+        const blobUrl = await downloadImageAsBlob(directImageUrl, abortControllerRef.current?.signal);
         setImageUrl(blobUrl);
         setGenerationStatus('Image generated successfully!');
       } catch (directError) {
+        // Check if error is due to cancellation
+        if (directError.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+          throw new Error('Generation cancelled');
+        }
+        
         console.warn('Direct URL failed, trying CORS proxy:', directError.message);
         
         // Fallback to CORS proxy
@@ -396,16 +492,20 @@ const TestApiPage = () => {
         console.log('Proxy URL:', proxyUrl);
         
         try {
-          const proxyBlobUrl = await downloadImageAsBlob(proxyUrl);
+          const proxyBlobUrl = await downloadImageAsBlob(proxyUrl, abortControllerRef.current?.signal);
           setImageUrl(proxyBlobUrl);
           setGenerationStatus('Image loaded via proxy!');
         } catch (proxyError) {
+          // Check if error is due to cancellation
+          if (proxyError.name === 'AbortError' || abortControllerRef.current?.signal.aborted) {
+            throw new Error('Generation cancelled');
+          }
           throw new Error(`Both direct and proxy methods failed: ${proxyError.message}`);
         }
       }
       
     } catch (err) {
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       console.error('Image generation error:', err);
       setError('Error generating image: ' + (err.message || 'Unknown error'));
       setImageUrl(''); // Clear any previous image on error
@@ -413,7 +513,7 @@ const TestApiPage = () => {
   }
 
   // Function to download image and create blob URL (CORS workaround)
-  const downloadImageAsBlob = async (imageUrl) => {
+  const downloadImageAsBlob = async (imageUrl, abortSignal = null) => {
     try {
       console.log('Attempting to download image as blob:', imageUrl);
       
@@ -424,14 +524,18 @@ const TestApiPage = () => {
           mode: 'cors',
           headers: {
             'Accept': 'image/*',
-          }
+          },
+          signal: abortSignal
         },
         // Config 2: No-cors mode (limited but sometimes works)
         {
           mode: 'no-cors',
+          signal: abortSignal
         },
         // Config 3: Simple request
-        {}
+        {
+          signal: abortSignal
+        }
       ];
       
       for (let i = 0; i < fetchConfigs.length; i++) {
@@ -678,9 +782,19 @@ const TestApiPage = () => {
             <Form.Label style={{ margin: 0, fontWeight: 600, color: '#1976d2' }}>
               {generationStatus || 'Generating Room Plan...'}
             </Form.Label>
-            <small style={{ color: '#666', fontWeight: 600 }}>
-              {Math.round(progressValue)}%
-            </small>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <small style={{ color: '#666', fontWeight: 600 }}>
+                {Math.round(progressValue)}%
+              </small>
+              <Button 
+                variant="outline-danger" 
+                size="sm"
+                onClick={cancelImageGeneration}
+                style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
           <ProgressBar 
             now={Math.round(progressValue)} 
@@ -709,9 +823,24 @@ const TestApiPage = () => {
       )}
       
       <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-        <Button variant="primary" onClick={handleTestApi} disabled={loading} style={{ minWidth: 120, fontWeight: 600 }}>
-          {loading ? 'Generating...' : 'Get Room Plan'}
-        </Button>
+        {imageGenerating ? (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', alignItems: 'center' }}>
+            <Button variant="primary" disabled style={{ minWidth: 120, fontWeight: 600 }}>
+              Generating...
+            </Button>
+            <Button 
+              variant="outline-danger" 
+              onClick={cancelImageGeneration}
+              style={{ fontWeight: 600 }}
+            >
+              Cancel Generation
+            </Button>
+          </div>
+        ) : (
+          <Button variant="primary" onClick={handleTestApi} disabled={loading} style={{ minWidth: 120, fontWeight: 600 }}>
+            Get Room Plan
+          </Button>
+        )}
       </div>
       
       {error && <div style={{ color: 'red', marginTop: '1rem' }}>{error}</div>}
