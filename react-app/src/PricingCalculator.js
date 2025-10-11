@@ -7,7 +7,7 @@ import './Styles/WizardSteps.css';
 // Room columns for grid (make available globally)
 export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "Store"];
 // Default grid rows (make available globally)
-export const gridRows = ["Count", "Width (ft)", "Height (ft)"];
+export const gridRows = ["Count", "Length (ft)", "Width (ft)"];
 
 const cities = [
   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',
@@ -132,17 +132,94 @@ const PricingCalculator = () => {
   const [bhkModalFloorIdx, setBhkModalFloorIdx] = useState(null);
   // Room details state for modal (per BHK type)
   const [bhkRoomDetails, setBhkRoomDetails] = useState({});
+  // Dynamic room columns from BHK configuration
+  const [dynamicRoomColumns, setDynamicRoomColumns] = useState([]);
+  
+  // BHK configuration data loaded from JSON
+  const [allBhkConfigs, setAllBhkConfigs] = useState([]);
+  const [bhkTypeOptions, setBhkTypeOptions] = useState([]);
+  const [carpetAreaOptions, setCarpetAreaOptions] = useState({}); // { "1 BHK": [500, 600, 700], "2 BHK": [800, 900, 1000] }
+  const [bhkDataLoading, setBhkDataLoading] = useState(true);
 
   // Rectangle visualization for Step 1
+  
+  // Load BHK configurations from JSON
+  async function loadBHKConfigurations() {
+    try {
+      setBhkDataLoading(true);
+      const response = await fetch(`${process.env.PUBLIC_URL}/BHKPrompt/bhk_info.json`);
+      if (!response.ok) {
+        throw new Error('Failed to load BHK configuration');
+      }
+      
+      const bhkData = await response.json();
+      const configs = bhkData.real_estate_configurations;
+      setAllBhkConfigs(configs);
+      
+      // Extract unique BHK types
+      const types = [...new Set(configs.map(config => config.type))];
+      setBhkTypeOptions(types);
+      
+      // Group carpet areas by BHK type
+      const areasByType = {};
+      configs.forEach(config => {
+        if (!areasByType[config.type]) {
+          areasByType[config.type] = [];
+        }
+        areasByType[config.type].push(config.total_carpet_area_sqft);
+      });
+      
+      // Sort areas for each type
+      Object.keys(areasByType).forEach(type => {
+        areasByType[type].sort((a, b) => a - b);
+      });
+      
+      setCarpetAreaOptions(areasByType);
+      
+    } catch (error) {
+      console.error('Error loading BHK configurations:', error);
+    } finally {
+      setBhkDataLoading(false);
+    }
+  }
+  
+  // Load BHK configurations on component mount
+  React.useEffect(() => {
+    loadBHKConfigurations();
+  }, []);
+  
+  // Helper to get carpet area options for a BHK type
+  function getCarpetAreaOptions(bhkType) {
+    return carpetAreaOptions[bhkType] || [];
+  }
+  
+  // Handler for BHK type change - updates carpet area options
+  function handleBHKTypeChange(floorIdx, idx, newType) {
+    // Update the type
+    handleFloorCellChange(floorIdx, idx, 'type', newType);
+    
+    // Reset area to first available option for this type
+    const availableAreas = getCarpetAreaOptions(newType);
+    if (availableAreas.length > 0) {
+      handleFloorCellChange(floorIdx, idx, 'area', availableAreas[0]);
+      
+      // Update rooms description based on new configuration
+      const config = allBhkConfigs.find(c => c.type === newType && c.total_carpet_area_sqft === availableAreas[0]);
+      if (config) {
+        const roomList = config.rooms.map(room => room.name).join(', ');
+        handleFloorCellChange(floorIdx, idx, 'rooms', roomList);
+      }
+    }
+  }
   const plotArea = width && depth ? Number(width) * Number(depth) : '';
   let rectangleVisualization = null;
 
 
   // At the top of your component
 const defaultBHKs = [
-  { type: '1 BHK', units: 2, area: 400, rooms: '1 Bed, 1 Living, 1 Kitchen, 1 Bath' },
-  { type: '2 BHK', units: 2, area: 600, rooms: '2 Bed, 1 Living, 1 Kitchen, 2 Bath' },
-  { type: '3 BHK', units: 1, area: 900, rooms: '3 Bed, 1 Living, 1 Kitchen, 3 Bath' }
+  { type: '', units: 1, area: '', rooms: '' },
+  { type: '', units: 1, area: '', rooms: '' },
+  { type: '', units: 1, area: '', rooms: '' }
 ];
   // Default BHK config for new floors
   const [bhkRows, setBhkRows] = useState(defaultBHKs);
@@ -168,10 +245,10 @@ const defaultBHKs = [
   // Handler to add/remove row for a floor
   function handleFloorAddRow(floorIdx) {
     if (floorIdx === 0) {
-      setBhkRows([...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }]);
+      setBhkRows([...getFloorRows(floorIdx), { type: '', units: 1, area: '', rooms: '' }]);
     } else {
       setFloorBHKConfigs(prev => {
-        const rows = [...getFloorRows(floorIdx), { type: '', units: 1, area: 400, rooms: '' }];
+        const rows = [...getFloorRows(floorIdx), { type: '', units: 1, area: '', rooms: '' }];
         return { ...prev, [floorIdx]: rows };
       });
     }
@@ -188,15 +265,15 @@ const defaultBHKs = [
   }
   function handleFloorAdjust(floorIdx) {
     const rows = getFloorRows(floorIdx);
-    const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+    const gridTotalArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
     if (gridTotalArea === 0 || totalCarpetArea === 0) return;
     const scale = totalCarpetArea / gridTotalArea;
     if (floorIdx === 0) {
-      setBhkRows(rows.map(row => ({ ...row, area: Math.round(row.area * scale) })));
+      setBhkRows(rows.map(row => ({ ...row, area: Math.round((parseInt(row.area) || 0) * scale) })));
     } else {
       setFloorBHKConfigs(prev => ({
         ...prev,
-        [floorIdx]: rows.map(row => ({ ...row, area: Math.round(row.area * scale) }))
+        [floorIdx]: rows.map(row => ({ ...row, area: Math.round((parseInt(row.area) || 0) * scale) }))
       }));
     }
   }
@@ -419,7 +496,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
         }, 0);
       }
       // Calculate per-floor area values
-      const totalCarpetArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+      const totalCarpetArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
       // Use per-floor SBA for calculations
       const sba = totalCarpetArea / (carpetPercent/100);
       if (floorIdx === 0) {
@@ -483,64 +560,137 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     window.URL.revokeObjectURL(url);
   };
 
-  // Default room sizes for each BHK type
-  const defaultRoomSizes = {
-    '1 BHK': {
-      'BedRoom': { count: 1, width: 10, height: 12 },
-      'Living Room': { count: 1, width: 12, height: 14 },
-      'Kitchen': { count: 1, width: 8, height: 10 },
-      'Bathroom': { count: 1, width: 6, height: 8 },
-      'Store': { count: 0, width: 0, height: 0 }
-    },
-    '2 BHK': {
-      'BedRoom': { count: 2, width: 10, height: 12 },
-      'Living Room': { count: 1, width: 14, height: 16 },
-      'Kitchen': { count: 1, width: 8, height: 10 },
-      'Bathroom': { count: 2, width: 6, height: 8 },
-      'Store': { count: 1, width: 6, height: 8 }
-    },
-    '3 BHK': {
-      'BedRoom': { count: 3, width: 10, height: 12 },
-      'Living Room': { count: 1, width: 16, height: 18 },
-      'Kitchen': { count: 1, width: 8, height: 10 },
-      'Bathroom': { count: 3, width: 6, height: 8 },
-      'Store': { count: 1, width: 6, height: 8 }
-    },
-    '4 BHK': {
-      'BedRoom': { count: 4, width: 10, height: 12 },
-      'Living Room': { count: 1, width: 18, height: 20 },
-      'Kitchen': { count: 1, width: 8, height: 10 },
-      'Bathroom': { count: 4, width: 6, height: 8 },
-      'Store': { count: 1, width: 6, height: 8 }
-    }
-  };
-
   // Handler to open modal
-  function handleOpenBHKModal(floorIdx, idx) {
+  async function handleOpenBHKModal(floorIdx, idx) {
     setBhkModalFloorIdx(floorIdx);
     setBhkModalIdx(idx);
-    // Set default data if not already present
+    
+    // Get selected BHK type and area
     const rows = getFloorRows(floorIdx);
     const bhkType = rows[idx]?.type;
-    const key = `${floorIdx}-${idx}`;
-    if (bhkType && !bhkRoomDetails[key]) {
-      const defaults = defaultRoomSizes[bhkType] || {};
-      setBhkRoomDetails(prev => {
-        const newDetails = { ...prev };
-        newDetails[key] = {
-          'Count': {},
-          'Width (ft)': {},
-          'Height (ft)': {}
-        };
-        roomColumns.forEach(col => {
-          newDetails[key]['Count'][col] = defaults[col]?.count || 0;
-          newDetails[key]['Width (ft)'][col] = defaults[col]?.width || 0;
-          newDetails[key]['Height (ft)'][col] = defaults[col]?.height || 0;
-        });
-        return newDetails;
-      });
+    const bhkArea = rows[idx]?.area;
+    
+    // Don't open modal if no BHK type or area is selected
+    if (!bhkType || !bhkArea || bhkType === '' || bhkArea === '') {
+      alert('Please select BHK Type and Carpet Area before opening details.');
+      return;
     }
-    setShowBHKModal(true);
+    
+    try {
+      // Use cached allBhkConfigs data if available, otherwise load from JSON
+      let configs;
+      if (allBhkConfigs.length > 0) {
+        console.log('Using cached BHK configs, length:', allBhkConfigs.length);
+        configs = allBhkConfigs;
+      } else {
+        console.log('No cached configs, loading from JSON...');
+        // Load BHK configuration data from JSON as fallback
+        const response = await fetch(`${process.env.PUBLIC_URL}/BHKPrompt/bhk_info.json`);
+        if (!response.ok) {
+          throw new Error('Failed to load BHK configuration');
+        }
+        const bhkData = await response.json();
+        configs = bhkData.real_estate_configurations;
+        // Update the cached data
+        setAllBhkConfigs(configs);
+      }
+      
+      // Find matching configuration by BHK type and area
+      const matchedConfig = configs.find(config => 
+        config.type === bhkType && config.total_carpet_area_sqft === parseInt(bhkArea)
+      );
+      
+      if (matchedConfig) {
+        // Group rooms by type and create numbered columns
+        const roomTypeMap = new Map();
+        matchedConfig.rooms.forEach(room => {
+          // Extract base room type (e.g., "Bedroom" from "Bedroom 1" or "Bedroom 2")
+          // But keep single word rooms as-is (e.g., "Kitchen", "Bathroom")
+          let baseType;
+          const nameWords = room.name.split(' ');
+          if (nameWords.length > 1 && /^\d+$/.test(nameWords[nameWords.length - 1])) {
+            // If last word is a number, remove it to get base type
+            baseType = nameWords.slice(0, -1).join(' ');
+          } else {
+            // No number at end, use full name
+            baseType = room.name;
+          }
+          
+          if (!roomTypeMap.has(baseType)) {
+            roomTypeMap.set(baseType, []);
+          }
+          roomTypeMap.get(baseType).push(room);
+        });
+        
+        // Create dynamic column names with room numbering
+        const dynamicColumns = [];
+        const roomMapping = new Map(); // To map display names to actual room data
+        
+        roomTypeMap.forEach((rooms, baseType) => {
+          if (rooms.length === 1) {
+            // Single room of this type, use base name
+            dynamicColumns.push(baseType);
+            roomMapping.set(baseType, rooms[0]);
+          } else {
+            // Multiple rooms of same type, number them
+            rooms.forEach((room, index) => {
+              const displayName = `${baseType} ${index + 1}`;
+              dynamicColumns.push(displayName);
+              roomMapping.set(displayName, room);
+            });
+          }
+        });
+        
+        console.log('Room mapping created:', roomMapping);
+        console.log('Dynamic columns:', dynamicColumns);
+        
+        // Add circulation space as the last column
+        const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
+        setDynamicRoomColumns(columnsWithCirculation);
+        
+        // Initialize room details with data from JSON
+        const key = `${floorIdx}-${idx}`;
+        const roomDetails = {
+          'Count': {},
+          'Length (ft)': {},
+          'Width (ft)': {}
+        };
+        
+        // Populate room data using the mapping
+        roomMapping.forEach((roomData, displayName) => {
+          roomDetails['Count'][displayName] = 1; // Default count
+          roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
+          roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
+        });
+        
+        // Add circulation space data
+        roomDetails['Count']['Circulation Space'] = 1;
+        roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
+        roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
+        
+        console.log('Room details for key:', key, roomDetails);
+        
+        setBhkRoomDetails(prev => ({
+          ...prev,
+          [key]: roomDetails
+        }));
+        
+        // Open modal after state is set
+        setTimeout(() => {
+          setShowBHKModal(true);
+        }, 0);
+      } else {
+        // Fallback to static columns if no match found
+        setDynamicRoomColumns([...roomColumns, 'Circulation Space']);
+        console.warn(`No BHK configuration found for ${bhkType} with ${bhkArea} sq ft`);
+        setShowBHKModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading BHK configuration:', error);
+      // Fallback to static columns
+      setDynamicRoomColumns([...roomColumns, 'Circulation Space']);
+      setShowBHKModal(true);
+    }
   }
   // Handler to close modal
   function handleCloseBHKModal() {
@@ -566,11 +716,11 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
     let totalAreaSum = 0;
     if (bhkRoomDetails[key]) {
-      roomColumns.forEach(col => {
+      dynamicRoomColumns.forEach(col => {
         const count = Number(bhkRoomDetails[key]['Count']?.[col] || 0);
+        const length = Number(bhkRoomDetails[key]['Length (ft)']?.[col] || 0);
         const width = Number(bhkRoomDetails[key]['Width (ft)']?.[col] || 0);
-        const height = Number(bhkRoomDetails[key]['Height (ft)']?.[col] || 0);
-        totalAreaSum += count * width * height;
+        totalAreaSum += count * length * width;
       });
     }
     // Update Carpet Area (Sq ft) in main grid for the corresponding row
@@ -927,23 +1077,59 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                 {(floorBHKConfigs[floorIdx] || bhkRows).map((row, idx) => (
                                   <tr key={idx}>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                      <Form.Select value={row.type} onChange={e => handleFloorCellChange(floorIdx, idx, 'type', e.target.value)} size="sm" style={{ minWidth: 90 }}>
-                                        <option value="">Select</option>
-                                        <option value="1 BHK">1 BHK</option>
-                                        <option value="2 BHK">2 BHK</option>
-                                        <option value="3 BHK">3 BHK</option>
-                                        <option value="4 BHK">4 BHK</option>
+                                      <Form.Select value={row.type} onChange={e => handleBHKTypeChange(floorIdx, idx, e.target.value)} size="sm" style={{ minWidth: 90 }} disabled={bhkDataLoading}>
+                                        <option value="">{bhkDataLoading ? 'Loading...' : 'Select'}</option>
+                                        {bhkTypeOptions.map(type => (
+                                          <option key={type} value={type}>{type}</option>
+                                        ))}
                                       </Form.Select>
-                                      <FaHome style={{ color: '#1976d2', marginLeft: '6px', cursor: 'pointer' }} title="BHK Details" onClick={() => handleOpenBHKModal(floorIdx, idx)} />
+                                      <FaHome 
+                                        style={{ 
+                                          color: (bhkDataLoading || !row.type || !row.area) ? '#ccc' : '#1976d2', 
+                                          marginLeft: '6px', 
+                                          cursor: (bhkDataLoading || !row.type || !row.area) ? 'not-allowed' : 'pointer' 
+                                        }} 
+                                        title={
+                                          bhkDataLoading ? 'Loading BHK data...' :
+                                          !row.type ? 'Please select BHK Type first' :
+                                          !row.area ? 'Please select Carpet Area first' :
+                                          'BHK Details'
+                                        } 
+                                        onClick={() => {
+                                          if (!bhkDataLoading && row.type && row.area) {
+                                            handleOpenBHKModal(floorIdx, idx);
+                                          }
+                                        }} 
+                                      />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                                       <Form.Control type="number" value={row.units} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'units', e.target.value)} />
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      <Form.Control type="number" value={row.area} min={1} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'area', e.target.value)} />
+                                      <Form.Select 
+                                        value={row.area} 
+                                        onChange={e => {
+                                          const newArea = parseInt(e.target.value);
+                                          handleFloorCellChange(floorIdx, idx, 'area', newArea);
+                                          // Update rooms description based on new area
+                                          const config = allBhkConfigs.find(c => c.type === row.type && c.total_carpet_area_sqft === newArea);
+                                          if (config) {
+                                            const roomList = config.rooms.map(room => room.name).join(', ');
+                                            handleFloorCellChange(floorIdx, idx, 'rooms', roomList);
+                                          }
+                                        }} 
+                                        size="sm" 
+                                        style={{ minWidth: 100 }}
+                                        disabled={!row.type || getCarpetAreaOptions(row.type).length === 0 || bhkDataLoading}
+                                      >
+                                        <option value="">{bhkDataLoading ? 'Loading...' : 'Select'}</option>
+                                        {getCarpetAreaOptions(row.type).map(area => (
+                                          <option key={area} value={area}>{area}</option>
+                                        ))}
+                                      </Form.Select>
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      {(row.units * row.area).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                      {(row.units * (parseInt(row.area) || 0)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                                       <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'rooms', e.target.value)} />
@@ -959,16 +1145,16 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                               <Button variant="outline-primary" size="sm" onClick={() => handleFloorAddRow(floorIdx)}>Add Row</Button>
                               <div style={{ fontWeight: 600, color: (() => {
                                 const rows = getFloorRows(floorIdx);
-                                const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                const gridTotalArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
                                 return gridTotalArea === totalCarpetArea ? '#388e3c' : '#d81b60';
                               })() }}>
                                 Total Area: {(() => {
                                   const rows = getFloorRows(floorIdx);
-                                  return rows.reduce((sum, row) => sum + row.units * row.area, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                                  return rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
                                 })()} sq ft
                                 {(() => {
                                   const rows = getFloorRows(floorIdx);
-                                  const gridTotalArea = rows.reduce((sum, row) => sum + row.units * row.area, 0);
+                                  const gridTotalArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
                                   return gridTotalArea !== totalCarpetArea ? (
                                     <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
                                       (Carpet Area: {totalCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
@@ -1201,33 +1387,35 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       </div>
 
       {/* BHK Details Modal */}
-      <Modal show={showBHKModal} onHide={handleCloseBHKModal} centered size="lg">
+      <Modal show={showBHKModal} onHide={handleCloseBHKModal} centered size="xl">
         <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
           <Modal.Title style={{ fontWeight: 700, color: '#1976d2', fontSize: '1.18rem', letterSpacing: '0.5px' }}>
             {(() => {
               if (bhkModalFloorIdx == null || bhkModalIdx == null) return '';
               const rows = getFloorRows(bhkModalFloorIdx);
-              return rows[bhkModalIdx]?.type || 'BHK Details';
+              const bhkType = rows[bhkModalIdx]?.type || '';
+              const carpetArea = rows[bhkModalIdx]?.area || '';
+              return bhkType && carpetArea ? `${bhkType} - Carpet Area (${carpetArea} sq ft)` : 'BHK Details';
             })()}
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ background: '#fafafa', padding: '2rem 2.5rem' }}>
+        <Modal.Body style={{ background: '#fafafa', padding: '1.5rem 2rem' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '1rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5' }}>
-                  <th style={{ padding: '10px', border: '1px solid #e0e0e0', minWidth: 90 }}></th>
-                  {roomColumns.map(col => (
-                    <th key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', minWidth: 120, fontWeight: 600, color: '#1976d2', textAlign: 'center' }}>{col}</th>
+                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', minWidth: 70, fontSize: '0.8rem' }}></th>
+                  {dynamicRoomColumns.map(col => (
+                    <th key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', minWidth: 85, fontWeight: 600, color: '#1976d2', textAlign: 'center', fontSize: '0.75rem' }}>{col}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {gridRows.map(rowLabel => (
                   <tr key={rowLabel}>
-                    <td style={{ padding: '10px', border: '1px solid #e0e0e0', fontWeight: 600, background: '#f5f5f5', textAlign: 'right' }}>{rowLabel}</td>
-                    {roomColumns.map(col => (
-                      <td key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 600, background: '#f5f5f5', textAlign: 'right', fontSize: '0.8rem' }}>{rowLabel}</td>
+                    {dynamicRoomColumns.map(col => (
+                      <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
                         <Form.Control
                           type="number"
                           min={0}
@@ -1237,8 +1425,17 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                           })()}
                           onChange={e => handleRoomDetailChange(rowLabel, col, e.target.value)}
                           size="sm"
-                          style={{ maxWidth: 90, margin: '0 auto', fontSize: '0.98rem', borderRadius: 6, border: '1px solid #bdbdbd', background: '#fff' }}
+                          style={{ 
+                            maxWidth: 70, 
+                            margin: '0 auto', 
+                            fontSize: '0.85rem', 
+                            borderRadius: 6, 
+                            border: '1px solid #bdbdbd', 
+                            background: col === 'Circulation Space' ? '#f5f5f5' : '#fff',
+                            color: col === 'Circulation Space' ? '#666' : '#000'
+                          }}
                           placeholder={rowLabel === 'Count' ? '0' : 'ft'}
+                          readOnly={col === 'Circulation Space'}
                         />
                       </td>
                     ))}
@@ -1246,15 +1443,30 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 ))}
                 {/* Summary row for Total Area (sq ft) */}
                 <tr style={{ background: '#e3f2fd' }}>
-                  <td style={{ padding: '10px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#1976d2' }}>Total Area (sq ft)</td>
-                  {roomColumns.map(col => {
+                  <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#1976d2', fontSize: '0.8rem' }}>
+                    Total Carpet Area
+                    <div style={{ fontSize: '0.7em', fontWeight: 400, color: '#666' }}>
+                      ({(() => {
+                        const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                        let totalSum = 0;
+                        dynamicRoomColumns.forEach(col => {
+                          const count = Number(bhkRoomDetails[key]?.['Count']?.[col] || 0);
+                          const length = Number(bhkRoomDetails[key]?.['Length (ft)']?.[col] || 0);
+                          const width = Number(bhkRoomDetails[key]?.['Width (ft)']?.[col] || 0);
+                          totalSum += count * length * width;
+                        });
+                        return totalSum.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                      })()} sq ft)
+                    </div>
+                  </td>
+                  {dynamicRoomColumns.map(col => {
                     const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
                     const count = Number(bhkRoomDetails[key]?.['Count']?.[col] || 0);
+                    const length = Number(bhkRoomDetails[key]?.['Length (ft)']?.[col] || 0);
                     const width = Number(bhkRoomDetails[key]?.['Width (ft)']?.[col] || 0);
-                    const height = Number(bhkRoomDetails[key]?.['Height (ft)']?.[col] || 0);
-                    const total = count * width * height;
+                    const total = count * length * width;
                     return (
-                      <td key={col} style={{ padding: '10px', border: '1px solid #e0e0e0', textAlign: 'center', fontWeight: 700, color: '#388e3c', background: '#e8f5e9' }}>
+                      <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center', fontWeight: 700, color: '#388e3c', background: '#e8f5e9', fontSize: '0.8rem' }}>
                         {total > 0 ? total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                       </td>
                     );
