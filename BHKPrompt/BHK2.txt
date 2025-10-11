@@ -1,4 +1,4 @@
-A detailed 2D architectural floor plan for a 2 BHK apartment, {total_carpet_area_sqft} sq ft total area. Includes: 
+A detailed  architectural floor plan for a 2 BHK apartment, {total_carpet_area_sqft} sq ft total area. Includes: 
 - 2 bedrooms (Master Bedroom: {Bedroom 1} ft, Second Bedroom: {Bedroom 2} ft, both with wardrobes), 
 - 1 spacious living room ({Living Room} ft, with sofa and TV unit), 
 - 1 modular kitchen ({Kitchen} ft, with cabinets and sink), 
