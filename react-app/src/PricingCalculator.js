@@ -70,6 +70,41 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // Function to set default BHK configurations (first row of each type from JSON)
+  async function setDefaultBHKConfiguration() {
+    try {
+      // Ensure data is loaded
+      let configs = allBhkConfigs;
+      if (!configs || configs.length === 0) {
+        await loadBHKConfigurations();
+        configs = allBhkConfigs;
+      }
+      // Get first configuration for each BHK type
+      const defaultConfigs = [];
+      const seenTypes = new Set();
+      for (const config of configs) {
+        if (!seenTypes.has(config.type)) {
+          defaultConfigs.push({
+            type: config.type,
+            units: 1,
+            area: config.total_carpet_area_sqft.toString(),
+            rooms: config.rooms.map(r => r.name).join(', ')
+          });
+          seenTypes.add(config.type);
+        }
+      }
+      // Update all floors with default configurations
+      const updatedConfigs = { ...floorBHKConfigs };
+      for (let floorIdx = 1; floorIdx <= Number(floors); floorIdx++) {
+        updatedConfigs[floorIdx] = defaultConfigs.map(config => ({ ...config }));
+      }
+      setFloorBHKConfigs(updatedConfigs);
+      alert(`Default BHK configurations set for all floors:\n${defaultConfigs.map(c => `${c.type}: ${c.area} sq ft`).join('\n')}`);
+    } catch (error) {
+      console.error('Error setting default BHK configuration:', error);
+      alert('Failed to set default configurations. Please try again.');
+    }
+  }
   // Removed unused state: sitePlanFile
 
   // Update file and preview URL on upload
@@ -604,35 +639,26 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
         // Group rooms by type and create numbered columns
         const roomTypeMap = new Map();
         matchedConfig.rooms.forEach(room => {
-          // Extract base room type (e.g., "Bedroom" from "Bedroom 1" or "Bedroom 2")
-          // But keep single word rooms as-is (e.g., "Kitchen", "Bathroom")
           let baseType;
           const nameWords = room.name.split(' ');
           if (nameWords.length > 1 && /^\d+$/.test(nameWords[nameWords.length - 1])) {
-            // If last word is a number, remove it to get base type
             baseType = nameWords.slice(0, -1).join(' ');
           } else {
-            // No number at end, use full name
             baseType = room.name;
           }
-          
           if (!roomTypeMap.has(baseType)) {
             roomTypeMap.set(baseType, []);
           }
           roomTypeMap.get(baseType).push(room);
         });
-        
         // Create dynamic column names with room numbering
         const dynamicColumns = [];
-        const roomMapping = new Map(); // To map display names to actual room data
-        
+        const roomMapping = new Map();
         roomTypeMap.forEach((rooms, baseType) => {
           if (rooms.length === 1) {
-            // Single room of this type, use base name
             dynamicColumns.push(baseType);
             roomMapping.set(baseType, rooms[0]);
           } else {
-            // Multiple rooms of same type, number them
             rooms.forEach((room, index) => {
               const displayName = `${baseType} ${index + 1}`;
               dynamicColumns.push(displayName);
@@ -640,14 +666,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             });
           }
         });
-        
-        console.log('Room mapping created:', roomMapping);
-        console.log('Dynamic columns:', dynamicColumns);
-        
         // Add circulation space as the last column
         const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
         setDynamicRoomColumns(columnsWithCirculation);
-        
         // Initialize room details with data from JSON
         const key = `${floorIdx}-${idx}`;
         const roomDetails = {
@@ -655,27 +676,25 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           'Length (ft)': {},
           'Width (ft)': {}
         };
-        
         // Populate room data using the mapping
         roomMapping.forEach((roomData, displayName) => {
-          roomDetails['Count'][displayName] = 1; // Default count
+          // Set count to bathroom_count for bathroom rooms, otherwise 1
+          if (displayName.toLowerCase().includes('bathroom')) {
+            roomDetails['Count'][displayName] = matchedConfig.bathroom_count || 1;
+          } else {
+            roomDetails['Count'][displayName] = 1;
+          }
           roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
           roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
         });
-        
         // Add circulation space data
         roomDetails['Count']['Circulation Space'] = 1;
         roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
         roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
-        
-        console.log('Room details for key:', key, roomDetails);
-        
         setBhkRoomDetails(prev => ({
           ...prev,
           [key]: roomDetails
         }));
-        
-        // Open modal after state is set
         setTimeout(() => {
           setShowBHKModal(true);
         }, 0);
@@ -1053,7 +1072,30 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                           </div>
                         ) : (
                           <div style={{ marginTop: 0, width: '100%', overflowX: 'auto' }}>
-                            <div style={{ fontWeight: 500, fontSize: '0.98rem', marginBottom: 8, color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>BHK Configuration</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <div style={{ fontWeight: 500, fontSize: '0.98rem', color: floorIdx === 0 ? '#1976d2' : '#388e3c' }}>BHK Configuration</div>
+                              {floorIdx === 1 && (
+                                <button
+                                  type="button"
+                                  onClick={setDefaultBHKConfiguration}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '0.75rem',
+                                    border: '1px solid #1976d2',
+                                    backgroundColor: '#fff',
+                                    color: '#1976d2',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                  }}
+                                  onMouseOver={e => e.target.style.backgroundColor = '#f3f9ff'}
+                                  onMouseOut={e => e.target.style.backgroundColor = '#fff'}
+                                  disabled={bhkDataLoading}
+                                >
+                                  Set Default
+                                </button>
+                              )}
+                            </div>
                             {floorIdx > 1 && (
                               <Form.Select size="sm" style={{ maxWidth: 140, marginBottom: 8 }} onChange={e => copyFloorConfig(Number(e.target.value), floorIdx)} defaultValue="">
                                 <option value="">Copy from...</option>

@@ -3,41 +3,8 @@
     {
       "type": "1 BHK",
       "total_carpet_area_sqft": 500,
-      "circulation_space_sqft": 55,
-      "rooms": [
-        {
-          "name": "Bedroom",
-          "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
-          "area_sqft": 90
-        },
-        {
-          "name": "Living Room",
-          "dimensions_ft": { "length": 12, "width": 9, "height": 9 },
-          "area_sqft": 108
-        },
-        {
-          "name": "Kitchen",
-          "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
-          "area_sqft": 42
-        },
-        {
-          "name": "Bathroom",
-          "dimensions_ft": { "length": 6, "width": 5, "height": 9 },
-          "area_sqft": 30
-        },
-        {
-          "name": "Balcony",
-          "dimensions_ft": { "length": 8, "width": 4, "height": 9 },
-          "area_sqft": 32
-        }
-      ],
-      "internal_wall_area_sqft": 38,
-      "total_room_area_plus_circulation_sqft": 500
-    },
-    {
-      "type": "1 BHK",
-      "total_carpet_area_sqft": 600,
-      "circulation_space_sqft": 66,
+      "bathroom_count": 1,
+      "circulation_space_sqft": 100,
       "rooms": [
         {
           "name": "Bedroom",
@@ -56,66 +23,28 @@
         },
         {
           "name": "Bathroom",
-          "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
-          "area_sqft": 35
+          "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
+          "area_sqft": 42
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 10, "width": 4, "height": 9 },
-          "area_sqft": 40
+          "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
+          "area_sqft": 42
         }
       ],
-      "internal_wall_area_sqft": 45,
-      "total_room_area_plus_circulation_sqft": 600
+      "internal_wall_area_sqft": 38,
+      "total_room_area_plus_circulation_sqft": 500
     },
     {
       "type": "1 BHK",
-      "total_carpet_area_sqft": 700,
-      "circulation_space_sqft": 77,
+      "total_carpet_area_sqft": 600,
+      "bathroom_count": 1,
+      "circulation_space_sqft": 110,
       "rooms": [
         {
           "name": "Bedroom",
-          "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
-          "area_sqft": 154
-        },
-        {
-          "name": "Living Room",
-          "dimensions_ft": { "length": 16, "width": 11, "height": 9 },
-          "area_sqft": 176
-        },
-        {
-          "name": "Kitchen",
-          "dimensions_ft": { "length": 9, "width": 8, "height": 9 },
-          "area_sqft": 72
-        },
-        {
-          "name": "Bathroom",
-          "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
-          "area_sqft": 48
-        },
-        {
-          "name": "Balcony",
-          "dimensions_ft": { "length": 12, "width": 5, "height": 9 },
-          "area_sqft": 60
-        }
-      ],
-      "internal_wall_area_sqft": 52,
-      "total_room_area_plus_circulation_sqft": 700
-    },
-    {
-      "type": "2 BHK",
-      "total_carpet_area_sqft": 800,
-      "circulation_space_sqft": 88,
-      "rooms": [
-        {
-          "name": "Bedroom 1",
-          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120
-        },
-        {
-          "name": "Bedroom 2",
-          "dimensions_ft": { "length": 11, "width": 10, "height": 9 },
-          "area_sqft": 110
+          "dimensions_ft": { "length": 13, "width": 11, "height": 9 },
+          "area_sqft": 143
         },
         {
           "name": "Living Room",
@@ -129,32 +58,68 @@
         },
         {
           "name": "Bathroom",
-          "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
-          "area_sqft": 35
+          "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
+          "area_sqft": 48
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 10, "width": 5, "height": 9 },
-          "area_sqft": 50
+          "dimensions_ft": { "length": 8, "width": 8, "height": 9 },
+          "area_sqft": 62
         }
       ],
-      "internal_wall_area_sqft": 60,
-      "total_room_area_plus_circulation_sqft": 800
+      "internal_wall_area_sqft": 45,
+      "total_room_area_plus_circulation_sqft": 600
+    },
+    {
+      "type": "1 BHK",
+      "total_carpet_area_sqft": 700,
+      "bathroom_count": 1,
+      "circulation_space_sqft": 130,
+      "rooms": [
+        {
+          "name": "Bedroom",
+          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
+          "area_sqft": 180
+        },
+        {
+          "name": "Living Room",
+          "dimensions_ft": { "length": 17, "width": 12, "height": 9 },
+          "area_sqft": 204
+        },
+        {
+          "name": "Kitchen",
+          "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
+          "area_sqft": 90
+        },
+        {
+          "name": "Bathroom",
+          "dimensions_ft": { "length": 8, "width": 7, "height": 9 },
+          "area_sqft": 56
+        },
+        {
+          "name": "Balcony",
+          "dimensions_ft": { "length": 8, "width": 5, "height": 9 },
+          "area_sqft": 40
+        }
+      ],
+      "internal_wall_area_sqft": 52,
+      "total_room_area_plus_circulation_sqft": 700
     },
     {
       "type": "2 BHK",
-      "total_carpet_area_sqft": 900,
-      "circulation_space_sqft": 99,
+      "total_carpet_area_sqft": 800,
+      "bathroom_count": 2,
+      "circulation_space_sqft": 102,
       "rooms": [
         {
           "name": "Bedroom 1",
-          "dimensions_ft": { "length": 13, "width": 11, "height": 9 },
-          "area_sqft": 143
+          "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
+          "area_sqft": 154
         },
         {
           "name": "Bedroom 2",
-          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120
+          "dimensions_ft": { "length": 13, "width": 10, "height": 9 },
+          "area_sqft": 130
         },
         {
           "name": "Living Room",
@@ -163,8 +128,8 @@
         },
         {
           "name": "Kitchen",
-          "dimensions_ft": { "length": 10, "width": 8, "height": 9 },
-          "area_sqft": 80
+          "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
+          "area_sqft": 90
         },
         {
           "name": "Bathroom",
@@ -173,32 +138,33 @@
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 11, "width": 5, "height": 9 },
-          "area_sqft": 55
+          "dimensions_ft": { "length": 9, "width": 4, "height": 9 },
+          "area_sqft": 36
         }
       ],
-      "internal_wall_area_sqft": 68,
-      "total_room_area_plus_circulation_sqft": 900
+      "internal_wall_area_sqft": 60,
+      "total_room_area_plus_circulation_sqft": 800
     },
     {
       "type": "2 BHK",
-      "total_carpet_area_sqft": 1000,
-      "circulation_space_sqft": 110,
+      "total_carpet_area_sqft": 900,
+      "bathroom_count": 2,
+      "circulation_space_sqft": 103,
       "rooms": [
         {
           "name": "Bedroom 1",
-          "dimensions_ft": { "length": 14, "width": 12, "height": 9 },
-          "area_sqft": 168
+          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
+          "area_sqft": 180
         },
         {
           "name": "Bedroom 2",
-          "dimensions_ft": { "length": 13, "width": 11, "height": 9 },
-          "area_sqft": 143
+          "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
+          "area_sqft": 154
         },
         {
           "name": "Living Room",
-          "dimensions_ft": { "length": 18, "width": 12, "height": 9 },
-          "area_sqft": 216
+          "dimensions_ft": { "length": 18, "width": 13, "height": 9 },
+          "area_sqft": 234
         },
         {
           "name": "Kitchen",
@@ -212,8 +178,48 @@
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 12, "width": 6, "height": 9 },
-          "area_sqft": 72
+          "dimensions_ft": { "length": 5, "width": 5, "height": 9 },
+          "area_sqft": 25
+        }
+      ],
+      "internal_wall_area_sqft": 68,
+      "total_room_area_plus_circulation_sqft": 900
+    },
+    {
+      "type": "2 BHK",
+      "total_carpet_area_sqft": 1000,
+      "bathroom_count": 2,
+      "circulation_space_sqft": 112,
+      "rooms": [
+        {
+          "name": "Bedroom 1",
+          "dimensions_ft": { "length": 16, "width": 13, "height": 9 },
+          "area_sqft": 208
+        },
+        {
+          "name": "Bedroom 2",
+          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
+          "area_sqft": 180
+        },
+        {
+          "name": "Living Room",
+          "dimensions_ft": { "length": 20, "width": 13, "height": 9 },
+          "area_sqft": 260
+        },
+        {
+          "name": "Kitchen",
+          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
+          "area_sqft": 120
+        },
+        {
+          "name": "Bathroom",
+          "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
+          "area_sqft": 48
+        },
+        {
+          "name": "Balcony",
+          "dimensions_ft": { "length": 6, "width": 4, "height": 9 },
+          "area_sqft": 24
         }
       ],
       "internal_wall_area_sqft": 75,
@@ -222,100 +228,13 @@
     {
       "type": "3 BHK",
       "total_carpet_area_sqft": 1100,
-      "circulation_space_sqft": 121,
-      "rooms": [
-        {
-          "name": "Bedroom 1",
-          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120
-        },
-        {
-          "name": "Bedroom 2",
-          "dimensions_ft": { "length": 11, "width": 10, "height": 9 },
-          "area_sqft": 110
-        },
-        {
-          "name": "Bedroom 3",
-          "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
-          "area_sqft": 90
-        },
-        {
-          "name": "Living Room",
-          "dimensions_ft": { "length": 16, "width": 11, "height": 9 },
-          "area_sqft": 176
-        },
-        {
-          "name": "Kitchen",
-          "dimensions_ft": { "length": 9, "width": 7, "height": 9 },
-          "area_sqft": 63
-        },
-        {
-          "name": "Bathroom",
-          "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
-          "area_sqft": 35
-        },
-        {
-          "name": "Balcony",
-          "dimensions_ft": { "length": 10, "width": 5, "height": 9 },
-          "area_sqft": 50
-        }
-      ],
-      "internal_wall_area_sqft": 82,
-      "total_room_area_plus_circulation_sqft": 1100
-    },
-    {
-      "type": "3 BHK",
-      "total_carpet_area_sqft": 1200,
-      "circulation_space_sqft": 132,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 102,
       "rooms": [
         {
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 14, "width": 12, "height": 9 },
           "area_sqft": 168
-        },
-        {
-          "name": "Bedroom 2",
-          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120
-        },
-        {
-          "name": "Bedroom 3",
-          "dimensions_ft": { "length": 11, "width": 10, "height": 9 },
-          "area_sqft": 110
-        },
-        {
-          "name": "Living Room",
-          "dimensions_ft": { "length": 18, "width": 12, "height": 9 },
-          "area_sqft": 216
-        },
-        {
-          "name": "Kitchen",
-          "dimensions_ft": { "length": 10, "width": 8, "height": 9 },
-          "area_sqft": 80
-        },
-        {
-          "name": "Bathroom",
-          "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
-          "area_sqft": 35
-        },
-        {
-          "name": "Balcony",
-          "dimensions_ft": { "length": 12, "width": 6, "height": 9 },
-          "area_sqft": 72
-        }
-      ],
-      "internal_wall_area_sqft": 90,
-      "total_room_area_plus_circulation_sqft": 1200
-    },
-    {
-      "type": "3 BHK",
-      "total_carpet_area_sqft": 1300,
-      "circulation_space_sqft": 143,
-      "rooms": [
-        {
-          "name": "Bedroom 1",
-          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
-          "area_sqft": 180
         },
         {
           "name": "Bedroom 2",
@@ -329,8 +248,8 @@
         },
         {
           "name": "Living Room",
-          "dimensions_ft": { "length": 19, "width": 12, "height": 9 },
-          "area_sqft": 228
+          "dimensions_ft": { "length": 18, "width": 12, "height": 9 },
+          "area_sqft": 216
         },
         {
           "name": "Kitchen",
@@ -344,22 +263,23 @@
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 13, "width": 6, "height": 9 },
-          "area_sqft": 78
+          "dimensions_ft": { "length": 11, "width": 5, "height": 9 },
+          "area_sqft": 55
         }
       ],
-      "internal_wall_area_sqft": 98,
-      "total_room_area_plus_circulation_sqft": 1300
+      "internal_wall_area_sqft": 82,
+      "total_room_area_plus_circulation_sqft": 1100
     },
     {
       "type": "3 BHK",
-      "total_carpet_area_sqft": 1400,
-      "circulation_space_sqft": 154,
+      "total_carpet_area_sqft": 1200,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 120,
       "rooms": [
         {
           "name": "Bedroom 1",
-          "dimensions_ft": { "length": 16, "width": 12, "height": 9 },
-          "area_sqft": 192
+          "dimensions_ft": { "length": 15, "width": 13, "height": 9 },
+          "area_sqft": 195
         },
         {
           "name": "Bedroom 2",
@@ -368,8 +288,8 @@
         },
         {
           "name": "Bedroom 3",
-          "dimensions_ft": { "length": 13, "width": 10, "height": 9 },
-          "area_sqft": 130
+          "dimensions_ft": { "length": 12, "width": 11, "height": 9 },
+          "area_sqft": 132
         },
         {
           "name": "Living Room",
@@ -388,22 +308,23 @@
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 14, "width": 6, "height": 9 },
-          "area_sqft": 84
+          "dimensions_ft": { "length": 9, "width": 4, "height": 9 },
+          "area_sqft": 36
         }
       ],
-      "internal_wall_area_sqft": 105,
-      "total_room_area_plus_circulation_sqft": 1400
+      "internal_wall_area_sqft": 90,
+      "total_room_area_plus_circulation_sqft": 1200
     },
     {
       "type": "3 BHK",
-      "total_carpet_area_sqft": 1500,
-      "circulation_space_sqft": 165,
+      "total_carpet_area_sqft": 1300,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 138,
       "rooms": [
         {
           "name": "Bedroom 1",
-          "dimensions_ft": { "length": 17, "width": 13, "height": 9 },
-          "area_sqft": 221
+          "dimensions_ft": { "length": 16, "width": 13, "height": 9 },
+          "area_sqft": 208
         },
         {
           "name": "Bedroom 2",
@@ -432,22 +353,23 @@
         },
         {
           "name": "Balcony",
-          "dimensions_ft": { "length": 15, "width": 6, "height": 9 },
-          "area_sqft": 90
+          "dimensions_ft": { "length": 10, "width": 4, "height": 9 },
+          "area_sqft": 40
         }
       ],
-      "internal_wall_area_sqft": 113,
-      "total_room_area_plus_circulation_sqft": 1500
+      "internal_wall_area_sqft": 98,
+      "total_room_area_plus_circulation_sqft": 1300
     },
     {
       "type": "3 BHK",
-      "total_carpet_area_sqft": 1600,
-      "circulation_space_sqft": 176,
+      "total_carpet_area_sqft": 1400,
+      "bathroom_count": 3,
+        "circulation_space_sqft": 291,
       "rooms": [
         {
           "name": "Bedroom 1",
-          "dimensions_ft": { "length": 18, "width": 13, "height": 9 },
-          "area_sqft": 234
+          "dimensions_ft": { "length": 17, "width": 13, "height": 9 },
+          "area_sqft": 221
         },
         {
           "name": "Bedroom 2",
@@ -471,6 +393,146 @@
         },
         {
           "name": "Bathroom",
+          "dimensions_ft": { "length": 9, "width": 6, "height": 9 },
+          "area_sqft": 54
+        },
+        {
+          "name": "Balcony",
+          "dimensions_ft": { "length": 10, "width": 4, "height": 9 },
+          "area_sqft": 40
+        }
+      ],
+      "internal_wall_area_sqft": 105,
+      "total_room_area_plus_circulation_sqft": 1400
+    },
+    {
+      "type": "3 BHK",
+      "total_carpet_area_sqft": 1500,
+      "bathroom_count": 3,
+        "circulation_space_sqft": 276,
+      "rooms": [
+        {
+          "name": "Bedroom 1",
+          "dimensions_ft": { "length": 18, "width": 14, "height": 9 },
+          "area_sqft": 252
+        },
+        {
+          "name": "Bedroom 2",
+          "dimensions_ft": { "length": 17, "width": 13, "height": 9 },
+          "area_sqft": 221
+        },
+        {
+          "name": "Bedroom 3",
+          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
+          "area_sqft": 180
+        },
+        {
+          "name": "Living Room",
+          "dimensions_ft": { "length": 23, "width": 14, "height": 9 },
+          "area_sqft": 322
+        },
+        {
+          "name": "Kitchen",
+          "dimensions_ft": { "length": 15, "width": 10, "height": 9 },
+          "area_sqft": 150
+        },
+        {
+          "name": "Bathroom",
+          "dimensions_ft": { "length": 9, "width": 7, "height": 9 },
+          "area_sqft": 63
+        },
+        {
+          "name": "Balcony",
+          "dimensions_ft": { "length": 12, "width": 3, "height": 9 },
+          "area_sqft": 36
+        }
+      ],
+      "internal_wall_area_sqft": 113,
+      "total_room_area_plus_circulation_sqft": 1500
+    },
+    {
+      "type": "3 BHK",
+      "total_carpet_area_sqft": 1600,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 192,
+      "rooms": [
+        {
+          "name": "Bedroom 1",
+          "dimensions_ft": { "length": 19, "width": 14, "height": 9 },
+          "area_sqft": 266
+        },
+        {
+          "name": "Bedroom 2",
+          "dimensions_ft": { "length": 18, "width": 13, "height": 9 },
+          "area_sqft": 234
+        },
+        {
+          "name": "Bedroom 3",
+          "dimensions_ft": { "length": 16, "width": 12, "height": 9 },
+          "area_sqft": 192
+        },
+        {
+          "name": "Living Room",
+          "dimensions_ft": { "length": 24, "width": 15, "height": 9 },
+          "area_sqft": 360
+        },
+        {
+          "name": "Kitchen",
+          "dimensions_ft": { "length": 16, "width": 11, "height": 9 },
+          "area_sqft": 176
+        },
+        {
+          "name": "Bathroom",
+          "dimensions_ft": { "length": 10, "width": 7, "height": 9 },
+          "area_sqft": 70
+        },
+        {
+          "name": "Balcony",
+          "dimensions_ft": { "length": 11, "width": 4, "height": 9 },
+          "area_sqft": 44
+        }
+      ],
+      "internal_wall_area_sqft": 120,
+      "total_room_area_plus_circulation_sqft": 1600
+    },
+    {
+      "type": "4 BHK",
+      "total_carpet_area_sqft": 1600,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 192,
+      "rooms": [
+        {
+          "name": "Bedroom 1",
+          "dimensions_ft": { "length": 16, "width": 13, "height": 9 },
+          "area_sqft": 208
+        },
+        {
+          "name": "Bedroom 2",
+          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
+          "area_sqft": 180
+        },
+        {
+          "name": "Bedroom 3",
+          "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
+          "area_sqft": 154
+        },
+        {
+          "name": "Bedroom 4",
+          "dimensions_ft": { "length": 13, "width": 10, "height": 9 },
+          "area_sqft": 130
+        },
+        {
+          "name": "Living Room",
+          "dimensions_ft": { "length": 22, "width": 15, "height": 9 },
+          "area_sqft": 330
+        },
+        {
+          "name": "Kitchen",
+          "dimensions_ft": { "length": 14, "width": 10, "height": 9 },
+          "area_sqft": 140
+        },
+        {
+          "name": "Bathroom",
           "dimensions_ft": { "length": 9, "width": 7, "height": 9 },
           "area_sqft": 63
         },
@@ -485,57 +547,9 @@
     },
     {
       "type": "4 BHK",
-      "total_carpet_area_sqft": 1600,
-      "circulation_space_sqft": 176,
-      "rooms": [
-        {
-          "name": "Bedroom 1",
-          "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
-          "area_sqft": 180
-        },
-        {
-          "name": "Bedroom 2",
-          "dimensions_ft": { "length": 13, "width": 11, "height": 9 },
-          "area_sqft": 143
-        },
-        {
-          "name": "Bedroom 3",
-          "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120
-        },
-        {
-          "name": "Bedroom 4",
-          "dimensions_ft": { "length": 11, "width": 10, "height": 9 },
-          "area_sqft": 110
-        },
-        {
-          "name": "Living Room",
-          "dimensions_ft": { "length": 20, "width": 14, "height": 9 },
-          "area_sqft": 280
-        },
-        {
-          "name": "Kitchen",
-          "dimensions_ft": { "length": 12, "width": 9, "height": 9 },
-          "area_sqft": 108
-        },
-        {
-          "name": "Bathroom",
-          "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
-          "area_sqft": 48
-        },
-        {
-          "name": "Balcony",
-          "dimensions_ft": { "length": 14, "width": 6, "height": 9 },
-          "area_sqft": 84
-        }
-      ],
-      "internal_wall_area_sqft": 120,
-      "total_room_area_plus_circulation_sqft": 1600
-    },
-    {
-      "type": "4 BHK",
       "total_carpet_area_sqft": 1800,
-      "circulation_space_sqft": 198,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 102,
       "rooms": [
         {
           "name": "Bedroom 1",
@@ -584,7 +598,8 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 2000,
-      "circulation_space_sqft": 220,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 124,
       "rooms": [
         {
           "name": "Bedroom 1",
@@ -638,7 +653,8 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 2200,
-      "circulation_space_sqft": 242,
+      "bathroom_count": 3,
+      "circulation_space_sqft": 146,
       "rooms": [
         {
           "name": "Bedroom 1",
@@ -692,6 +708,7 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 2400,
+      "bathroom_count": 3,
       "circulation_space_sqft": 264,
       "rooms": [
         {
@@ -746,6 +763,7 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 2600,
+      "bathroom_count": 3,
       "circulation_space_sqft": 286,
       "rooms": [
         {
@@ -800,6 +818,7 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 2800,
+      "bathroom_count": 3,
       "circulation_space_sqft": 308,
       "rooms": [
         {
@@ -854,6 +873,7 @@
     {
       "type": "4 BHK",
       "total_carpet_area_sqft": 3000,
+      "bathroom_count": 3,
       "circulation_space_sqft": 330,
       "rooms": [
         {
