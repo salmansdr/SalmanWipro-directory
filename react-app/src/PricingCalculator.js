@@ -688,9 +688,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
         });
         // Add circulation space data
-        roomDetails['Count']['Circulation Space'] = 1;
-        roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
-        roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
+          roomDetails['Count']['Circulation Space'] = 1;
+          roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
+          roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
         setBhkRoomDetails(prev => ({
           ...prev,
           [key]: roomDetails
@@ -1477,7 +1477,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                             color: col === 'Circulation Space' ? '#666' : '#000'
                           }}
                           placeholder={rowLabel === 'Count' ? '0' : 'ft'}
-                          readOnly={col === 'Circulation Space'}
+                          readOnly={false}
                         />
                       </td>
                     ))}
