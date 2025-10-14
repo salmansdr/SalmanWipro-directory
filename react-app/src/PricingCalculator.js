@@ -70,6 +70,48 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // Handler for Save button in Step 2
+  const [showBHKConfigModal, setShowBHKConfigModal] = useState(false);
+  const [bhkConfigJson, setBhkConfigJson] = useState('');
+
+  function handleSaveBHKConfig() {
+    // Collect BHK configuration for all floors, including modal popup grid details
+    const allFloors = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
+      const rows = getFloorRows(floorIdx);
+      return {
+        floor: floorIdx === 0 ? 'Ground Floor' : `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+        bhkConfig: rows.map((row, idx) => {
+          // Get modal popup grid details if available
+          const key = `${floorIdx}-${idx}`;
+          const modalDetails = bhkRoomDetails[key] || {};
+          // Transform modalDetails to array of rooms matching BHK_info.json format
+          const roomList = [];
+          if (modalDetails['Count']) {
+            Object.keys(modalDetails['Count']).forEach(roomName => {
+              const count = Number(modalDetails['Count'][roomName] || 0);
+              const length = Number(modalDetails['Length (ft)']?.[roomName] || 0);
+              const width = Number(modalDetails['Width (ft)']?.[roomName] || 0);
+              // Use default height 9 (or fetch from config if available)
+              const height = 9;
+              // area_sqft as count × length × width
+              const area_sqft = count * length * width;
+              roomList.push({
+                name: roomName,
+                dimensions_ft: { length, width, height },
+                area_sqft
+              });
+            });
+          }
+          return {
+            ...row,
+            modalGrid: roomList
+          };
+        })
+      };
+    });
+    setBhkConfigJson(JSON.stringify(allFloors, null, 2));
+    setShowBHKConfigModal(true);
+  }
   // Function to set default BHK configurations (first row of each type from JSON)
   async function setDefaultBHKConfiguration() {
     try {
@@ -81,6 +123,7 @@ const PricingCalculator = () => {
       }
       // Get first configuration for each BHK type
       const defaultConfigs = [];
+      const defaultModalDetails = {};
       const seenTypes = new Set();
       for (const config of configs) {
         if (!seenTypes.has(config.type)) {
@@ -90,16 +133,84 @@ const PricingCalculator = () => {
             area: config.total_carpet_area_sqft.toString(),
             rooms: config.rooms.map(r => r.name).join(', ')
           });
+          // Build modal grid child data for this config
+          const key = `default-${config.type}`;
+          const roomDetails = {
+            'Count': {},
+            'Length (ft)': {},
+            'Width (ft)': {}
+          };
+          // Group rooms by type and create numbered columns
+          const roomTypeMap = new Map();
+          config.rooms.forEach(room => {
+            let baseType;
+            const nameWords = room.name.split(' ');
+            if (nameWords.length > 1 && /^\d+$/.test(nameWords[nameWords.length - 1])) {
+              baseType = nameWords.slice(0, -1).join(' ');
+            } else {
+              baseType = room.name;
+            }
+            if (!roomTypeMap.has(baseType)) {
+              roomTypeMap.set(baseType, []);
+            }
+            roomTypeMap.get(baseType).push(room);
+          });
+          // Create dynamic column names with room numbering
+          const dynamicColumns = [];
+          roomTypeMap.forEach((rooms, baseType) => {
+            if (rooms.length === 1) {
+              dynamicColumns.push(baseType);
+            } else {
+              rooms.forEach((room, index) => {
+                dynamicColumns.push(`${baseType} ${index + 1}`);
+              });
+            }
+          });
+          // Add circulation space as the last column
+          //const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
+          // Populate room data using the mapping
+         // let colIdx = 0;
+          roomTypeMap.forEach((rooms, baseType) => {
+            if (rooms.length === 1) {
+              const displayName = baseType;
+              const roomData = rooms[0];
+              roomDetails['Count'][displayName] = displayName.toLowerCase().includes('bathroom') ? config.bathroom_count || 1 : 1;
+              roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
+              roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
+             // colIdx++;
+            } else {
+              rooms.forEach((roomData, index) => {
+                const displayName = `${baseType} ${index + 1}`;
+                roomDetails['Count'][displayName] = displayName.toLowerCase().includes('bathroom') ? config.bathroom_count || 1 : 1;
+                roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
+                roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
+                //colIdx++;
+              });
+            }
+          });
+          // Add circulation space data
+          roomDetails['Count']['Circulation Space'] = 1;
+          roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(config.circulation_space_sqft));
+          roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(config.circulation_space_sqft));
+          defaultModalDetails[key] = roomDetails;
           seenTypes.add(config.type);
         }
       }
-      // Update all floors with default configurations
+      // Update all floors with default configurations and modal grid child data
       const updatedConfigs = { ...floorBHKConfigs };
+      const updatedModalDetails = { ...bhkRoomDetails };
       for (let floorIdx = 1; floorIdx <= Number(floors); floorIdx++) {
         updatedConfigs[floorIdx] = defaultConfigs.map(config => ({ ...config }));
+        // For each BHK row, set modal grid child data
+        defaultConfigs.forEach((config, idx) => {
+          const key = `${floorIdx}-${idx}`;
+          const modalKey = `default-${config.type}`;
+          updatedModalDetails[key] = defaultModalDetails[modalKey];
+        });
       }
       setFloorBHKConfigs(updatedConfigs);
-      alert(`Default BHK configurations set for all floors:\n${defaultConfigs.map(c => `${c.type}: ${c.area} sq ft`).join('\n')}`);
+      setBhkRoomDetails(updatedModalDetails);
+      alert(`Default BHK configurations set for all floors with modal grid child data.\n${defaultConfigs.map(c => `${c.type}: ${c.area} sq ft`).join('\n')}`);
     } catch (error) {
       console.error('Error setting default BHK configuration:', error);
       alert('Failed to set default configurations. Please try again.');
@@ -667,8 +778,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           }
         });
         // Add circulation space as the last column
-        const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
-        setDynamicRoomColumns(columnsWithCirculation);
+        //const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
+       // setDynamicRoomColumns(columnsWithCirculation);
+       setDynamicRoomColumns([...dynamicColumns, 'Circulation Space']);
         // Initialize room details with data from JSON
         const key = `${floorIdx}-${idx}`;
         const roomDetails = {
@@ -914,6 +1026,18 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Layout</h5>
             </div>
+            <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+              <Button variant="success" onClick={handleSaveBHKConfig} style={{ fontWeight: 600 }}>Save</Button>
+            </div>
+      {/* BHK Config JSON Modal */}
+      <Modal show={showBHKConfigModal} onHide={() => setShowBHKConfigModal(false)} centered size="lg">
+        <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
+          <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>BHK Configuration (JSON)</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#fafafa', padding: '1.5rem 2rem' }}>
+          <pre style={{ fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 12, maxHeight: '60vh', overflowY: 'auto' }}>{bhkConfigJson}</pre>
+        </Modal.Body>
+      </Modal>
             {/* Top summary section for area values */}
             <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
               <div className="row w-100" style={{ maxWidth: 600 }}>
