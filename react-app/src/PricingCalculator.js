@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome } from 'react-icons/fa';
 import { generatePDFReport } from './pdfUtils';
 import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
@@ -75,42 +76,97 @@ const PricingCalculator = () => {
   const [bhkConfigJson, setBhkConfigJson] = useState('');
 
   function handleSaveBHKConfig() {
-    // Collect BHK configuration for all floors, including modal popup grid details
-    const allFloors = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
-      const rows = getFloorRows(floorIdx);
-      return {
-        floor: floorIdx === 0 ? 'Ground Floor' : `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
-        bhkConfig: rows.map((row, idx) => {
-          // Get modal popup grid details if available
-          const key = `${floorIdx}-${idx}`;
-          const modalDetails = bhkRoomDetails[key] || {};
-          // Transform modalDetails to array of rooms matching BHK_info.json format
-          const roomList = [];
-          if (modalDetails['Count']) {
-            Object.keys(modalDetails['Count']).forEach(roomName => {
-              const count = Number(modalDetails['Count'][roomName] || 0);
-              const length = Number(modalDetails['Length (ft)']?.[roomName] || 0);
-              const width = Number(modalDetails['Width (ft)']?.[roomName] || 0);
-              // Use default height 9 (or fetch from config if available)
-              const height = 9;
-              // area_sqft as count × length × width
-              const area_sqft = count * length * width;
-              roomList.push({
-                name: roomName,
-                dimensions_ft: { length, width, height },
-                area_sqft
+    // Get current timestamp for modified date
+    const currentDate = new Date().toLocaleDateString('en-IN');
+    
+    // Collect complete estimation data in MongoDB-ready format
+    const estimationDocument = {
+      // Header information
+      estimationRef: estimationRef || `EST-${Date.now()}`, // Auto-generate if empty
+      description: description || 'Construction Estimation',
+      createdDate: createDate,
+      modifiedDate: currentDate,
+      createdBy: userName,
+      modifiedBy: userName,
+      
+      // Project details
+      projectDetails: {
+        city: selectedCity,
+        sbaWidth: Number(width) || 0,
+        sbaLength: Number(depth) || 0,
+        buildupArea: buildupPercent,
+        carpetArea: carpetPercent,
+        totalSuperBuiltupArea: Number(width) && Number(depth) ? Number(width) * Number(depth) : 0,
+        totalBuildupArea: Number(width) && Number(depth) ? Math.round((Number(width) * Number(depth) * buildupPercent) / 100) : 0,
+        totalCarpetArea: Number(width) && Number(depth) ? Math.round((Number(width) * Number(depth) * carpetPercent) / 100) : 0,
+        floors: Number(floors),
+        liftIncluded: lift
+      },
+      
+      // Floor configuration with embedded room details
+      floorConfiguration: Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
+        const rows = getFloorRows(floorIdx);
+        return {
+          floor: floorIdx === 0 ? 'Ground Floor' : `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
+          bhkUnits: rows.map((row, idx) => {
+            // Get modal popup grid details if available
+            const key = `${floorIdx}-${idx}`;
+            const modalDetails = bhkRoomDetails[key] || {};
+            
+            // Transform modalDetails to embedded room structure
+            const rooms = [];
+            if (modalDetails['Count']) {
+              Object.keys(modalDetails['Count']).forEach(roomName => {
+                const count = Number(modalDetails['Count'][roomName] || 0);
+                const length = Number(modalDetails['Length (ft)']?.[roomName] || 0);
+                const width = Number(modalDetails['Width (ft)']?.[roomName] || 0);
+                const height = 9; // Default height
+                const area_sqft = count * length * width;
+                
+                if (count > 0) { // Only include rooms with count > 0
+                  rooms.push({
+                    name: roomName,
+                    count: count,
+                    dimensions: { length, width, height },
+                    areaSqft: area_sqft
+                  });
+                }
               });
-            });
-          }
-          return {
-            ...row,
-            modalGrid: roomList
-          };
-        })
-      };
-    });
-    setBhkConfigJson(JSON.stringify(allFloors, null, 2));
+            }
+            
+            return {
+              unitId: `${floorIdx}-${idx}`,
+              bhkType: row.type || '',
+              unitCount: Number(row.units) || 0,
+              carpetAreaSqft: Number(row.area) || 0,
+              rooms: rooms,
+              totalRoomsArea: rooms.reduce((sum, room) => sum + room.areaSqft, 0)
+            };
+          }).filter(unit => unit.unitCount > 0) // Only include units with count > 0
+        };
+      }).filter(floor => floor.bhkUnits.length > 0), // Only include floors with units
+      
+      // Cost estimation (if available)
+      costEstimation: {
+        costLevel: costLevel,
+        // Add cost breakdown here if needed
+      },
+      
+      // Metadata
+      metadata: {
+        version: "1.0",
+        lastSavedStep: step,
+        totalUnits: Object.values(floorBHKConfigs).flat().reduce((total, row) => total + (Number(row.units) || 0), 0)
+      }
+    };
+
+    // Create the JSON string for display
+    const estimationJson = JSON.stringify(estimationDocument, null, 2);
+    setBhkConfigJson(estimationJson);
     setShowBHKConfigModal(true);
+    
+    // Log to console for debugging (remove in production)
+    console.log('Complete Estimation Document:', estimationDocument);
   }
   // Function to set default BHK configurations (first row of each type from JSON)
   async function setDefaultBHKConfiguration() {
@@ -260,6 +316,12 @@ const PricingCalculator = () => {
   const [buildupPercent, setBuildupPercent] = useState(90);
   const [carpetPercent, setCarpetPercent] = useState(80);
 
+  // New state variables for additional fields in Step 1
+  const [estimationRef, setEstimationRef] = useState('');
+  const [description, setDescription] = useState('');
+  const [createDate] = useState(new Date().toLocaleDateString('en-IN'));
+  const [userName] = useState('Admin User'); // You can make this dynamic based on logged-in user
+
   
   // Responsive mobile detection
   //const isMobile = window.innerWidth <= 600 || window.matchMedia('(max-width: 600px)').matches;
@@ -286,6 +348,165 @@ const PricingCalculator = () => {
   const [bhkTypeOptions, setBhkTypeOptions] = useState([]);
   const [carpetAreaOptions, setCarpetAreaOptions] = useState({}); // { "1 BHK": [500, 600, 700], "2 BHK": [800, 900, 1000] }
   const [bhkDataLoading, setBhkDataLoading] = useState(true);
+
+  // Get navigation state for edit/view mode
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { mode, ref, projectData, autoGeneratedRef } = location.state || {};
+  const isViewMode = mode === 'view';
+  const isNewMode = mode === 'new';
+
+  // Populate form data when in edit/view mode, or set auto-generated ref for new mode
+  useEffect(() => {
+    if (mode === 'new' && autoGeneratedRef) {
+      // Set auto-generated reference for new entries
+      setEstimationRef(autoGeneratedRef);
+      console.log('Set auto-generated estimation reference:', autoGeneratedRef);
+    } else if ((mode === 'edit' || mode === 'view') && projectData) {
+      // Populate header fields
+      setEstimationRef(projectData.ref || '');
+      setDescription(projectData.description || '');
+      
+      // Populate project details
+      if (projectData.projectDetails) {
+        setSelectedCity(projectData.projectDetails.city || '');
+        setWidth(projectData.projectDetails.sbaWidth?.toString() || '');
+        setDepth(projectData.projectDetails.sbaLength?.toString() || '');
+        setBuildupPercent(projectData.projectDetails.buildupArea || 90);
+        setCarpetPercent(projectData.projectDetails.carpetArea || 80);
+        setFloors(projectData.projectDetails.floors || 1);
+        setLift(projectData.projectDetails.liftIncluded || false);
+      }
+      
+      // Populate floor configuration if available
+      if (projectData.floorConfiguration && Array.isArray(projectData.floorConfiguration)) {
+        const newFloorBHKConfigs = {};
+        const newBhkRoomDetails = {};
+        
+        projectData.floorConfiguration.forEach((floor, floorIdx) => {
+          if (floor.bhkUnits && Array.isArray(floor.bhkUnits)) {
+            newFloorBHKConfigs[floorIdx] = floor.bhkUnits.map((unit, unitIdx) => ({
+              type: unit.bhkType || '',
+              units: unit.unitCount || 0,
+              area: unit.carpetAreaSqft?.toString() || '',
+              rooms: unit.rooms?.map(room => room.name).join(', ') || ''
+            }));
+            
+            // Populate room details for modal
+            floor.bhkUnits.forEach((unit, unitIdx) => {
+              if (unit.rooms && Array.isArray(unit.rooms)) {
+                const key = `${floorIdx}-${unitIdx}`;
+                const modalDetails = {
+                  'Count': {},
+                  'Length (ft)': {},
+                  'Width (ft)': {}
+                };
+                
+                unit.rooms.forEach(room => {
+                  modalDetails['Count'][room.name] = room.count || 0;
+                  modalDetails['Length (ft)'][room.name] = room.dimensions?.length || 0;
+                  modalDetails['Width (ft)'][room.name] = room.dimensions?.width || 0;
+                });
+                
+                newBhkRoomDetails[key] = modalDetails;
+              }
+            });
+          }
+        });
+        
+        setFloorBHKConfigs(newFloorBHKConfigs);
+        setBhkRoomDetails(newBhkRoomDetails);
+      }
+      
+      // Set cost level if available
+      if (projectData.costEstimation?.costLevel) {
+        setCostLevel(projectData.costEstimation.costLevel);
+      }
+      
+      console.log('Populated form with project data:', projectData);
+    }
+  }, [mode, projectData, autoGeneratedRef]);
+
+  // Load from FloorDetails.json if reference number is provided but no projectData
+  useEffect(() => {
+    const loadProjectFromJson = async () => {
+      if ((mode === 'edit' || mode === 'view') && ref && !projectData) {
+        try {
+          const response = await fetch(`${process.env.PUBLIC_URL}/FloorDetails.json`);
+          if (!response.ok) {
+            throw new Error('Failed to load project data');
+          }
+          
+          const data = await response.json();
+          
+          // Check if this is the right project by reference
+          if (data.estimationRef === ref) {
+            // Populate the form with this data
+            setEstimationRef(data.estimationRef || '');
+            setDescription(data.description || '');
+            
+            if (data.projectDetails) {
+              setSelectedCity(data.projectDetails.city || '');
+              setWidth(data.projectDetails.sbaWidth?.toString() || '');
+              setDepth(data.projectDetails.sbaLength?.toString() || '');
+              setBuildupPercent(data.projectDetails.buildupArea || 90);
+              setCarpetPercent(data.projectDetails.carpetArea || 80);
+              setFloors(data.projectDetails.floors || 1);
+              setLift(data.projectDetails.liftIncluded || false);
+            }
+            
+            // Populate floor configuration
+            if (data.floorConfiguration && Array.isArray(data.floorConfiguration)) {
+              const newFloorBHKConfigs = {};
+              const newBhkRoomDetails = {};
+              
+              data.floorConfiguration.forEach((floor, floorIdx) => {
+                if (floor.bhkUnits && Array.isArray(floor.bhkUnits)) {
+                  newFloorBHKConfigs[floorIdx] = floor.bhkUnits.map((unit, unitIdx) => ({
+                    type: unit.bhkType || '',
+                    units: unit.unitCount || 0,
+                    area: unit.carpetAreaSqft?.toString() || '',
+                    rooms: unit.rooms?.map(room => room.name).join(', ') || ''
+                  }));
+                  
+                  // Populate room details for modal
+                  floor.bhkUnits.forEach((unit, unitIdx) => {
+                    if (unit.rooms && Array.isArray(unit.rooms)) {
+                      const key = `${floorIdx}-${unitIdx}`;
+                      const modalDetails = {
+                        'Count': {},
+                        'Length (ft)': {},
+                        'Width (ft)': {}
+                      };
+                      
+                      unit.rooms.forEach(room => {
+                        modalDetails['Count'][room.name] = room.count || 0;
+                        modalDetails['Length (ft)'][room.name] = room.dimensions?.length || 0;
+                        modalDetails['Width (ft)'][room.name] = room.dimensions?.width || 0;
+                      });
+                      
+                      newBhkRoomDetails[key] = modalDetails;
+                    }
+                  });
+                }
+              });
+              
+              setFloorBHKConfigs(newFloorBHKConfigs);
+              setBhkRoomDetails(newBhkRoomDetails);
+            }
+            
+            console.log('Loaded project data from JSON:', data);
+          } else {
+            console.warn(`Project with reference ${ref} not found in FloorDetails.json`);
+          }
+        } catch (error) {
+          console.error('Error loading project data from JSON:', error);
+        }
+      }
+    };
+
+    loadProjectFromJson();
+  }, [mode, ref, projectData]);
 
   // Rectangle visualization for Step 1
   
@@ -893,7 +1114,31 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
   // Move all rendering code inside the PricingCalculator function
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
-      <h2 className="text-center text-primary mb-4" style={{ fontWeight: 700, letterSpacing: '1px' }}>Project Estimation Calculator</h2>
+      {/* Header with Back Button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <Button 
+          variant="outline-secondary" 
+          size="sm" 
+          onClick={() => navigate('/project-estimation')}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            fontSize: '0.85rem',
+            padding: '0.375rem 0.75rem',
+            borderRadius: '6px'
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+            <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+          </svg>
+          Back to Projects
+        </Button>
+        <h2 className="text-center text-primary mb-0" style={{ fontWeight: 700, letterSpacing: '1px', flex: 1, textAlign: 'center' }}>
+          Project Estimation Calculator
+        </h2>
+        <div style={{ width: '120px' }}></div> {/* Spacer for balanced layout */}
+      </div>
       {/* OCR and BHK Extraction Results - always visible */}
       {/* Removed bhkLoading, bhkError, bhkTokens references */}
       {pollinationText && (
@@ -922,43 +1167,278 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       <div className="wizard-step-content">
         {step === 1 && (
           <>
-            {/* Styled heading for Area Details - moved to top */}
+            {/* Mode indicator and styled heading for Area Details */}
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+              {mode && (
+                <div style={{ 
+                  fontSize: '0.85rem', 
+                  color: mode === 'view' ? '#6c757d' : mode === 'edit' ? '#28a745' : '#007bff',
+                  fontWeight: '500',
+                  marginBottom: '0.5rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  {mode === 'view' ? '👁️ VIEW MODE' : mode === 'edit' ? '✏️ EDIT MODE' : '➕ NEW ENTRY'}
+                  {ref && ` - ${ref}`}
+                </div>
+              )}
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Area Details</h5>
             </div>
+            
+            {/* Additional Details Row */}
+            <Row className="mb-4">
+              <Col md={3} sm={12} className="mb-3">
+                <Form.Group>
+                  <Form.Label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: '500', 
+                    color: '#495057', 
+                    marginBottom: '0.5rem',
+                    display: 'block'
+                  }}>
+                    Estimation Ref#
+                  </Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    value={estimationRef} 
+                    onChange={e => setEstimationRef(e.target.value)} 
+                    placeholder="Enter reference number"
+                    readOnly={isViewMode || isNewMode}
+                    style={{
+                      borderRadius: '6px',
+                      border: '1px solid #ced4da',
+                      padding: '0.75rem',
+                      fontSize: '0.9rem',
+                      height: '42px',
+                      backgroundColor: (isViewMode || isNewMode) ? '#f8f9fa' : '#fff',
+                      color: (isViewMode || isNewMode) ? '#6c757d' : '#495057'
+                    }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4} sm={12} className="mb-3">
+                <Form.Group>
+                  <Form.Label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: '500', 
+                    color: '#495057', 
+                    marginBottom: '0.5rem',
+                    display: 'block'
+                  }}>
+                    Description
+                  </Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={2}
+                    value={description} 
+                    onChange={e => setDescription(e.target.value)} 
+                    placeholder="Enter project description"
+                    readOnly={isViewMode}
+                    style={{ 
+                      resize: 'vertical',
+                      borderRadius: '6px',
+                      border: '1px solid #ced4da',
+                      padding: '0.75rem',
+                      fontSize: '0.9rem',
+                      minHeight: '42px',
+                      backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
+                      color: isViewMode ? '#6c757d' : '#495057'
+                    }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={2} sm={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: '500', 
+                    color: '#495057', 
+                    marginBottom: '0.5rem',
+                    display: 'block'
+                  }}>
+                    Create Date
+                  </Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    value={createDate} 
+                    readOnly
+                    style={{ 
+                      backgroundColor: '#f8f9fa', 
+                      color: '#6c757d',
+                      borderRadius: '6px',
+                      border: '1px solid #e9ecef',
+                      padding: '0.75rem',
+                      fontSize: '0.9rem',
+                      height: '42px'
+                    }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3} sm={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: '500', 
+                    color: '#495057', 
+                    marginBottom: '0.5rem',
+                    display: 'block'
+                  }}>
+                    User Name
+                  </Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    value={userName} 
+                    readOnly
+                    style={{ 
+                      backgroundColor: '#f8f9fa', 
+                      color: '#6c757d',
+                      borderRadius: '6px',
+                      border: '1px solid #e9ecef',
+                      padding: '0.75rem',
+                      fontSize: '0.9rem',
+                      height: '42px'
+                    }}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
             <Form>
-              <Row className="mb-3">
-                <Col md={4} sm={12}>
+              <Row className="mb-4">
+                <Col md={3} sm={12} className="mb-3">
                   <Form.Group>
-                    <Form.Label style={{ fontSize: '0.95rem' }}>Select City</Form.Label>
-                    <Form.Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Select City
+                    </Form.Label>
+                    <Form.Select 
+                      value={selectedCity} 
+                      onChange={e => setSelectedCity(e.target.value)}
+                      disabled={isViewMode}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px',
+                        backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
+                        color: isViewMode ? '#6c757d' : '#495057'
+                      }}
+                    >
                       <option value="">Select City</option>
                       {cities.map(city => <option key={city} value={city}>{city}</option>)}
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2} sm={6}>
+                <Col md={2} sm={6} className="mb-3">
                   <Form.Group>
-                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Width (ft)</Form.Label>
-                    <Form.Control type="number" value={width} onChange={e => setWidth(e.target.value)} min={1} />
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      SBA Width (ft)
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={width} 
+                      onChange={e => setWidth(e.target.value)} 
+                      min={1}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px'
+                      }}
+                    />
                   </Form.Group>
                 </Col>
-                <Col md={2} sm={6}>
+                <Col md={2} sm={6} className="mb-3">
                   <Form.Group>
-                    <Form.Label style={{ fontSize: '0.95rem' }}>SBA Length (ft)</Form.Label>
-                    <Form.Control type="number" value={depth} onChange={e => setDepth(e.target.value)} min={1} />
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      SBA Length (ft)
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={depth} 
+                      onChange={e => setDepth(e.target.value)} 
+                      min={1}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px'
+                      }}
+                    />
                   </Form.Group>
                 </Col>
-                <Col md={2} sm={6}>
+                <Col md={2} sm={6} className="mb-3">
                   <Form.Group>
-                    <Form.Label style={{ fontSize: '0.95rem' }}>Build-up Area (%)</Form.Label>
-                    <Form.Control type="number" value={buildupPercent} min={1} max={100} onChange={e => setBuildupPercent(Number(e.target.value))} />
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Build-up Area (%)
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={buildupPercent} 
+                      min={1} 
+                      max={100} 
+                      onChange={e => setBuildupPercent(Number(e.target.value))}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px'
+                      }}
+                    />
                   </Form.Group>
                 </Col>
-                <Col md={2} sm={6}>
+                <Col md={3} sm={6} className="mb-3">
                   <Form.Group>
-                    <Form.Label style={{ fontSize: '0.95rem' }}>Carpet Area (%)</Form.Label>
-                    <Form.Control type="number" value={carpetPercent} min={1} max={100} onChange={e => setCarpetPercent(Number(e.target.value))} />
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Carpet Area (%)
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={carpetPercent} 
+                      min={1} 
+                      max={100} 
+                      onChange={e => setCarpetPercent(Number(e.target.value))}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px'
+                      }}
+                    />
                   </Form.Group>
                 </Col>
               </Row>
@@ -1025,9 +1505,6 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           <>
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Layout</h5>
-            </div>
-            <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
-              <Button variant="success" onClick={handleSaveBHKConfig} style={{ fontWeight: 600 }}>Save</Button>
             </div>
       {/* BHK Config JSON Modal */}
       <Modal show={showBHKConfigModal} onHide={() => setShowBHKConfigModal(false)} centered size="lg">
@@ -1549,7 +2026,10 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
-        <Button disabled={step === 4} onClick={() => setStep(step+1)}>Next</Button>
+        <Button disabled={step === 4} onClick={() => setStep(step+1)} className="me-2">Next</Button>
+        {!isViewMode && (
+          <Button variant="success" onClick={handleSaveBHKConfig} style={{ fontWeight: 600 }}>Save</Button>
+        )}
       </div>
 
       {/* BHK Details Modal */}

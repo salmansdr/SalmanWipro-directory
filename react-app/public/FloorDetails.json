@@ -1,0 +1,761 @@
+[
+  {
+    "estimationRef": "EST-1760620721176",
+    "description": "Construction Estimation",
+    "createdDate": "16/10/2025",
+    "modifiedDate": "16/10/2025",
+    "createdBy": "Admin User",
+    "modifiedBy": "Admin User",
+  "projectDetails": {
+    "city": "Kolkata",
+    "sbaWidth": 500,
+    "sbaLength": 200,
+    "buildupArea": 90,
+    "carpetArea": 80,
+    "totalSuperBuiltupArea": 100000,
+    "totalBuildupArea": 90000,
+    "totalCarpetArea": 80000,
+    "floors": 2,
+    "liftIncluded": false
+  },
+  "floorConfiguration": [
+    {
+      "floor": "Ground Floor",
+      "bhkUnits": [
+        {
+          "unitId": "0-0",
+          "bhkType": "",
+          "unitCount": 1,
+          "carpetAreaSqft": 0,
+          "rooms": [],
+          "totalRoomsArea": 0
+        },
+        {
+          "unitId": "0-1",
+          "bhkType": "",
+          "unitCount": 1,
+          "carpetAreaSqft": 0,
+          "rooms": [],
+          "totalRoomsArea": 0
+        },
+        {
+          "unitId": "0-2",
+          "bhkType": "",
+          "unitCount": 1,
+          "carpetAreaSqft": 0,
+          "rooms": [],
+          "totalRoomsArea": 0
+        }
+      ]
+    },
+    {
+      "floor": "1st Floor",
+      "bhkUnits": [
+        {
+          "unitId": "1-0",
+          "bhkType": "1 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 500,
+          "rooms": [
+            {
+              "name": "Bedroom",
+              "count": 1,
+              "dimensions": {
+                "length": 12,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 120
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 140
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 8,
+                "width": 7,
+                "height": 9
+              },
+              "areaSqft": 56
+            },
+            {
+              "name": "Bathroom",
+              "count": 1,
+              "dimensions": {
+                "length": 7,
+                "width": 6,
+                "height": 9
+              },
+              "areaSqft": 42
+            },
+            {
+              "name": "Balcony",
+              "count": 1,
+              "dimensions": {
+                "length": 7,
+                "width": 6,
+                "height": 9
+              },
+              "areaSqft": 42
+            },
+            {
+              "name": "Circulation Space",
+              "count": 1,
+              "dimensions": {
+                "length": 10,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 100
+            }
+          ],
+          "totalRoomsArea": 500
+        },
+        {
+          "unitId": "1-1",
+          "bhkType": "2 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 800,
+          "rooms": [
+            {
+              "name": "Bedroom 1",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 11,
+                "height": 9
+              },
+              "areaSqft": 154
+            },
+            {
+              "name": "Bedroom 2",
+              "count": 1,
+              "dimensions": {
+                "length": 13,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 130
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 16,
+                "width": 12,
+                "height": 9
+              },
+              "areaSqft": 192
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 10,
+                "width": 9,
+                "height": 9
+              },
+              "areaSqft": 90
+            },
+            {
+              "name": "Bathroom",
+              "count": 2,
+              "dimensions": {
+                "length": 8,
+                "width": 6,
+                "height": 9
+              },
+              "areaSqft": 96
+            },
+            {
+              "name": "Balcony",
+              "count": 1,
+              "dimensions": {
+                "length": 9,
+                "width": 4,
+                "height": 9
+              },
+              "areaSqft": 36
+            },
+            {
+              "name": "Circulation Space",
+              "count": 1,
+              "dimensions": {
+                "length": 10,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 100
+            }
+          ],
+          "totalRoomsArea": 798
+        },
+        {
+          "unitId": "1-2",
+          "bhkType": "3 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 1100,
+          "rooms": [
+            {
+              "name": "Bedroom 1",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 12,
+                "height": 9
+              },
+              "areaSqft": 168
+            },
+            {
+              "name": "Bedroom 2",
+              "count": 1,
+              "dimensions": {
+                "length": 13,
+                "width": 11,
+                "height": 9
+              },
+              "areaSqft": 143
+            },
+            {
+              "name": "Bedroom 3",
+              "count": 1,
+              "dimensions": {
+                "length": 12,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 120
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 18,
+                "width": 12,
+                "height": 9
+              },
+              "areaSqft": 216
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 11,
+                "width": 8,
+                "height": 9
+              },
+              "areaSqft": 88
+            },
+            {
+              "name": "Bathroom",
+              "count": 3,
+              "dimensions": {
+                "length": 8,
+                "width": 6,
+                "height": 9
+              },
+              "areaSqft": 144
+            },
+            {
+              "name": "Balcony",
+              "count": 1,
+              "dimensions": {
+                "length": 11,
+                "width": 5,
+                "height": 9
+              },
+              "areaSqft": 55
+            },
+            {
+              "name": "Circulation Space",
+              "count": 1,
+              "dimensions": {
+                "length": 10,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 100
+            }
+          ],
+          "totalRoomsArea": 1034
+        },
+        {
+          "unitId": "1-3",
+          "bhkType": "4 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 1600,
+          "rooms": [
+            {
+              "name": "Bedroom 1",
+              "count": 1,
+              "dimensions": {
+                "length": 16,
+                "width": 13,
+                "height": 9
+              },
+              "areaSqft": 208
+            },
+            {
+              "name": "Bedroom 2",
+              "count": 1,
+              "dimensions": {
+                "length": 15,
+                "width": 12,
+                "height": 9
+              },
+              "areaSqft": 180
+            },
+            {
+              "name": "Bedroom 3",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 11,
+                "height": 9
+              },
+              "areaSqft": 154
+            },
+            {
+              "name": "Bedroom 4",
+              "count": 1,
+              "dimensions": {
+                "length": 13,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 130
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 22,
+                "width": 15,
+                "height": 9
+              },
+              "areaSqft": 330
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 10,
+                "height": 9
+              },
+              "areaSqft": 140
+            },
+            {
+              "name": "Bathroom",
+              "count": 3,
+              "dimensions": {
+                "length": 9,
+                "width": 7,
+                "height": 9
+              },
+              "areaSqft": 189
+            },
+            {
+              "name": "Balcony",
+              "count": 1,
+              "dimensions": {
+                "length": 16,
+                "width": 7,
+                "height": 9
+              },
+              "areaSqft": 112
+            },
+            {
+              "name": "Circulation Space",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 14,
+                "height": 9
+              },
+              "areaSqft": 196
+            }
+          ],
+          "totalRoomsArea": 1639
+        }
+      ]
+    },
+    {
+      "floor": "2nd Floor",
+      "bhkUnits": [
+        {
+          "unitId": "2-0",
+          "bhkType": "1 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 500,
+          "rooms": [],
+          "totalRoomsArea": 0
+        },
+        {
+          "unitId": "2-1",
+          "bhkType": "2 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 800,
+          "rooms": [],
+          "totalRoomsArea": 0
+        },
+        {
+          "unitId": "2-2",
+          "bhkType": "3 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 1100,
+          "rooms": [],
+          "totalRoomsArea": 0
+        },
+        {
+          "unitId": "2-3",
+          "bhkType": "4 BHK",
+          "unitCount": 1,
+          "carpetAreaSqft": 1600,
+          "rooms": [],
+          "totalRoomsArea": 0
+        }
+      ]
+    }
+  ],
+  "costEstimation": {
+    "costLevel": "basic"
+  },
+  "metadata": {
+    "version": "1.0",
+    "lastSavedStep": 2,
+    "totalUnits": 8
+  }
+},
+{
+  "estimationRef": "EST-1760620721177",
+  "description": "Luxury Villa Estimation",
+  "createdDate": "16/10/2025",
+  "modifiedDate": "16/10/2025",
+  "createdBy": "Project Manager",
+  "modifiedBy": "Project Manager",
+  "projectDetails": {
+    "city": "Mumbai",
+    "sbaWidth": 800,
+    "sbaLength": 600,
+    "buildupArea": 120,
+    "carpetArea": 100,
+    "totalSuperBuiltupArea": 480000,
+    "totalBuildupArea": 400000,
+    "totalCarpetArea": 350000,
+    "floors": 3,
+    "liftIncluded": true
+  },
+  "floorConfiguration": [
+    {
+      "floor": "Ground Floor",
+      "bhkUnits": [
+        {
+          "unitId": "0-0",
+          "bhkType": "Commercial Space",
+          "unitCount": 1,
+          "carpetAreaSqft": 2000,
+          "rooms": [
+            {
+              "name": "Reception",
+              "count": 1,
+              "dimensions": {
+                "length": 20,
+                "width": 15,
+                "height": 12
+              },
+              "areaSqft": 300
+            },
+            {
+              "name": "Office Space",
+              "count": 3,
+              "dimensions": {
+                "length": 16,
+                "width": 12,
+                "height": 12
+              },
+              "areaSqft": 576
+            },
+            {
+              "name": "Conference Room",
+              "count": 1,
+              "dimensions": {
+                "length": 24,
+                "width": 16,
+                "height": 12
+              },
+              "areaSqft": 384
+            },
+            {
+              "name": "Storage",
+              "count": 2,
+              "dimensions": {
+                "length": 10,
+                "width": 8,
+                "height": 12
+              },
+              "areaSqft": 160
+            },
+            {
+              "name": "Washroom",
+              "count": 2,
+              "dimensions": {
+                "length": 8,
+                "width": 6,
+                "height": 12
+              },
+              "areaSqft": 96
+            },
+            {
+              "name": "Parking Area",
+              "count": 1,
+              "dimensions": {
+                "length": 30,
+                "width": 20,
+                "height": 12
+              },
+              "areaSqft": 600
+            }
+          ],
+          "totalRoomsArea": 2116
+        }
+      ]
+    },
+    {
+      "floor": "1st Floor",
+      "bhkUnits": [
+        {
+          "unitId": "1-0",
+          "bhkType": "3 BHK Premium",
+          "unitCount": 2,
+          "carpetAreaSqft": 1400,
+          "rooms": [
+            {
+              "name": "Master Bedroom",
+              "count": 1,
+              "dimensions": {
+                "length": 18,
+                "width": 14,
+                "height": 11
+              },
+              "areaSqft": 252
+            },
+            {
+              "name": "Bedroom 2",
+              "count": 1,
+              "dimensions": {
+                "length": 15,
+                "width": 12,
+                "height": 11
+              },
+              "areaSqft": 180
+            },
+            {
+              "name": "Bedroom 3",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 11,
+                "height": 11
+              },
+              "areaSqft": 154
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 20,
+                "width": 16,
+                "height": 11
+              },
+              "areaSqft": 320
+            },
+            {
+              "name": "Dining Room",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 12,
+                "height": 11
+              },
+              "areaSqft": 168
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 12,
+                "width": 10,
+                "height": 11
+              },
+              "areaSqft": 120
+            },
+            {
+              "name": "Bathroom",
+              "count": 3,
+              "dimensions": {
+                "length": 9,
+                "width": 7,
+                "height": 11
+              },
+              "areaSqft": 189
+            },
+            {
+              "name": "Balcony",
+              "count": 2,
+              "dimensions": {
+                "length": 12,
+                "width": 6,
+                "height": 11
+              },
+              "areaSqft": 144
+            },
+            {
+              "name": "Study Room",
+              "count": 1,
+              "dimensions": {
+                "length": 10,
+                "width": 8,
+                "height": 11
+              },
+              "areaSqft": 80
+            }
+          ],
+          "totalRoomsArea": 1607
+        }
+      ]
+    },
+    {
+      "floor": "2nd Floor",
+      "bhkUnits": [
+        {
+          "unitId": "2-0",
+          "bhkType": "4 BHK Penthouse",
+          "unitCount": 1,
+          "carpetAreaSqft": 2200,
+          "rooms": [
+            {
+              "name": "Master Bedroom",
+              "count": 1,
+              "dimensions": {
+                "length": 20,
+                "width": 16,
+                "height": 12
+              },
+              "areaSqft": 320
+            },
+            {
+              "name": "Bedroom 2",
+              "count": 1,
+              "dimensions": {
+                "length": 16,
+                "width": 14,
+                "height": 12
+              },
+              "areaSqft": 224
+            },
+            {
+              "name": "Bedroom 3",
+              "count": 1,
+              "dimensions": {
+                "length": 15,
+                "width": 12,
+                "height": 12
+              },
+              "areaSqft": 180
+            },
+            {
+              "name": "Bedroom 4",
+              "count": 1,
+              "dimensions": {
+                "length": 14,
+                "width": 11,
+                "height": 12
+              },
+              "areaSqft": 154
+            },
+            {
+              "name": "Living Room",
+              "count": 1,
+              "dimensions": {
+                "length": 25,
+                "width": 18,
+                "height": 12
+              },
+              "areaSqft": 450
+            },
+            {
+              "name": "Dining Room",
+              "count": 1,
+              "dimensions": {
+                "length": 16,
+                "width": 14,
+                "height": 12
+              },
+              "areaSqft": 224
+            },
+            {
+              "name": "Kitchen",
+              "count": 1,
+              "dimensions": {
+                "length": 15,
+                "width": 12,
+                "height": 12
+              },
+              "areaSqft": 180
+            },
+            {
+              "name": "Bathroom",
+              "count": 4,
+              "dimensions": {
+                "length": 10,
+                "width": 8,
+                "height": 12
+              },
+              "areaSqft": 320
+            },
+            {
+              "name": "Terrace Garden",
+              "count": 1,
+              "dimensions": {
+                "length": 30,
+                "width": 20,
+                "height": 12
+              },
+              "areaSqft": 600
+            },
+            {
+              "name": "Home Theater",
+              "count": 1,
+              "dimensions": {
+                "length": 18,
+                "width": 12,
+                "height": 12
+              },
+              "areaSqft": 216
+            }
+          ],
+          "totalRoomsArea": 2868
+        }
+      ]
+    }
+  ],
+  "costEstimation": {
+    "costLevel": "premium"
+  },
+  "metadata": {
+    "version": "1.0",
+    "lastSavedStep": 3,
+    "totalUnits": 4
+  }
+}
+]
