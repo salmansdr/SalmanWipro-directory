@@ -136,8 +136,13 @@ function App() {
               href="https://wa.me/9874592300"
               target="_blank"
               rel="noopener noreferrer"
-              className="position-fixed bottom-0 end-0 m-4 rounded-circle shadow"
-              style={{ zIndex: 999 }}
+              className="position-fixed end-0 rounded-circle shadow"
+              style={{ 
+                zIndex: 999, 
+                top: '50%', 
+                transform: 'translateY(-50%)', 
+                right: '20px' 
+              }}
               aria-label="WhatsApp"
             >
               <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="img-fluid rounded-circle" style={{ width: '48px', height: '48px' }} />
