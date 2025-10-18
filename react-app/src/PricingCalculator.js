@@ -73,6 +73,8 @@ const sampleCostData = [
 const PricingCalculator = () => {
   // Handler for Save button in Step 2
   const [showBHKConfigModal, setShowBHKConfigModal] = useState(false);
+  const [showInternalWallsModal, setShowInternalWallsModal] = useState(false);
+  const [internalWallsLogic, setInternalWallsLogic] = useState('');
   const [bhkConfigJson, setBhkConfigJson] = useState('');
   const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
   const [editablePercentages, setEditablePercentages] = useState({
@@ -2433,7 +2435,29 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     const volume = item.area && item.thickness ? (item.area * item.thickness) : 0;
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                          {item.name.includes('Internal Walls') ? (
+                            <button 
+                              onClick={() => {
+                                setInternalWallsLogic(item.logic);
+                                setShowInternalWallsModal(true);
+                              }}
+                              style={{ 
+                                background: 'none',
+                                border: 'none',
+                                color: '#1976d2', 
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                padding: 0,
+                                font: 'inherit'
+                              }}
+                            >
+                              {item.name}
+                            </button>
+                          ) : (
+                            item.name
+                          )}
+                        </td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
                           {item.isEditable ? (
@@ -2692,6 +2716,48 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             <img src={sitePlanUrl} alt="Site Plan Large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }} />
           )}
         </Modal.Body>
+      </Modal>
+
+      {/* Internal Walls Details Modal */}
+      <Modal show={showInternalWallsModal} onHide={() => setShowInternalWallsModal(false)} size="lg">
+        <Modal.Header closeButton style={{ background: '#f8f9fa', borderBottom: '2px solid #007bff' }}>
+          <Modal.Title style={{ color: '#007bff', fontWeight: 'bold' }}>
+            🏗️ Internal Walls - Detailed Calculation
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#fafafa', padding: '20px' }}>
+          <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd' }}>
+            <h6 style={{ color: '#333', marginBottom: '15px' }}>📋 Calculation Logic</h6>
+            <div style={{ 
+              fontFamily: 'monospace', 
+              fontSize: '0.9rem', 
+              lineHeight: '1.5',
+              background: '#f8f9fa',
+              padding: '12px',
+              borderRadius: '4px',
+              border: '1px solid #e9ecef',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word'
+            }}>
+              {internalWallsLogic || 'No calculation details available'}
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer style={{ background: '#f8f9fa', borderTop: '1px solid #ddd' }}>
+          <button 
+            onClick={() => setShowInternalWallsModal(false)}
+            style={{ 
+              padding: '8px 20px', 
+              background: '#007bff', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Close
+          </button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
