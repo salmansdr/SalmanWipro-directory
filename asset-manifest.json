@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/SalmanWipro-directory/static/css/main.d3f6c453.css",
-    "main.js": "/SalmanWipro-directory/static/js/main.dad92169.js",
+    "main.js": "/SalmanWipro-directory/static/js/main.b6d61540.js",
     "static/js/977.be1a2696.chunk.js": "/SalmanWipro-directory/static/js/977.be1a2696.chunk.js",
     "static/js/455.7f424068.chunk.js": "/SalmanWipro-directory/static/js/455.7f424068.chunk.js",
     "static/js/453.1136e65e.chunk.js": "/SalmanWipro-directory/static/js/453.1136e65e.chunk.js",
     "index.html": "/SalmanWipro-directory/index.html",
     "main.d3f6c453.css.map": "/SalmanWipro-directory/static/css/main.d3f6c453.css.map",
-    "main.dad92169.js.map": "/SalmanWipro-directory/static/js/main.dad92169.js.map",
+    "main.b6d61540.js.map": "/SalmanWipro-directory/static/js/main.b6d61540.js.map",
     "977.be1a2696.chunk.js.map": "/SalmanWipro-directory/static/js/977.be1a2696.chunk.js.map",
     "455.7f424068.chunk.js.map": "/SalmanWipro-directory/static/js/455.7f424068.chunk.js.map",
     "453.1136e65e.chunk.js.map": "/SalmanWipro-directory/static/js/453.1136e65e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.d3f6c453.css",
-    "static/js/main.dad92169.js"
+    "static/js/main.b6d61540.js"
   ]
 }
