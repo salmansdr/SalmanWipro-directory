@@ -924,17 +924,17 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           }
           
           if (roomType) {
-            // Get actual dimensions from Step 2 room data
-            let length = 12, width = 10; // Default fallback dimensions
+            // Priority 1: Get actual dimensions from Step 2 room data (BHK modal)
+            let length = 0, width = 0;
+            let dimensionSource = 'none';
             
             if (currentRoomDetails && currentRoomDetails['Length (ft)'] && currentRoomDetails['Width (ft)']) {
-              // Search for matching room in the room details
               const lengthData = currentRoomDetails['Length (ft)'];
               const widthData = currentRoomDetails['Width (ft)'];
-              
-              // Try to find room by type (e.g., "Bedroom", "Living Room", etc.)
-              let roomKey = null;
               const roomKeys = Object.keys(lengthData || {});
+              
+              // Try multiple variations to find the room
+              let roomKey = null;
               
               if (roomType === 'bedroom') {
                 roomKey = roomKeys.find(key => 
@@ -944,46 +944,88 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               } else if (roomType === 'living') {
                 roomKey = roomKeys.find(key => 
                   key.toLowerCase().includes('living') ||
-                  key.toLowerCase().includes('hall')
+                  key.toLowerCase().includes('hall') ||
+                  key.toLowerCase().includes('drawing')
                 );
               } else if (roomType === 'kitchen') {
                 roomKey = roomKeys.find(key => 
-                  key.toLowerCase().includes('kitchen')
+                  key.toLowerCase().includes('kitchen') ||
+                  key.toLowerCase().includes('cook')
                 );
               } else if (roomType === 'bathroom') {
                 roomKey = roomKeys.find(key => 
                   key.toLowerCase().includes('bathroom') ||
                   key.toLowerCase().includes('bath') ||
-                  key.toLowerCase().includes('toilet')
+                  key.toLowerCase().includes('toilet') ||
+                  key.toLowerCase().includes('washroom')
                 );
               }
               
-              // If found, use actual dimensions
+              // If found, use actual dimensions from screen
               if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
-                length = Number(lengthData[roomKey]) || length;
-                width = Number(widthData[roomKey]) || width;
+                length = Number(lengthData[roomKey]) || 0;
+                width = Number(widthData[roomKey]) || 0;
+                if (length > 0 && width > 0) {
+                  dimensionSource = 'screen_data';
+                }
               }
             }
             
-            // If no actual data found, use standard dimensions as fallback
-            if ((length === 12 && width === 10) || length === 0 || width === 0) {
+            // Priority 2: Check all available BHK room details if primary search failed
+            if (dimensionSource === 'none') {
+              // Loop through all available BHK configurations to find room data
+              const allBhkKeys = Object.keys(bhkRoomDetails || {});
+              for (const bhkKey of allBhkKeys) {
+                const bhkData = bhkRoomDetails[bhkKey];
+                if (bhkData && bhkData['Length (ft)'] && bhkData['Width (ft)']) {
+                  const lengthData = bhkData['Length (ft)'];
+                  const widthData = bhkData['Width (ft)'];
+                  const roomKeys = Object.keys(lengthData || {});
+                  
+                  let roomKey = null;
+                  if (roomType === 'bedroom') {
+                    roomKey = roomKeys.find(key => key.toLowerCase().includes('bedroom') || key.toLowerCase().includes('bed'));
+                  } else if (roomType === 'living') {
+                    roomKey = roomKeys.find(key => key.toLowerCase().includes('living') || key.toLowerCase().includes('hall'));
+                  } else if (roomType === 'kitchen') {
+                    roomKey = roomKeys.find(key => key.toLowerCase().includes('kitchen'));
+                  } else if (roomType === 'bathroom') {
+                    roomKey = roomKeys.find(key => key.toLowerCase().includes('bathroom') || key.toLowerCase().includes('bath') || key.toLowerCase().includes('toilet'));
+                  }
+                  
+                  if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
+                    length = Number(lengthData[roomKey]) || 0;
+                    width = Number(widthData[roomKey]) || 0;
+                    if (length > 0 && width > 0) {
+                      dimensionSource = 'available_bhk_data';
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Priority 3: Only use minimal defaults if absolutely no data is available
+            if (dimensionSource === 'none' || length <= 0 || width <= 0) {
+              // Use conservative minimum dimensions only as last resort
               switch(roomType) {
                 case 'bedroom':
-                  length = 12; width = 10;
+                  length = 10; width = 8; // Minimum viable bedroom
                   break;
                 case 'living':
-                  length = 16; width = 14;
+                  length = 12; width = 10; // Minimum viable living room
                   break;
                 case 'kitchen':
-                  length = 10; width = 8;
+                  length = 8; width = 6; // Minimum viable kitchen
                   break;
                 case 'bathroom':
-                  length = 8; width = 6;
+                  length = 6; width = 4; // Minimum viable bathroom
                   break;
                 default:
-                  length = 12; width = 10;
+                  length = 10; width = 8; // Conservative default
                   break;
               }
+              dimensionSource = 'minimal_default';
             }
             
             // Calculate wall area for each room instance
@@ -2107,9 +2149,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                         }
                         
                         if (roomType) {
-                          // Get actual dimensions from Step 2 room data
-                          let length = 12, width = 10; // Default fallback
-                          let dimensionSource = 'default';
+                          // Priority 1: Get actual dimensions from Step 2 room data
+                          let length = 0, width = 0;
+                          let dimensionSource = 'none';
                           
                           // Get room details for the current floor's BHK types
                           let currentRoomDetails = null;
@@ -2123,10 +2165,9 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                           if (currentRoomDetails && currentRoomDetails['Length (ft)'] && currentRoomDetails['Width (ft)']) {
                             const lengthData = currentRoomDetails['Length (ft)'];
                             const widthData = currentRoomDetails['Width (ft)'];
-                            
-                            let roomKey = null;
                             const roomKeys = Object.keys(lengthData || {});
                             
+                            let roomKey = null;
                             if (roomType === 'bedroom') {
                               roomKey = roomKeys.find(key => 
                                 key.toLowerCase().includes('bedroom') || 
@@ -2135,37 +2176,75 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                             } else if (roomType === 'living') {
                               roomKey = roomKeys.find(key => 
                                 key.toLowerCase().includes('living') ||
-                                key.toLowerCase().includes('hall')
+                                key.toLowerCase().includes('hall') ||
+                                key.toLowerCase().includes('drawing')
                               );
                             } else if (roomType === 'kitchen') {
                               roomKey = roomKeys.find(key => 
-                                key.toLowerCase().includes('kitchen')
+                                key.toLowerCase().includes('kitchen') ||
+                                key.toLowerCase().includes('cook')
                               );
                             } else if (roomType === 'bathroom') {
                               roomKey = roomKeys.find(key => 
                                 key.toLowerCase().includes('bathroom') ||
                                 key.toLowerCase().includes('bath') ||
-                                key.toLowerCase().includes('toilet')
+                                key.toLowerCase().includes('toilet') ||
+                                key.toLowerCase().includes('washroom')
                               );
                             }
                             
                             if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
-                              length = Number(lengthData[roomKey]) || length;
-                              width = Number(widthData[roomKey]) || width;
-                              dimensionSource = 'actual';
+                              length = Number(lengthData[roomKey]) || 0;
+                              width = Number(widthData[roomKey]) || 0;
+                              if (length > 0 && width > 0) {
+                                dimensionSource = 'screen_data';
+                              }
                             }
                           }
                           
-                          // If no actual data found, use standard dimensions as fallback
-                          if ((length === 12 && width === 10 && dimensionSource === 'default') || length === 0 || width === 0) {
-                            switch(roomType) {
-                              case 'bedroom': length = 12; width = 10; break;
-                              case 'living': length = 16; width = 14; break;
-                              case 'kitchen': length = 10; width = 8; break;
-                              case 'bathroom': length = 8; width = 6; break;
-                              default: length = 12; width = 10; break;
+                          // Priority 2: Check all available BHK room details if primary search failed
+                          if (dimensionSource === 'none') {
+                            const allBhkKeys = Object.keys(bhkRoomDetails || {});
+                            for (const bhkKey of allBhkKeys) {
+                              const bhkData = bhkRoomDetails[bhkKey];
+                              if (bhkData && bhkData['Length (ft)'] && bhkData['Width (ft)']) {
+                                const lengthData = bhkData['Length (ft)'];
+                                const widthData = bhkData['Width (ft)'];
+                                const roomKeys = Object.keys(lengthData || {});
+                                
+                                let roomKey = null;
+                                if (roomType === 'bedroom') {
+                                  roomKey = roomKeys.find(key => key.toLowerCase().includes('bedroom') || key.toLowerCase().includes('bed'));
+                                } else if (roomType === 'living') {
+                                  roomKey = roomKeys.find(key => key.toLowerCase().includes('living') || key.toLowerCase().includes('hall'));
+                                } else if (roomType === 'kitchen') {
+                                  roomKey = roomKeys.find(key => key.toLowerCase().includes('kitchen'));
+                                } else if (roomType === 'bathroom') {
+                                  roomKey = roomKeys.find(key => key.toLowerCase().includes('bathroom') || key.toLowerCase().includes('bath') || key.toLowerCase().includes('toilet'));
+                                }
+                                
+                                if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
+                                  length = Number(lengthData[roomKey]) || 0;
+                                  width = Number(widthData[roomKey]) || 0;
+                                  if (length > 0 && width > 0) {
+                                    dimensionSource = 'available_bhk_data';
+                                    break;
+                                  }
+                                }
+                              }
                             }
-                            dimensionSource = 'standard';
+                          }
+                          
+                          // Priority 3: Only use minimal defaults if absolutely no data is available
+                          if (dimensionSource === 'none' || length <= 0 || width <= 0) {
+                            switch(roomType) {
+                              case 'bedroom': length = 10; width = 8; break;
+                              case 'living': length = 12; width = 10; break;
+                              case 'kitchen': length = 8; width = 6; break;
+                              case 'bathroom': length = 6; width = 4; break;
+                              default: length = 10; width = 8; break;
+                            }
+                            dimensionSource = 'minimal_default';
                           }
                           
                           const perimeter = 2 * (length + width);
