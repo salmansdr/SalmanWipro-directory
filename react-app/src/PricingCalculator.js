@@ -77,35 +77,10 @@ const PricingCalculator = () => {
   const [internalWallsLogic, setInternalWallsLogic] = useState('');
   const [bhkConfigJson, setBhkConfigJson] = useState('');
   const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
-  const [editablePercentages, setEditablePercentages] = useState({
-    external_walls: 7,
-    beams_columns: 5,
-    staircase_area: 2,
-    lift_shaft_area: 1.5,
-    balcony_area: 5,
-    utility_area: 3,
-    toilet_bath_area: 8,
-    common_corridor: 4,
-    parking_area_ground: 15,
-    foundation_area: 12,
-    parapet_walls: 2
-  });
-  const [editableThickness, setEditableThickness] = useState({
-    internal_walls: 0.5,
-    external_walls: 0.75,
-    slab_area: 0.5,
-    ceiling_plaster: 0.05,
-    beams_columns: 1.0,
-    staircase_area: 0.75,
-    lift_shaft_area: 0.5,
-    balcony_area: 0.5,
-    utility_area: 0.5,
-    toilet_bath_area: 0.5,
-    common_corridor: 0.5,
-    parking_area_ground: 0.5,
-    foundation_area: 2.0,
-    parapet_walls: 0.5
-  });
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+  const [configError, setConfigError] = useState(null);
+  const [editablePercentages, setEditablePercentages] = useState({});
+  const [editableThickness, setEditableThickness] = useState({});
 
   // Handler for percentage changes
   const handlePercentageChange = (component, value) => {
@@ -633,42 +608,88 @@ const PricingCalculator = () => {
   useEffect(() => {
     const loadCalculationLogic = async () => {
       try {
-        const response = await fetch('/AreaCalculationLogic.json');
+        console.log('Starting to load AreaCalculationLogic.json...');
+        console.log('Current window location:', window.location.href);
+        console.log('Process.env.PUBLIC_URL:', process.env.PUBLIC_URL);
+        
+        // Use the correct path for Create React App
+        const jsonPath = `${process.env.PUBLIC_URL || ''}/AreaCalculationLogic.json`;
+        console.log(`Attempting to fetch from: ${jsonPath}`);
+        
+        const response = await fetch(jsonPath, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Fetch response received');
+        console.log('Response status:', response.status);
+        console.log('Response statusText:', response.statusText);
+        console.log('Response headers content-type:', response.headers.get("content-type"));
+        console.log('Response URL:', response.url);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch JSON file: ${response.status} ${response.statusText} from ${response.url}`);
+        }
+        
+        // Check if response is actually JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          // If not JSON, get the text to see what we actually received
+          const text = await response.text();
+          console.log('Received non-JSON response:', text.substring(0, 500));
+          throw new Error(`Server returned ${contentType || 'unknown content type'} instead of JSON. This usually means the file was not found and a 404 HTML page was returned.`);
+        }
+        
         const logic = await response.json();
+        console.log('JSON parsed successfully. Components found:', Object.keys(logic.calculation_components || {}));
         setAreaCalculationLogic(logic);
         
         // Update editable percentages from JSON
         const components = logic.calculation_components;
         if (components) {
           setEditablePercentages({
-            external_walls: (components.external_walls?.percentage || 0.07) * 100,
-            beams_columns: (components.beams_columns?.percentage || 0.05) * 100,
-            staircase_area: (components.staircase_area?.percentage || 0.02) * 100,
-            lift_shaft_area: (components.lift_shaft_area?.percentage || 0.015) * 100,
-            balcony_area: (components.balcony_area?.percentage || 0.05) * 100,
-            utility_area: (components.utility_area?.percentage || 0.03) * 100,
-            toilet_bath_area: (components.toilet_bath_area?.percentage || 0.08) * 100,
-            common_corridor: (components.common_corridor?.percentage || 0.04) * 100,
-            parking_area_ground: (components.parking_area_ground?.percentage || 0.15) * 100,
-            foundation_area: (components.foundation_area?.percentage || 0.12) * 100,
-            parapet_walls: (components.parapet_walls?.percentage || 0.02) * 100
+            external_walls: components.external_walls?.percentage * 100,
+            beams_columns: components.beams_columns?.percentage * 100,
+            staircase_area: components.staircase_area?.percentage * 100,
+            lift_shaft_area: components.lift_shaft_area?.percentage * 100,
+            balcony_area: components.balcony_area?.percentage * 100,
+            utility_area: components.utility_area?.percentage * 100,
+            toilet_bath_area: components.toilet_bath_area?.percentage * 100,
+            common_corridor: components.common_corridor?.percentage * 100,
+            parking_area_ground: components.parking_area_ground?.percentage * 100,
+            foundation_area: components.foundation_area?.percentage * 100,
+            parapet_walls: components.parapet_walls?.percentage * 100
+          });
+          
+          // Update thickness values from JSON
+          setEditableThickness({
+            internal_walls: components.internal_walls?.thickness,
+            external_walls: components.external_walls?.thickness,
+            slab_area: components.slab_area?.thickness,
+            ceiling_plaster: components.ceiling_plaster?.thickness,
+            beams_columns: components.beams_columns?.thickness,
+            staircase_area: components.staircase_area?.thickness,
+            lift_shaft_area: components.lift_shaft_area?.thickness,
+            balcony_area: components.balcony_area?.thickness,
+            utility_area: components.utility_area?.thickness,
+            toilet_bath_area: components.toilet_bath_area?.thickness,
+            common_corridor: components.common_corridor?.thickness,
+            parking_area_ground: components.parking_area_ground?.thickness,
+            foundation_area: components.foundation_area?.thickness,
+            parapet_walls: components.parapet_walls?.thickness
           });
         }
         
         console.log('Loaded area calculation logic:', logic);
+        setIsConfigLoaded(true);
+        setConfigError(null);
       } catch (error) {
         console.error('Failed to load area calculation logic:', error);
-        // Set default values as fallback
-        setAreaCalculationLogic({
-          calculation_components: {
-            internal_walls: {
-              height: 10,
-              shared_wall_reduction: 0.20,
-              door_area: 22,
-              window_area: 18
-            }
-          }
-        });
+        setIsConfigLoaded(false);
+        setConfigError(error.message);
       }
     };
     loadCalculationLogic();
@@ -965,6 +986,11 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     }));
     // Floor components: use same logic as step 3's last grid
     const floorComponentsData = Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
+      // Check if configuration is loaded
+      if (!isConfigLoaded || !areaCalculationLogic) {
+        return [];
+      }
+      
       // Use correct BHK config for each floor
       let rows;
       if (floorIdx === 0) {
@@ -1430,6 +1456,58 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
   // Move all rendering code inside the PricingCalculator function
   return (
     <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
+      {/* Configuration Loading Check */}
+      {!isConfigLoaded && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '2rem',
+          background: configError ? '#fff5f5' : '#f8f9fa',
+          borderRadius: '8px',
+          margin: '1rem 0',
+          border: `1px solid ${configError ? '#fed7d7' : '#dee2e6'}`
+        }}>
+          {configError ? (
+            <>
+              <div style={{ fontSize: '1.2rem', color: '#e53e3e', marginBottom: '0.5rem' }}>
+                ❌ Configuration Load Failed
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#c53030', marginBottom: '1rem' }}>
+                Error: {configError}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#718096', marginBottom: '1rem' }}>
+                <strong>Common Solutions:</strong><br/>
+                1. Make sure the React development server is running (npm start)<br/>
+                2. Check that AreaCalculationLogic.json exists in the public folder<br/>
+                3. Try refreshing the page<br/>
+                4. Restart the development server
+              </div>
+              <button 
+                onClick={() => window.location.reload()} 
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#4299e1',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Retry Loading
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '1.2rem', color: '#666', marginBottom: '0.5rem' }}>
+                ⚙️ Loading Configuration...
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#888' }}>
+                Please wait while we load the calculation parameters from AreaCalculationLogic.json
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      
       {/* Header with Back Button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Button 
@@ -2228,12 +2306,12 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                       const roomDataKey = `${floorIndex}-${bhkIndex}`;
                       const currentRoomDetails = bhkRoomDetails[roomDataKey];
                       
-                      // Get calculation parameters from JSON config or use defaults
+                      // Get calculation parameters from JSON config
                       const internalWallsConfig = areaCalculationLogic?.calculation_components?.internal_walls || {};
-                      const standardHeight = internalWallsConfig.height || 10; // ft
-                      const sharedWallReduction = internalWallsConfig.shared_wall_reduction || 0.20; // 20% reduction for shared walls
-                      const standardDoorArea = internalWallsConfig.door_area || 22; // sqft
-                      const standardWindowArea = internalWallsConfig.window_area || 18; // sqft
+                      const standardHeight = internalWallsConfig.height; // ft
+                      const sharedWallReduction = internalWallsConfig.shared_wall_reduction; // reduction for shared walls
+                      const standardDoorArea = internalWallsConfig.door_area; // sqft
+                      const standardWindowArea = internalWallsConfig.window_area; // sqft
                       
                       const roomParts = roomsStr.split(',').map(part => part.trim());
                       let totalWallArea = 0;
@@ -2406,7 +2484,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                       
                       // Determine BHK type based on room configuration
                       const bhkType = getBHKType(row.rooms);
-                      const bhkLabel = `🏠 𝗕𝗛𝗞 ${bhkType}:`;
+                      const bhkLabel = `𝗕𝗛𝗞 ${bhkType}:`;
                       
                       return {
                         area: acc.area + result.area,
@@ -2415,8 +2493,19 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     }, { area: 0, details: '' });
                     
                     const internalWallArea = wallCalcResult.area;
+                    const internalWallsDetails = wallCalcResult.details; // This contains the detailed calculation string
                     return [
-                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: ${wallCalcResult.details}`, percentage: null, area: internalWallArea, thickness: editableThickness.internal_walls, component: 'internal_walls', isEditable: false, isThicknessEditable: true },
+                      { 
+                        name: `Internal Walls (${totalWalls} walls)`, 
+                        logic: 'Advanced calculation per room',
+                        logicDetails: internalWallsDetails, // Store the detailed calculation here
+                        percentage: null, 
+                        area: internalWallArea, 
+                        thickness: editableThickness.internal_walls, 
+                        component: 'internal_walls', 
+                        isEditable: false, 
+                        isThicknessEditable: true 
+                      },
                       { name: 'External Walls', logic: 'of Carpet Area', percentage: editablePercentages.external_walls, area: (width * depth * (carpetPercent/100) * (editablePercentages.external_walls/100)), thickness: editableThickness.external_walls, component: 'external_walls', isEditable: true, isThicknessEditable: true },
                       { name: 'Slab Area', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.slab_area, component: 'slab_area', isEditable: false, isThicknessEditable: true },
                       { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.ceiling_plaster, component: 'ceiling_plaster', isEditable: false, isThicknessEditable: true },
@@ -2436,29 +2525,36 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     return (
                       <tr key={idx}>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                          {item.name}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                           {item.name.includes('Internal Walls') ? (
-                            <button 
-                              onClick={() => {
-                                setInternalWallsLogic(item.logic);
-                                setShowInternalWallsModal(true);
-                              }}
-                              style={{ 
-                                background: 'none',
-                                border: 'none',
-                                color: '#1976d2', 
-                                textDecoration: 'underline',
-                                cursor: 'pointer',
-                                padding: 0,
-                                font: 'inherit'
-                              }}
-                            >
-                              {item.name}
-                            </button>
+                            <span>
+                              {item.logic}
+                              {' '}
+                              <button 
+                                onClick={() => {
+                                  setInternalWallsLogic(item.logicDetails || '');
+                                  setShowInternalWallsModal(true);
+                                }}
+                                style={{ 
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#007bff', 
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  font: 'inherit',
+                                  marginLeft: '4px'
+                                }}
+                              >
+                                More details
+                              </button>
+                            </span>
                           ) : (
-                            item.name
+                            item.logic
                           )}
                         </td>
-                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
                           {item.isEditable ? (
                             <input 
@@ -2725,22 +2821,296 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             🏗️ Internal Walls - Detailed Calculation
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ background: '#fafafa', padding: '20px' }}>
-          <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd' }}>
-            <h6 style={{ color: '#333', marginBottom: '15px' }}>📋 Calculation Logic</h6>
-            <div style={{ 
-              fontFamily: 'monospace', 
-              fontSize: '0.9rem', 
-              lineHeight: '1.5',
-              background: '#f8f9fa',
-              padding: '12px',
-              borderRadius: '4px',
-              border: '1px solid #e9ecef',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word'
-            }}>
-              {internalWallsLogic || 'No calculation details available'}
-            </div>
+        <Modal.Body style={{ background: '#fafafa', padding: '15px' }}>
+          <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #ddd', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            {internalWallsLogic ? (
+              <>
+                <div style={{ 
+                  fontFamily: '"Segoe UI", Arial, sans-serif',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.6'
+                }}>
+                  {(() => {
+                    const sections = internalWallsLogic
+                      .replace('Advanced calculation: ', '')
+                      .split(' | ');
+                    
+                    return sections.map((section, index) => {
+                      if (section.includes('')) {
+                        // This is a BHK section
+                        const parts = section.split(' + ');
+                        const bhkHeader = parts[0].split(':')[0]; // "🏠 𝗕𝗛𝗞 1"
+                        
+                        // Extract rooms and calculations
+                        const rooms = [];
+                        const calculations = [];
+                        let inCalculationSection = false;
+                        
+                        parts.forEach(part => {
+                          if (part.includes('--- Calculation Breakdown ---')) {
+                            inCalculationSection = true;
+                          } else if (inCalculationSection) {
+                            calculations.push(part.trim());
+                          } else if (part.includes('×') && (part.includes('Bedroom') || part.includes('Living') || part.includes('Kitchen') || part.includes('Bathroom'))) {
+                            // Extract room info
+                            const roomMatch = part.match(/(\d+x\s*)?(.+?):\s*(\d+)×(\d+)×(\d+)\s*=\s*(\d+)\s*sqft/);
+                            if (roomMatch) {
+                              rooms.push({
+                                count: roomMatch[1] ? roomMatch[1].replace('x', '').trim() : '1',
+                                name: roomMatch[2].trim(),
+                                length: roomMatch[3],
+                                width: roomMatch[4],
+                                height: roomMatch[5],
+                                area: roomMatch[6]
+                              });
+                            }
+                          }
+                        });
+                        
+                        return (
+                          <div key={index} style={{ marginBottom: '20px' }}>
+                            {/* BHK Header */}
+                            <div style={{ 
+                              fontWeight: 'bold', 
+                              color: '#007bff', 
+                              marginBottom: '12px',
+                              fontSize: '1rem',
+                              padding: '8px 12px',
+                              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                              borderRadius: '6px',
+                              border: '2px solid #2196f3',
+                              borderLeft: '4px solid #007bff',
+                              boxShadow: '0 1px 4px rgba(33, 150, 243, 0.15)'
+                            }}>
+                              {bhkHeader}
+                            </div>
+                            
+                            {/* Rooms Section */}
+                            <div style={{ marginBottom: '15px' }}>
+                              <h6 style={{ 
+                                color: '#333', 
+                                marginBottom: '10px', 
+                                fontSize: '0.9rem',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                🏠 Room Details
+                              </h6>
+                              
+                              <div style={{ 
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                gap: '8px'
+                              }}>
+                                {rooms.map((room, roomIndex) => {
+                                  const getRoomTheme = (name) => {
+                                    const lowerName = name.toLowerCase();
+                                    if (lowerName.includes('bedroom')) return { bg: '#e8f4fd', border: '#90caf9', accent: '#1976d2' };
+                                    if (lowerName.includes('living')) return { bg: '#fff3e0', border: '#ffcc02', accent: '#f57c00' };
+                                    if (lowerName.includes('kitchen')) return { bg: '#f3e5f5', border: '#ce93d8', accent: '#7b1fa2' };
+                                    if (lowerName.includes('bathroom')) return { bg: '#e0f2f1', border: '#80cbc4', accent: '#00695c' };
+                                    return { bg: '#f5f5f5', border: '#e0e0e0', accent: '#616161' };
+                                  };
+                                  
+                                  const theme = getRoomTheme(room.name);
+                                  
+                                  return (
+                                    <div key={roomIndex} style={{
+                                      background: '#fff',
+                                      border: `1px solid ${theme.border}`,
+                                      borderRadius: '6px',
+                                      padding: '10px',
+                                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                      transition: 'transform 0.2s ease'
+                                    }}>
+                                      {/* Room Header */}
+                                      <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        marginBottom: '8px',
+                                        padding: '6px 8px',
+                                        background: theme.bg,
+                                        borderRadius: '4px',
+                                        border: `1px solid ${theme.border}`
+                                      }}>
+                                        <div>
+                                          <div style={{ fontWeight: '600', color: theme.accent, fontSize: '0.85rem' }}>
+                                            {room.count}x {room.name}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Dimensions */}
+                                      <div style={{ marginBottom: '6px' }}>
+                                        <div style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          padding: '6px 8px',
+                                          background: '#f8f9fa',
+                                          borderRadius: '4px',
+                                          marginBottom: '4px'
+                                        }}>
+                                          <span style={{ color: '#666', fontWeight: '500', fontSize: '0.8rem' }}>Dimensions:</span>
+                                          <span style={{ fontWeight: '600', color: '#333', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                                            {room.length}' × {room.width}' × {room.height}'
+                                          </span>
+                                        </div>
+                                        
+                                        <div style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          padding: '6px 8px',
+                                          background: '#f8f9fa',
+                                          borderRadius: '4px'
+                                        }}>
+                                          <span style={{ color: '#666', fontWeight: '500', fontSize: '0.8rem' }}>Wall Area:</span>
+                                          <span style={{ 
+                                            fontWeight: '600', 
+                                            color: '#333',
+                                            fontFamily: 'monospace',
+                                            fontSize: '0.8rem'
+                                          }}>
+                                            {room.area} sq.ft
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Calculation Breakdown */}
+                            {calculations.length > 0 && (
+                              <div style={{ marginTop: '15px' }}>
+                                <h6 style={{ 
+                                  color: '#333', 
+                                  marginBottom: '10px', 
+                                  fontSize: '0.9rem',
+                                  fontWeight: '600',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  🧮 Calculation Breakdown
+                                </h6>
+                                
+                                <div style={{
+                                  background: '#fff',
+                                  border: '1px solid #e3f2fd',
+                                  borderRadius: '6px',
+                                  padding: '10px',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                                }}>
+                                  {calculations.map((calc, calcIndex) => {
+                                    const isTotal = calc.toLowerCase().includes('total');
+                                    const isFinal = calc.toLowerCase().includes('final');
+                                    const isRaw = calc.toLowerCase().includes('raw');
+                                    const isReduction = calc.includes('reduction') || calc.includes('deduction');
+                                    
+                                    let bgColor = '#f8f9fa';
+                                    let textColor = '#333';
+                                    let borderColor = '#e9ecef';
+                                    
+                                    if (isTotal) {
+                                      bgColor = '#e8f5e8';
+                                      textColor = '#1b5e20';
+                                      borderColor = '#4caf50';
+                                    } else if (isFinal) {
+                                      bgColor = '#e3f2fd';
+                                      textColor = '#0d47a1';
+                                      borderColor = '#2196f3';
+                                    } else if (isRaw) {
+                                      bgColor = '#fff3e0';
+                                      textColor = '#e65100';
+                                      borderColor = '#ff9800';
+                                    } else if (isReduction) {
+                                      bgColor = '#fce4ec';
+                                      textColor = '#c2185b';
+                                      borderColor = '#e91e63';
+                                    }
+                                    
+                                    return (
+                                      <div key={calcIndex} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '6px 10px',
+                                        marginBottom: calcIndex < calculations.length - 1 ? '4px' : '0',
+                                        background: bgColor,
+                                        border: `1px solid ${borderColor}`,
+                                        borderRadius: '4px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: isTotal || isFinal ? '600' : '500'
+                                      }}>
+                                        <span style={{ color: textColor }}>
+                                          {calc.split(':')[0]}:
+                                        </span>
+                                        <span style={{ 
+                                          color: textColor, 
+                                          fontFamily: 'monospace',
+                                          fontWeight: '600'
+                                        }}>
+                                          {calc.split(':')[1]?.trim() || ''}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        // Non-BHK section (summary, etc.)
+                        return (
+                          <div key={index} style={{ 
+                            marginBottom: '15px',
+                            padding: '15px',
+                            background: '#f8f9fa',
+                            borderRadius: '8px',
+                            border: '1px solid #e9ecef',
+                            color: '#666',
+                            fontSize: '0.9rem'
+                          }}>
+                            {section.trim()}
+                          </div>
+                        );
+                      }
+                    });
+                  })()}
+                </div>
+                
+                <div style={{ 
+                  marginTop: '15px', 
+                  padding: '8px', 
+                  background: '#fff3cd', 
+                  border: '1px solid #ffeaa7',
+                  borderRadius: '4px'
+                }}>
+                  <div style={{ color: '#856404', fontSize: '0.8rem' }}>
+                    <strong>💡 Note:</strong> Calculations include shared wall reduction, door/window deductions, and use actual room dimensions from Step 2 configuration.
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                color: '#666', 
+                padding: '40px 20px',
+                background: '#f8f9fa',
+                borderRadius: '6px',
+                border: '1px solid #e9ecef'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📝</div>
+                <div>No calculation details available</div>
+              </div>
+            )}
           </div>
         </Modal.Body>
         <Modal.Footer style={{ background: '#f8f9fa', borderTop: '1px solid #ddd' }}>
