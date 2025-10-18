@@ -1,0 +1,120 @@
+{
+  "version": "1.0",
+  "description": "Area calculation logic configuration for construction estimation",
+  "last_updated": "2025-10-18",
+  "calculation_components": {
+    "internal_walls": {
+      "name": "Internal Walls",
+      "formula": "2×(Length+Width)×Height per room",
+      "calculation_type": "room_based",
+      "height": 10,
+      "shared_wall_reduction": 0.20,
+      "door_area": 22,
+      "window_area": 18,
+      "description": "Advanced calculation: Wall Area = 2×(Length+Width)×Height per room. Parameters used: Height=10ft, Shared Wall Reduction=20%, Door Area=22 sqft each, Window Area=18 sqft each. Formula: Total Wall Area - (Shared Wall Reduction × Total Wall Area) - (Door Count × Door Area) - (Window Count × Window Area). Based on actual room dimensions from Step 2 configuration."
+    },
+    "external_walls": {
+      "name": "External Walls",
+      "formula": "percentage_of_carpet_area",
+      "percentage": 0.07,
+      "description": "7% of Carpet Area"
+    },
+    "slab_area": {
+      "name": "Slab Area", 
+      "formula": "same_as_super_buildup",
+      "description": "Same as Super Built-up Area"
+    },
+    "ceiling_plaster": {
+      "name": "Ceiling Plaster",
+      "formula": "same_as_super_buildup", 
+      "description": "Same as Super Built-up Area"
+    },
+    "beams_columns": {
+      "name": "Beams & Columns",
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.05,
+      "description": "5% of Super Built-up Area"
+    },
+    "staircase_area": {
+      "name": "Staircase Area",
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.02,
+      "description": "2% of Super Built-up Area"
+    },
+    "lift_shaft_area": {
+      "name": "Lift Shaft Area",
+      "formula": "conditional_percentage_of_super_buildup",
+      "percentage": 0.015,
+      "condition": "lift_required",
+      "description": "If lift required, 1.5% of Super Built-up Area"
+    },
+    "balcony_area": {
+      "name": "Balcony Area",
+      "formula": "percentage_of_carpet_area",
+      "percentage": 0.05,
+      "description": "5% of Carpet Area"
+    },
+    "utility_area": {
+      "name": "Utility Area",
+      "formula": "percentage_of_carpet_area", 
+      "percentage": 0.03,
+      "description": "3% of Carpet Area"
+    },
+    "toilet_bath_area": {
+      "name": "Toilet/Bath Area",
+      "formula": "percentage_of_carpet_area",
+      "percentage": 0.08,
+      "description": "8% of Carpet Area"
+    },
+    "common_corridor": {
+      "name": "Common Corridor",
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.04,
+      "description": "4% of Super Built-up Area"
+    },
+    "parking_area_ground": {
+      "name": "Parking Area (Ground)",
+      "formula": "percentage_of_ground_floor_sba",
+      "percentage": 0.15,
+      "description": "15% of Ground Floor SBA"
+    },
+    "foundation_area": {
+      "name": "Foundation Area", 
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.12,
+      "description": "12% of Super Built-up Area"
+    },
+    "parapet_walls": {
+      "name": "Parapet Walls",
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.02,
+      "description": "2% of Super Built-up Area"
+    }
+  },
+  "formula_types": {
+    "room_based": {
+      "description": "Calculation based on individual room dimensions and counts",
+      "requires": ["room_dimensions", "room_counts", "height"]
+    },
+    "percentage_of_carpet_area": {
+      "description": "Simple percentage of total carpet area",
+      "requires": ["carpet_area", "percentage"]
+    },
+    "percentage_of_super_buildup": {
+      "description": "Simple percentage of super built-up area",
+      "requires": ["super_buildup_area", "percentage"]
+    },
+    "same_as_super_buildup": {
+      "description": "Area equals the super built-up area",
+      "requires": ["super_buildup_area"]
+    },
+    "conditional_percentage_of_super_buildup": {
+      "description": "Percentage of super built-up area if condition is met",
+      "requires": ["super_buildup_area", "percentage", "condition"]
+    },
+    "percentage_of_ground_floor_sba": {
+      "description": "Percentage of ground floor super built-up area",
+      "requires": ["ground_floor_sba", "percentage"]
+    }
+  }
+}
