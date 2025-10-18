@@ -88,11 +88,36 @@ const PricingCalculator = () => {
     foundation_area: 12,
     parapet_walls: 2
   });
+  const [editableThickness, setEditableThickness] = useState({
+    internal_walls: 0.5,
+    external_walls: 0.75,
+    slab_area: 0.5,
+    ceiling_plaster: 0.05,
+    beams_columns: 1.0,
+    staircase_area: 0.75,
+    lift_shaft_area: 0.5,
+    balcony_area: 0.5,
+    utility_area: 0.5,
+    toilet_bath_area: 0.5,
+    common_corridor: 0.5,
+    parking_area_ground: 0.5,
+    foundation_area: 2.0,
+    parapet_walls: 0.5
+  });
 
   // Handler for percentage changes
   const handlePercentageChange = (component, value) => {
     const numValue = parseFloat(value) || 0;
     setEditablePercentages(prev => ({
+      ...prev,
+      [component]: numValue
+    }));
+  };
+
+  // Handler for thickness changes
+  const handleThicknessChange = (component, value) => {
+    const numValue = parseFloat(value) || 0;
+    setEditableThickness(prev => ({
       ...prev,
       [component]: numValue
     }));
@@ -2171,7 +2196,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Logic</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Percentage (%)</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area Per Floor (sq ft)</th>
-                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Thickness (Ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Volume (cuft)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2388,51 +2414,78 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     
                     const internalWallArea = wallCalcResult.area;
                     return [
-                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: ${wallCalcResult.details}`, percentage: null, area: internalWallArea, isEditable: false },
-                      { name: 'External Walls', logic: 'of Carpet Area', percentage: editablePercentages.external_walls, area: (width * depth * (carpetPercent/100) * (editablePercentages.external_walls/100)), isEditable: true, component: 'external_walls' },
-                      { name: 'Slab Area', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), isEditable: false },
-                      { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), isEditable: false },
-                      { name: 'Beams & Columns', logic: 'of Super Built-up Area', percentage: editablePercentages.beams_columns, area: (width * depth * (editablePercentages.beams_columns/100)), isEditable: true, component: 'beams_columns' },
-                      { name: 'Staircase Area', logic: 'of Super Built-up Area', percentage: editablePercentages.staircase_area, area: (width * depth * (editablePercentages.staircase_area/100)), isEditable: true, component: 'staircase_area' },
-                      { name: 'Lift Shaft Area', logic: 'If lift required, of Super Built-up Area', percentage: editablePercentages.lift_shaft_area, area: lift ? (width * depth * (editablePercentages.lift_shaft_area/100)) : 0, isEditable: true, component: 'lift_shaft_area' },
-                      { name: 'Balcony Area', logic: 'of Carpet Area', percentage: editablePercentages.balcony_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.balcony_area/100)), isEditable: true, component: 'balcony_area' },
-                      { name: 'Utility Area', logic: 'of Carpet Area', percentage: editablePercentages.utility_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.utility_area/100)), isEditable: true, component: 'utility_area' },
-                      { name: 'Toilet/Bath Area', logic: 'of Carpet Area', percentage: editablePercentages.toilet_bath_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.toilet_bath_area/100)), isEditable: true, component: 'toilet_bath_area' },
-                      { name: 'Common Corridor', logic: 'of Super Built-up Area', percentage: editablePercentages.common_corridor, area: (width * depth * (editablePercentages.common_corridor/100)), isEditable: true, component: 'common_corridor' },
-                      { name: 'Parking Area (Ground)', logic: 'of Ground Floor SBA', percentage: editablePercentages.parking_area_ground, area: (width * depth * (editablePercentages.parking_area_ground/100)), isEditable: true, component: 'parking_area_ground' },
-                      { name: 'Foundation Area', logic: 'of Super Built-up Area', percentage: editablePercentages.foundation_area, area: (width * depth * (editablePercentages.foundation_area/100)), isEditable: true, component: 'foundation_area' },
-                      { name: 'Parapet Walls', logic: 'of Super Built-up Area', percentage: editablePercentages.parapet_walls, area: (width * depth * (editablePercentages.parapet_walls/100)), isEditable: true, component: 'parapet_walls' }
+                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: ${wallCalcResult.details}`, percentage: null, area: internalWallArea, thickness: editableThickness.internal_walls, component: 'internal_walls', isEditable: false, isThicknessEditable: true },
+                      { name: 'External Walls', logic: 'of Carpet Area', percentage: editablePercentages.external_walls, area: (width * depth * (carpetPercent/100) * (editablePercentages.external_walls/100)), thickness: editableThickness.external_walls, component: 'external_walls', isEditable: true, isThicknessEditable: true },
+                      { name: 'Slab Area', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.slab_area, component: 'slab_area', isEditable: false, isThicknessEditable: true },
+                      { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.ceiling_plaster, component: 'ceiling_plaster', isEditable: false, isThicknessEditable: true },
+                      { name: 'Beams & Columns', logic: 'of Super Built-up Area', percentage: editablePercentages.beams_columns, area: (width * depth * (editablePercentages.beams_columns/100)), thickness: editableThickness.beams_columns, component: 'beams_columns', isEditable: true, isThicknessEditable: true },
+                      { name: 'Staircase Area', logic: 'of Super Built-up Area', percentage: editablePercentages.staircase_area, area: (width * depth * (editablePercentages.staircase_area/100)), thickness: editableThickness.staircase_area, component: 'staircase_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Lift Shaft Area', logic: 'If lift required, of Super Built-up Area', percentage: editablePercentages.lift_shaft_area, area: lift ? (width * depth * (editablePercentages.lift_shaft_area/100)) : 0, thickness: editableThickness.lift_shaft_area, component: 'lift_shaft_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Balcony Area', logic: 'of Carpet Area', percentage: editablePercentages.balcony_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.balcony_area/100)), thickness: editableThickness.balcony_area, component: 'balcony_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Utility Area', logic: 'of Carpet Area', percentage: editablePercentages.utility_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.utility_area/100)), thickness: editableThickness.utility_area, component: 'utility_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Toilet/Bath Area', logic: 'of Carpet Area', percentage: editablePercentages.toilet_bath_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.toilet_bath_area/100)), thickness: editableThickness.toilet_bath_area, component: 'toilet_bath_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Common Corridor', logic: 'of Super Built-up Area', percentage: editablePercentages.common_corridor, area: (width * depth * (editablePercentages.common_corridor/100)), thickness: editableThickness.common_corridor, component: 'common_corridor', isEditable: true, isThicknessEditable: true },
+                      { name: 'Parking Area (Ground)', logic: 'of Ground Floor SBA', percentage: editablePercentages.parking_area_ground, area: (width * depth * (editablePercentages.parking_area_ground/100)), thickness: editableThickness.parking_area_ground, component: 'parking_area_ground', isEditable: true, isThicknessEditable: true },
+                      { name: 'Foundation Area', logic: 'of Super Built-up Area', percentage: editablePercentages.foundation_area, area: (width * depth * (editablePercentages.foundation_area/100)), thickness: editableThickness.foundation_area, component: 'foundation_area', isEditable: true, isThicknessEditable: true },
+                      { name: 'Parapet Walls', logic: 'of Super Built-up Area', percentage: editablePercentages.parapet_walls, area: (width * depth * (editablePercentages.parapet_walls/100)), thickness: editableThickness.parapet_walls, component: 'parapet_walls', isEditable: true, isThicknessEditable: true }
                     ];
-                  })().map((item, idx) => (
-                    <tr key={idx}>
-                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
-                        {item.isEditable ? (
-                          <input 
-                            type="number" 
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            value={item.percentage || ''} 
-                            onChange={(e) => handlePercentageChange(item.component, e.target.value)}
-                            style={{ 
-                              width: '60px', 
-                              padding: '4px', 
-                              border: '1px solid #ccc', 
-                              borderRadius: '4px',
-                              textAlign: 'center',
-                              fontSize: '0.9rem'
-                            }}
-                          />
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
-                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? (item.area * floors).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
-                    </tr>
-                  ))}
+                  })().map((item, idx) => {
+                    const volume = item.area && item.thickness ? (item.area * item.thickness) : 0;
+                    return (
+                      <tr key={idx}>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.logic}</td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {item.isEditable ? (
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              value={item.percentage || ''} 
+                              onChange={(e) => handlePercentageChange(item.component, e.target.value)}
+                              style={{ 
+                                width: '60px', 
+                                padding: '4px', 
+                                border: '1px solid #ccc', 
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            />
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {item.isThicknessEditable ? (
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={item.thickness || ''} 
+                              onChange={(e) => handleThicknessChange(item.component, e.target.value)}
+                              style={{ 
+                                width: '60px', 
+                                padding: '4px', 
+                                border: '1px solid #ccc', 
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            />
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
+                          {volume ? volume.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
