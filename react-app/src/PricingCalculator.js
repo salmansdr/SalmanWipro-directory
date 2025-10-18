@@ -307,9 +307,33 @@ const PricingCalculator = () => {
 
   // Handler to copy config from one floor to another
   function copyFloorConfig(fromIdx, toIdx) {
+    const sourceData = getFloorRows(fromIdx);
+    
+    // Create a deep copy to ensure complete independence
+    const deepCopiedData = sourceData.map(row => ({
+      type: row.type,
+      units: row.units,
+      area: row.area,
+      rooms: row.rooms,
+      // Add any other properties that might exist
+      ...Object.keys(row).reduce((acc, key) => {
+        if (!['type', 'units', 'area', 'rooms'].includes(key)) {
+          // For any other properties, create a deep copy if it's an object/array
+          if (typeof row[key] === 'object' && row[key] !== null) {
+            acc[key] = Array.isArray(row[key]) 
+              ? [...row[key]]
+              : { ...row[key] };
+          } else {
+            acc[key] = row[key];
+          }
+        }
+        return acc;
+      }, {})
+    }));
+
     setFloorBHKConfigs(prev => ({
       ...prev,
-      [toIdx]: prev[fromIdx] ? [...prev[fromIdx]] : [...bhkRows]
+      [toIdx]: deepCopiedData
     }));
   }
   // New state for build-up and carpet area percentages
@@ -855,6 +879,151 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
       } else {
         rows = defaultBHKs;
       }
+      
+      // Capture bhkRoomDetails from the outer scope
+      const currentBhkRoomDetails = bhkRoomDetails;
+      
+      // Advanced wall area calculation function using actual room data from Step 2
+      function calculateInternalWallArea(roomsStr, bhkUnits, currentRoomDetails) {
+        if (!roomsStr) return 0;
+        
+        const standardHeight = 10; // ft
+        const sharedWallReduction = 0.20; // 20% reduction for shared walls
+        const standardDoorArea = 22; // sqft
+        const standardWindowArea = 18; // sqft
+        
+        // Parse room configuration from the "Typical Rooms" column
+        const roomParts = roomsStr.split(',').map(part => part.trim());
+        let totalWallArea = 0;
+        let totalDoors = 0;
+        let totalWindows = 0;
+        
+        roomParts.forEach(part => {
+          // Extract room type and count
+          const lowerPart = part.toLowerCase();
+          let roomType = '';
+          let count = 1;
+          
+          // Identify room type and count
+          if (lowerPart.includes('bed')) {
+            roomType = 'bedroom';
+            const match = part.match(/(\d+)\s*bed/i);
+            count = match ? parseInt(match[1]) : 1;
+          } else if (lowerPart.includes('living')) {
+            roomType = 'living';
+          } else if (lowerPart.includes('kitchen')) {
+            roomType = 'kitchen';
+          } else if (lowerPart.includes('bath')) {
+            roomType = 'bathroom';
+            const match = part.match(/(\d+)\s*bath/i);
+            count = match ? parseInt(match[1]) : 1;
+          } else if (lowerPart.includes('toilet')) {
+            roomType = 'bathroom';
+            const match = part.match(/(\d+)\s*toilet/i);
+            count = match ? parseInt(match[1]) : 1;
+          }
+          
+          if (roomType) {
+            // Get actual dimensions from Step 2 room data
+            let length = 12, width = 10; // Default fallback dimensions
+            
+            if (currentRoomDetails && currentRoomDetails['Length (ft)'] && currentRoomDetails['Width (ft)']) {
+              // Search for matching room in the room details
+              const lengthData = currentRoomDetails['Length (ft)'];
+              const widthData = currentRoomDetails['Width (ft)'];
+              
+              // Try to find room by type (e.g., "Bedroom", "Living Room", etc.)
+              let roomKey = null;
+              const roomKeys = Object.keys(lengthData || {});
+              
+              if (roomType === 'bedroom') {
+                roomKey = roomKeys.find(key => 
+                  key.toLowerCase().includes('bedroom') || 
+                  key.toLowerCase().includes('bed')
+                );
+              } else if (roomType === 'living') {
+                roomKey = roomKeys.find(key => 
+                  key.toLowerCase().includes('living') ||
+                  key.toLowerCase().includes('hall')
+                );
+              } else if (roomType === 'kitchen') {
+                roomKey = roomKeys.find(key => 
+                  key.toLowerCase().includes('kitchen')
+                );
+              } else if (roomType === 'bathroom') {
+                roomKey = roomKeys.find(key => 
+                  key.toLowerCase().includes('bathroom') ||
+                  key.toLowerCase().includes('bath') ||
+                  key.toLowerCase().includes('toilet')
+                );
+              }
+              
+              // If found, use actual dimensions
+              if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
+                length = Number(lengthData[roomKey]) || length;
+                width = Number(widthData[roomKey]) || width;
+              }
+            }
+            
+            // If no actual data found, use standard dimensions as fallback
+            if ((length === 12 && width === 10) || length === 0 || width === 0) {
+              switch(roomType) {
+                case 'bedroom':
+                  length = 12; width = 10;
+                  break;
+                case 'living':
+                  length = 16; width = 14;
+                  break;
+                case 'kitchen':
+                  length = 10; width = 8;
+                  break;
+                case 'bathroom':
+                  length = 8; width = 6;
+                  break;
+                default:
+                  length = 12; width = 10;
+                  break;
+              }
+            }
+            
+            // Calculate wall area for each room instance
+            for (let i = 0; i < count; i++) {
+              const perimeter = 2 * (length + width);
+              const wallAreaPerRoom = perimeter * standardHeight;
+              totalWallArea += wallAreaPerRoom;
+              
+              // Estimate doors and windows per room type
+              if (roomType === 'bedroom') {
+                totalDoors += 1;
+                totalWindows += 1;
+              } else if (roomType === 'living') {
+                totalDoors += 1;
+                totalWindows += 2;
+              } else if (roomType === 'kitchen') {
+                totalDoors += 1;
+                totalWindows += 1;
+              } else if (roomType === 'bathroom') {
+                totalDoors += 1;
+                totalWindows += 0.5;
+              }
+            }
+          }
+        });
+        
+        // Apply shared wall reduction
+        totalWallArea = totalWallArea * (1 - sharedWallReduction);
+        
+        // Deduct door and window areas
+        const doorDeduction = totalDoors * standardDoorArea;
+        const windowDeduction = totalWindows * standardWindowArea;
+        
+        // Final wall area per unit
+        const finalWallAreaPerUnit = Math.max(0, totalWallArea - doorDeduction - windowDeduction);
+        
+        // Multiply by number of BHK units
+        return finalWallAreaPerUnit * bhkUnits;
+      }
+      
       function countRooms(roomsStr) {
         if (!roomsStr) return 0;
         const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
@@ -880,16 +1049,26 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
         const rooms = countRooms(row.rooms);
         return sum + (row.units * rooms * 2);
       }, 0);
-      const wallLength = 12; // ft
-      const wallHeight = 10; // ft
+      
+      // Use new advanced wall area calculation with actual room data
       const internalWallArea = rows.reduce((sum, row) => {
-        const rooms = countRooms(row.rooms);
-        return sum + (row.units * rooms * 2 * wallLength * wallHeight);
+        // Try to get room details for this floor's BHK types
+        let currentFloorRoomDetails = null;
+        
+        // Get room details from currentBhkRoomDetails based on floor's BHK configuration
+        if (rows && rows.length > 0) {
+          const firstBhkType = rows[0]?.type;
+          if (firstBhkType && currentBhkRoomDetails[firstBhkType]) {
+            currentFloorRoomDetails = currentBhkRoomDetails[firstBhkType];
+          }
+        }
+        
+        return sum + calculateInternalWallArea(row.rooms, row.units, currentFloorRoomDetails);
       }, 0);
       return {
         floor: `${floorIdx}${floorIdx === 1 ? 'st' : floorIdx === 2 ? 'nd' : floorIdx === 3 ? 'rd' : 'th'} Floor`,
         components: [
-          { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+          { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: Wall Area = 2×(Length+Width)×Height per room, -20% shared wall reduction, minus doors (22 sqft each) and windows (18 sqft each). Based on actual room dimensions and counts.`, area: internalWallArea },
           { name: 'External Walls', logic: '7% of Carpet Area', area: totalCarpetArea * 0.07 },
           { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: sba },
           { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: sba },
@@ -1888,27 +2067,167 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                   {(() => {
                     // Internal Walls area based on BHK config and Typical Rooms for selected floor
                     const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
+                    
+                    // Advanced wall area calculation function using actual room data
+                    function calculateInternalWallAreaDebug(roomsStr, bhkUnits) {
+                      if (!roomsStr) return { area: 0, details: "No rooms specified" };
+                      
+                      const standardHeight = 10; // ft
+                      const sharedWallReduction = 0.20; // 20% reduction for shared walls
+                      const standardDoorArea = 22; // sqft
+                      const standardWindowArea = 18; // sqft
+                      
+                      const roomParts = roomsStr.split(',').map(part => part.trim());
+                      let totalWallArea = 0;
+                      let totalDoors = 0;
+                      let totalWindows = 0;
+                      let calculationDetails = [];
+                      
+                      roomParts.forEach(part => {
+                        const lowerPart = part.toLowerCase();
+                        let roomType = '';
+                        let count = 1;
+                        
+                        if (lowerPart.includes('bed')) {
+                          roomType = 'bedroom';
+                          const match = part.match(/(\d+)\s*bed/i);
+                          count = match ? parseInt(match[1]) : 1;
+                        } else if (lowerPart.includes('living')) {
+                          roomType = 'living';
+                        } else if (lowerPart.includes('kitchen')) {
+                          roomType = 'kitchen';
+                        } else if (lowerPart.includes('bath')) {
+                          roomType = 'bathroom';
+                          const match = part.match(/(\d+)\s*bath/i);
+                          count = match ? parseInt(match[1]) : 1;
+                        } else if (lowerPart.includes('toilet')) {
+                          roomType = 'bathroom';
+                          const match = part.match(/(\d+)\s*toilet/i);
+                          count = match ? parseInt(match[1]) : 1;
+                        }
+                        
+                        if (roomType) {
+                          // Get actual dimensions from Step 2 room data
+                          let length = 12, width = 10; // Default fallback
+                          let dimensionSource = 'default';
+                          
+                          // Get room details for the current floor's BHK types
+                          let currentRoomDetails = null;
+                          if (bhkRowsForDebug && bhkRowsForDebug.length > 0) {
+                            const firstBhkType = bhkRowsForDebug[0]?.type;
+                            if (firstBhkType && bhkRoomDetails[firstBhkType]) {
+                              currentRoomDetails = bhkRoomDetails[firstBhkType];
+                            }
+                          }
+                          
+                          if (currentRoomDetails && currentRoomDetails['Length (ft)'] && currentRoomDetails['Width (ft)']) {
+                            const lengthData = currentRoomDetails['Length (ft)'];
+                            const widthData = currentRoomDetails['Width (ft)'];
+                            
+                            let roomKey = null;
+                            const roomKeys = Object.keys(lengthData || {});
+                            
+                            if (roomType === 'bedroom') {
+                              roomKey = roomKeys.find(key => 
+                                key.toLowerCase().includes('bedroom') || 
+                                key.toLowerCase().includes('bed')
+                              );
+                            } else if (roomType === 'living') {
+                              roomKey = roomKeys.find(key => 
+                                key.toLowerCase().includes('living') ||
+                                key.toLowerCase().includes('hall')
+                              );
+                            } else if (roomType === 'kitchen') {
+                              roomKey = roomKeys.find(key => 
+                                key.toLowerCase().includes('kitchen')
+                              );
+                            } else if (roomType === 'bathroom') {
+                              roomKey = roomKeys.find(key => 
+                                key.toLowerCase().includes('bathroom') ||
+                                key.toLowerCase().includes('bath') ||
+                                key.toLowerCase().includes('toilet')
+                              );
+                            }
+                            
+                            if (roomKey && lengthData[roomKey] && widthData[roomKey]) {
+                              length = Number(lengthData[roomKey]) || length;
+                              width = Number(widthData[roomKey]) || width;
+                              dimensionSource = 'actual';
+                            }
+                          }
+                          
+                          // If no actual data found, use standard dimensions as fallback
+                          if ((length === 12 && width === 10 && dimensionSource === 'default') || length === 0 || width === 0) {
+                            switch(roomType) {
+                              case 'bedroom': length = 12; width = 10; break;
+                              case 'living': length = 16; width = 14; break;
+                              case 'kitchen': length = 10; width = 8; break;
+                              case 'bathroom': length = 8; width = 6; break;
+                              default: length = 12; width = 10; break;
+                            }
+                            dimensionSource = 'standard';
+                          }
+                          
+                          const perimeter = 2 * (length + width);
+                          const wallAreaPerRoom = perimeter * standardHeight;
+                          const roomWallArea = wallAreaPerRoom * count;
+                          totalWallArea += roomWallArea;
+                          
+                          let roomDoors = 0, roomWindows = 0;
+                          if (roomType === 'bedroom') {
+                            roomDoors = count; roomWindows = count;
+                          } else if (roomType === 'living') {
+                            roomDoors = count; roomWindows = 2 * count;
+                          } else if (roomType === 'kitchen') {
+                            roomDoors = count; roomWindows = count;
+                          } else if (roomType === 'bathroom') {
+                            roomDoors = count; roomWindows = 0.5 * count;
+                          }
+                          
+                          totalDoors += roomDoors;
+                          totalWindows += roomWindows;
+                          
+                          calculationDetails.push(`${count}x ${roomType}: ${length}×${width}×${standardHeight} = ${roomWallArea.toFixed(0)} sqft (${dimensionSource})`);
+                        }
+                      });
+                      
+                      const beforeReduction = totalWallArea;
+                      totalWallArea = totalWallArea * (1 - sharedWallReduction);
+                      const doorDeduction = totalDoors * standardDoorArea;
+                      const windowDeduction = totalWindows * standardWindowArea;
+                      const finalWallAreaPerUnit = Math.max(0, totalWallArea - doorDeduction - windowDeduction);
+                      const finalArea = finalWallAreaPerUnit * bhkUnits;
+                      
+                      const details = `${calculationDetails.join(' + ')} = ${beforeReduction.toFixed(0)} sqft. Shared wall reduction (-20%): ${totalWallArea.toFixed(0)} sqft. Doors (${totalDoors}×22): -${doorDeduction.toFixed(0)} sqft. Windows (${totalWindows.toFixed(1)}×18): -${windowDeduction.toFixed(0)} sqft. Per unit: ${finalWallAreaPerUnit.toFixed(0)} sqft × ${bhkUnits} units = ${finalArea.toFixed(0)} sqft`;
+                      
+                      return { area: finalArea, details };
+                    }
+                    
                     function countRooms(roomsStr) {
                       if (!roomsStr) return 0;
-                      // Only count these room types
                       const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
                       return roomsStr.split(',').reduce((sum, part) => {
                         return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
                       }, 0);
                     }
+                    
                     const totalWalls = bhkRowsForDebug.reduce((sum, row) => {
                       const rooms = countRooms(row.rooms);
-                      // Each room typically has 2 internal walls
                       return sum + (row.units * rooms * 2);
                     }, 0);
-                    const wallLength = 12; // ft
-                    const wallHeight = 10; // ft
-                    const internalWallArea = bhkRowsForDebug.reduce((sum, row) => {
-                      const rooms = countRooms(row.rooms);
-                      return sum + (row.units * rooms * 2 * wallLength * wallHeight);
-                    }, 0);
+                    
+                    // Use new advanced calculation
+                    const wallCalcResult = bhkRowsForDebug.reduce((acc, row) => {
+                      const result = calculateInternalWallAreaDebug(row.rooms, row.units);
+                      return {
+                        area: acc.area + result.area,
+                        details: acc.details + (acc.details ? '; ' : '') + result.details
+                      };
+                    }, { area: 0, details: '' });
+                    
+                    const internalWallArea = wallCalcResult.area;
                     return [
-                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Sum over BHK rows: units × (number of rooms in 'Typical Rooms') × 2. Room types counted: Bed, Living, Kitchen, Bath, Toilet.`, area: internalWallArea },
+                      { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: ${wallCalcResult.details}`, area: internalWallArea },
                       { name: 'External Walls', logic: '7% of Carpet Area', area: (width * depth * (carpetPercent/100) * 0.07) },
                       { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: (width * depth) },
                       { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: (width * depth) },
