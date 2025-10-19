@@ -9,7 +9,7 @@
   "configurations": [
     {
       "name": "Launch .NET API",
-      "type": "coreclr",
+      "type": "node",
       "request": "launch",
       "preLaunchTask": "start-dotnet-api",
       "program": "${workspaceFolder}/Server/ConstructionAPI/bin/Debug/net8.0/ConstructionAPI.dll",
@@ -18,12 +18,30 @@
       "env": {}
     },
     {
-      "name": "Debug React App",
+      "name": "Debug React App (Edge)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/react-app/src",
+      "preLaunchTask": "start-react-app"
+    },
+    {
+      "name": "Debug React App (Chrome)",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/react-app/src",
       "preLaunchTask": "start-react-app"
+    },
+    {
+      "name": "Attach to React App",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}/react-app",
+      "remoteRoot": null,
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }
