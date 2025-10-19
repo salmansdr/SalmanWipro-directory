@@ -465,6 +465,25 @@ const PricingCalculator = () => {
         
         setFloorBHKConfigs(newFloorBHKConfigs);
         setBhkRoomDetails(newBhkRoomDetails);
+        
+        // Extract and add any custom BHK types from the loaded project
+        const projectBhkTypes = [];
+        projectData.floorConfiguration.forEach(floor => {
+          if (floor.bhkUnits && Array.isArray(floor.bhkUnits)) {
+            floor.bhkUnits.forEach(unit => {
+              if (unit.bhkType && unit.bhkType.trim() !== '') {
+                projectBhkTypes.push(unit.bhkType);
+              }
+            });
+          }
+        });
+        
+        // Add unique project BHK types to existing options
+        const uniqueProjectTypes = [...new Set(projectBhkTypes)];
+        setBhkTypeOptions(prev => {
+          const allTypes = [...prev, ...uniqueProjectTypes];
+          return [...new Set(allTypes)]; // Remove duplicates
+        });
       }
       
       // Set cost level if available
@@ -542,6 +561,25 @@ const PricingCalculator = () => {
               
               setFloorBHKConfigs(newFloorBHKConfigs);
               setBhkRoomDetails(newBhkRoomDetails);
+              
+              // Extract and add any custom BHK types from the loaded project
+              const projectBhkTypes = [];
+              data.floorConfiguration.forEach(floor => {
+                if (floor.bhkUnits && Array.isArray(floor.bhkUnits)) {
+                  floor.bhkUnits.forEach(unit => {
+                    if (unit.bhkType && unit.bhkType.trim() !== '') {
+                      projectBhkTypes.push(unit.bhkType);
+                    }
+                  });
+                }
+              });
+              
+              // Add unique project BHK types to existing options
+              const uniqueProjectTypes = [...new Set(projectBhkTypes)];
+              setBhkTypeOptions(prev => {
+                const allTypes = [...prev, ...uniqueProjectTypes];
+                return [...new Set(allTypes)]; // Remove duplicates
+              });
             }
             
             console.log('Loaded project data from JSON:', data);
