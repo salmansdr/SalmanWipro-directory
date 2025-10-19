@@ -2260,7 +2260,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
             </div>
               {/* Debug breakdown for Internal Walls calculation - now dynamic by floor */}
               <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1rem auto', background: '#fffde7', border: '1px solid #ffe082', borderRadius: 6, padding: '10px 14px' }}>
-                <div style={{ fontWeight: 600, color: '#d81b60', marginBottom: 6 }}>Internal Walls Calculation Breakdown:</div>
+                
+               
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontWeight: 500, marginRight: 8 }}>Select Floor:</label>
                   <select value={selectedDebugFloor || 0} onChange={e => setSelectedDebugFloor(Number(e.target.value))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ffe082' }}>
@@ -2269,42 +2270,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     ))}
                   </select>
                 </div>
-                {(() => {
-                  const bhkRowsForDebug = getFloorRows(selectedDebugFloor || 0);
-                  function countRooms(roomsStr) {
-                    if (!roomsStr) return 0;
-                    const keywords = ['Bed', 'Living', 'Kitchen', 'Bath', 'Toilet'];
-                    return roomsStr.split(',').reduce((sum, part) => {
-                      return sum + (keywords.some(k => part.trim().toLowerCase().includes(k.toLowerCase())) ? 1 : 0);
-                    }, 0);
-                  }
-                  return (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.96rem', marginBottom: 0 }}>
-                      <thead>
-                        <tr style={{ background: '#fffde7' }}>
-                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>BHK Type</th>
-                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Units</th>
-                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Rooms Counted</th>
-                          <th style={{ padding: '6px', border: '1px solid #ffe082' }}>Walls (Units × Rooms × 2)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bhkRowsForDebug.map((row, idx) => {
-                          const rooms = countRooms(row.rooms);
-                          const walls = row.units * rooms * 2;
-                          return (
-                            <tr key={idx}>
-                              <td style={{ padding: '6px', border: '1px solid #ffe082' }}>{row.type || '-'}</td>
-                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{row.units}</td>
-                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right' }}>{rooms}</td>
-                              <td style={{ padding: '6px', border: '1px solid #ffe082', textAlign: 'right', fontWeight: 600 }}>{walls}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  );
-                })()}
+                
               </div>
             <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1.5rem auto', background: '#fafafa', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', padding: '18px 12px', fontSize: '.97rem', overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.97rem' }}>
