@@ -16,10 +16,15 @@
     },
     "external_walls": {
       "name": "External Walls",
-      "formula": "percentage_of_carpet_area",
-      "percentage": 0.07,
+      "A_bu" : ".85xL_sb*W_sb",
+      "layout_ratio" : "L_sb / W_sb",
+      "W_bu" : "(A_bu / layout_ratio) ** 0.5",
+      "L_bu" : "layout_ratio * W_bu",
+      "formula": "2×(L_bu+W_bu)×Height per floor",
+      "calculation_type": "Build-up Area_based",
+      "height": 10,
       "thickness": 0.75,
-      "description": "7% of Carpet Area"
+      "description": "Based on  Built-up Area"
     },
     "slab_area": {
       "name": "Slab Area", 
@@ -33,12 +38,37 @@
       "thickness": 0.05,
       "description": "Same as Super Built-up Area"
     },
-    "beams_columns": {
-      "name": "Beams & Columns",
-      "formula": "percentage_of_super_buildup",
-      "percentage": 0.05,
-      "thickness": 1.0,
-      "description": "5% of Super Built-up Area"
+    "beams": {
+      "name": "Beams",
+      "A_bu" : ".85xL_sb*W_sb",
+      "layout_ratio" : "L_sb / W_sb",
+      "W_bu" : "(A_bu / layout_ratio) ** 0.5",
+      "L_bu" : "layout_ratio * W_bu",
+      "Columns per Row":"L_bu/(Grid spacing)+1",
+      "Rows of Columns":"W_bu/(Grid spacing)+1",
+      "Grid spacing": "15",
+      "Column width": "1",
+      "Column Depth": "1.5",
+      "Cross-section": "Column width× Column Depth",
+      "formula": "Rows of Columns*(Columns per Row-1)+Columns per Row*(Rows of Columns-1)*Cross-section*Grid spacing",
+      "description": "Advance Logical Calculation based on Grid Spacing and Cross-section"
+    },
+    "columns": {
+      "name": "Columns",
+      "A_bu" : ".85xL_sb*W_sb",
+      "layout_ratio" : "L_sb / W_sb",
+      "W_bu" : "(A_bu / layout_ratio) ** 0.5",
+      "L_bu" : "layout_ratio * W_bu",
+      "Columns per Row":"L_bu/(Grid spacing)+1",
+      "Rows of Columns":"W_bu/(Grid spacing)+1",
+      "Grid spacing": "15",
+      "Columns Count":"Columns per Row*Rows of Columns",
+      "Column width": "1.5",
+      "Column Depth": "1.5",
+      "Cross-section": "Column width× Column Depth",
+      "formula": "Columns Count*Cross-section",
+      "Height": 10,
+      "description": "Advance Logical Calculation based on Grid Spacing and Cross-section"
     },
     "staircase_area": {
       "name": "Staircase Area",

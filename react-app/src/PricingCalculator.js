@@ -2544,10 +2544,55 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                         isEditable: false, 
                         isThicknessEditable: true 
                       },
-                      { name: 'External Walls', logic: 'of Carpet Area', percentage: editablePercentages.external_walls, area: (width * depth * (carpetPercent/100) * (editablePercentages.external_walls/100)), thickness: editableThickness.external_walls, component: 'external_walls', isEditable: true, isThicknessEditable: true },
+                      (() => {
+                        // External Walls calculation based on AreaCalculationLogic.json
+                        const L_sb = Number(width);  // SBA Width (ft)
+                        const W_sb = Number(depth);  // SBA Length (ft)
+                        const A_bu = 0.85 * L_sb * W_sb;  // Build-up Area
+                        const layout_ratio = L_sb / W_sb;  // Layout ratio
+                        const W_bu = Math.sqrt(A_bu / layout_ratio);  // Build-up width
+                        const L_bu = layout_ratio * W_bu;  // Build-up length
+                        const externalWallArea = 2 * (L_bu + W_bu) * 10 * floors;  // 2×(L_bu+W_bu)×Height×floors
+                        return { name: 'External Walls', logic: 'Based on Built-up Area', percentage: null, area: externalWallArea, thickness: editableThickness.external_walls, component: 'external_walls', isEditable: false, isThicknessEditable: true };
+                      })(),
                       { name: 'Slab Area', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.slab_area, component: 'slab_area', isEditable: false, isThicknessEditable: true },
                       { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', percentage: null, area: (width * depth), thickness: editableThickness.ceiling_plaster, component: 'ceiling_plaster', isEditable: false, isThicknessEditable: true },
-                      { name: 'Beams & Columns', logic: 'of Super Built-up Area', percentage: editablePercentages.beams_columns, area: (width * depth * (editablePercentages.beams_columns/100)), thickness: editableThickness.beams_columns, component: 'beams_columns', isEditable: true, isThicknessEditable: true },
+                      (() => {
+                        // Beams calculation based on updated AreaCalculationLogic.json
+                        const L_sb = Number(width);  // SBA Width (ft)
+                        const W_sb = Number(depth);  // SBA Length (ft)
+                        const A_bu = 0.85 * L_sb * W_sb;  // Build-up Area
+                        const layout_ratio = L_sb / W_sb;  // Layout ratio
+                        const W_bu = Math.sqrt(A_bu / layout_ratio);  // Build-up width
+                        const L_bu = layout_ratio * W_bu;  // Build-up length
+                        const gridSpacing = 15;  // Grid spacing in ft
+                        const columnWidth = 1;   // Updated column width for beams
+                        const columnDepth = 1.5; // Updated column depth for beams
+                        const columnsPerRow = Math.floor(L_bu / gridSpacing) + 1;
+                        const rowsOfColumns = Math.floor(W_bu / gridSpacing) + 1;
+                        const crossSection = columnWidth * columnDepth;  // 1 × 1.5 = 1.5 sq ft
+                        const totalBeamsCount = rowsOfColumns * (columnsPerRow - 1) + columnsPerRow * (rowsOfColumns - 1);
+                        const beamArea = totalBeamsCount * crossSection * gridSpacing;
+                        return { name: 'Beams', logic: `Grid Calculation (${totalBeamsCount} beams, ${gridSpacing}ft spacing)`, percentage: null, area: beamArea, component: 'beams', isEditable: false, isThicknessEditable: false };
+                      })(),
+                      (() => {
+                        // Columns calculation based on AreaCalculationLogic.json
+                        const L_sb = Number(width);  // SBA Width (ft)
+                        const W_sb = Number(depth);  // SBA Length (ft)
+                        const A_bu = 0.85 * L_sb * W_sb;  // Build-up Area
+                        const layout_ratio = L_sb / W_sb;  // Layout ratio
+                        const W_bu = Math.sqrt(A_bu / layout_ratio);  // Build-up width
+                        const L_bu = layout_ratio * W_bu;  // Build-up length
+                        const gridSpacing = 15;  // Grid spacing in ft
+                        const columnWidth = 1.5;  // Column width in ft
+                        const columnDepth = 1.5;  // Column depth in ft
+                        const columnsPerRow = Math.floor(L_bu / gridSpacing) + 1;
+                        const rowsOfColumns = Math.floor(W_bu / gridSpacing) + 1;
+                        const columnsCount = columnsPerRow * rowsOfColumns;
+                        const crossSection = columnWidth * columnDepth;  // 1.5 × 1.5 = 2.25 sq ft
+                        const columnArea = columnsCount * crossSection;  // Removed height multiplication as per JSON
+                        return { name: 'Columns', logic: `Grid Calculation (${columnsCount} columns, ${columnsPerRow}×${rowsOfColumns} grid)`, percentage: null, area: columnArea, component: 'columns', isEditable: false, isThicknessEditable: false };
+                      })(),
                       { name: 'Staircase Area', logic: 'of Super Built-up Area', percentage: editablePercentages.staircase_area, area: (width * depth * (editablePercentages.staircase_area/100)), thickness: editableThickness.staircase_area, component: 'staircase_area', isEditable: true, isThicknessEditable: true },
                       { name: 'Lift Shaft Area', logic: 'If lift required, of Super Built-up Area', percentage: editablePercentages.lift_shaft_area, area: lift ? (width * depth * (editablePercentages.lift_shaft_area/100)) : 0, thickness: editableThickness.lift_shaft_area, component: 'lift_shaft_area', isEditable: true, isThicknessEditable: true },
                       { name: 'Balcony Area', logic: 'of Carpet Area', percentage: editablePercentages.balcony_area, area: (width * depth * (carpetPercent/100) * (editablePercentages.balcony_area/100)), thickness: editableThickness.balcony_area, component: 'balcony_area', isEditable: true, isThicknessEditable: true },
@@ -2559,7 +2604,12 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                       { name: 'Parapet Walls', logic: 'of Super Built-up Area', percentage: editablePercentages.parapet_walls, area: (width * depth * (editablePercentages.parapet_walls/100)), thickness: editableThickness.parapet_walls, component: 'parapet_walls', isEditable: true, isThicknessEditable: true }
                     ];
                   })().map((item, idx) => {
-                    const volume = item.area && item.thickness ? (item.area * item.thickness) : 0;
+                    let volume = 0;
+                    if ((item.component === 'beams' || item.component === 'columns')) {
+                      volume = item.area;
+                    } else if (item.area && item.thickness) {
+                      volume = item.area * item.thickness;
+                    }
                     return (
                       <tr key={idx}>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
@@ -2617,13 +2667,15 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                         </td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
-                          {item.isThicknessEditable ? (
+                          {item.thickness === undefined || item.thickness === null ? (
+                            <span>-</span>
+                          ) : item.isThicknessEditable ? (
                             <input 
                               type="number" 
                               step="0.1"
                               min="0"
                               max="10"
-                              value={item.thickness || ''} 
+                              value={item.thickness} 
                               onChange={(e) => handleThicknessChange(item.component, e.target.value)}
                               style={{ 
                                 width: '60px', 
@@ -2635,7 +2687,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                               }}
                             />
                           ) : (
-                            '-'
+                            <span>{item.thickness}</span>
                           )}
                         </td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
