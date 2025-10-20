@@ -2926,7 +2926,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                           {/* Room Details */}
                           <div style={{ marginBottom: '15px' }}>
                             <h6 style={{ color: '#333', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              🏠 Room Details
+                              🏠 Room Area Breakdown Details
                             </h6>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
                               {roomLines.map((line, lineIdx) => (
@@ -2952,44 +2952,14 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                 </div>
                               ))}
                             </div>
-                            {/* Total Room Area */}
-                            <div style={{
-                              marginTop: '14px',
-                              padding: '10px 16px',
-                              background: 'linear-gradient(90deg, #fffde7 0%, #fff9c4 100%)',
-                              border: '2px solid #ffe082',
-                              borderRadius: '6px',
-                              color: '#b28704',
-                              fontWeight: 700,
-                              fontSize: '1.05em',
-                              boxShadow: '0 1px 4px rgba(255, 215, 64, 0.10)',
-                              display: 'inline-block',
-                              marginRight: '10px'
-                            }}>
-                              Total Room Area: {totalRoomArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft
-                            </div>
-                            {/* Total Reduction Area */}
-                            <div style={{
-                              marginTop: '14px',
-                              padding: '10px 16px',
-                              background: 'linear-gradient(90deg, #fce4ec 0%, #f8bbd0 100%)',
-                              border: '2px solid #f8bbd0',
-                              borderRadius: '6px',
-                              color: '#c2185b',
-                              fontWeight: 700,
-                              fontSize: '1.05em',
-                              boxShadow: '0 1px 4px rgba(233, 30, 99, 0.10)',
-                              display: 'inline-block',
-                              marginLeft: '10px'
-                            }}>
-                              Total Reduction area: {totalReductionArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft
-                            </div>
+                            
+                            
                           </div>
                           {/* Calculation Breakdown */}
                           {(rawTotal || sharedWallDeduction || doorDeduction || windowDeduction || otherDeductions.length > 0 || typeof finalTotal !== 'undefined') && (
                             <div style={{ marginTop: '15px' }}>
                               <h6 style={{ color: '#333', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                🧮 Calculation Breakdown
+                                🧮 Reduction Area Breakdown details
                               </h6>
                               <div style={{ background: '#fff', border: '1px solid #e3f2fd', borderRadius: '6px', padding: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                                 {rawTotal && (
@@ -3022,6 +2992,19 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                     <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{ded.replace(/deduct(ed)?|reduction:?/gi, '').trim()}</span>
                                   </div>
                                 ))}
+                                {/* Total Room Area */}
+                            
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                  <span>Total Room area: </span>
+                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{totalRoomArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
+                                </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                  <span>Total Reduction area: </span>
+                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{totalReductionArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
+                                </div>
+{/* Total Area */}
+
                                 <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
                                   <span>Final Total Area: </span>
                                   <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{safeFinalTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
