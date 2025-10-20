@@ -91,6 +91,15 @@ const PricingCalculator = () => {
       ...prev,
       [component]: numValue
     }));
+    // Also update the calculation logic so grid reflects changes
+    setAreaCalculationLogic(prev => {
+      if (!prev || !prev.calculation_components) return prev;
+      const updated = { ...prev };
+      if (updated.calculation_components[component]) {
+        updated.calculation_components[component].percentage = numValue / 100;
+      }
+      return updated;
+    });
   };
 
   // Handler for thickness changes
@@ -100,6 +109,15 @@ const PricingCalculator = () => {
       ...prev,
       [component]: numValue
     }));
+    // Also update the calculation logic so grid reflects changes
+    setAreaCalculationLogic(prev => {
+      if (!prev || !prev.calculation_components) return prev;
+      const updated = { ...prev };
+      if (updated.calculation_components[component]) {
+        updated.calculation_components[component].thickness = numValue;
+      }
+      return updated;
+    });
   };
 
   function handleSaveBHKConfig() {
@@ -1384,32 +1402,35 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
         //const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
        // setDynamicRoomColumns(columnsWithCirculation);
        setDynamicRoomColumns([...dynamicColumns, 'Circulation Space']);
-        // Initialize room details with data from JSON
+        // Only set default room details if not already present (preserve user edits)
         const key = `${floorIdx}-${idx}`;
-        const roomDetails = {
-          'Count': {},
-          'Length (ft)': {},
-          'Width (ft)': {}
-        };
-        // Populate room data using the mapping
-        roomMapping.forEach((roomData, displayName) => {
-          // Set count to bathroom_count for bathroom rooms, otherwise 1
-          if (displayName.toLowerCase().includes('bathroom')) {
-            roomDetails['Count'][displayName] = matchedConfig.bathroom_count || 1;
-          } else {
-            roomDetails['Count'][displayName] = 1;
+        setBhkRoomDetails(prev => {
+          if (prev[key]) {
+            // Already exists, do not overwrite
+            return prev;
           }
-          roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
-          roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
-        });
-        // Add circulation space data
+          const roomDetails = {
+            'Count': {},
+            'Length (ft)': {},
+            'Width (ft)': {}
+          };
+          roomMapping.forEach((roomData, displayName) => {
+            if (displayName.toLowerCase().includes('bathroom')) {
+              roomDetails['Count'][displayName] = matchedConfig.bathroom_count || 1;
+            } else {
+              roomDetails['Count'][displayName] = 1;
+            }
+            roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
+            roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
+          });
           roomDetails['Count']['Circulation Space'] = 1;
           roomDetails['Length (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
           roomDetails['Width (ft)']['Circulation Space'] = Math.round(Math.sqrt(matchedConfig.circulation_space_sqft));
-        setBhkRoomDetails(prev => ({
-          ...prev,
-          [key]: roomDetails
-        }));
+          return {
+            ...prev,
+            [key]: roomDetails
+          };
+        });
         setTimeout(() => {
           setShowBHKModal(true);
         }, 0);
@@ -1444,35 +1465,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
     });
   }
 
-  // Handler for OK button in modal
+  // Handler for OK button in modal (now only closes the modal)
   function handleOkBHKModal() {
-    // Calculate sum of Total Area (sq ft) from modal
-    const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
-    let totalAreaSum = 0;
-    if (bhkRoomDetails[key]) {
-      dynamicRoomColumns.forEach(col => {
-        const count = Number(bhkRoomDetails[key]['Count']?.[col] || 0);
-        const length = Number(bhkRoomDetails[key]['Length (ft)']?.[col] || 0);
-        const width = Number(bhkRoomDetails[key]['Width (ft)']?.[col] || 0);
-        totalAreaSum += count * length * width;
-      });
-    }
-    // Update Carpet Area (Sq ft) in main grid for the corresponding row
-    if (bhkModalFloorIdx !== null && bhkModalIdx !== null) {
-      if (bhkModalFloorIdx === 0) {
-        setBhkRows(prev => {
-          const updated = [...prev];
-          updated[bhkModalIdx] = { ...updated[bhkModalIdx], area: totalAreaSum };
-          return updated;
-        });
-      } else {
-        setFloorBHKConfigs(prev => {
-          const rows = [...getFloorRows(bhkModalFloorIdx)];
-          rows[bhkModalIdx] = { ...rows[bhkModalIdx], area: totalAreaSum };
-          return { ...prev, [bhkModalFloorIdx]: rows };
-        });
-      }
-    }
     handleCloseBHKModal();
   }
 
@@ -1542,7 +1536,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               let bhkSections = [];
               bhkRowsForDebug.forEach((row, idx) => {
                 // BHK header
-                const bhkHeader = `🏠 BHK ${idx + 1}`;
+                const bhkHeader = `BHK ${idx + 1}`;
                 let roomDetailsArr = [];
                 // Get room details from modal state if available
                 const roomDataKey = `${selectedDebugFloor || 0}-${idx}`;
@@ -2572,15 +2566,13 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                         </td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>{item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
-                          {editableThickness[item.component] === undefined || editableThickness[item.component] === null ? (
-                            <span>-</span>
-                          ) : (Number(editableThickness[item.component]) === 0 ? (
+                          {typeof item.thickness === 'number' && !isNaN(item.thickness) ? (
                             <input 
                               type="number" 
                               step="0.1"
                               min="0"
                               max="10"
-                              value={item.thickness} 
+                              value={editableThickness[item.component] !== undefined ? editableThickness[item.component] : item.thickness} 
                               onChange={(e) => handleThicknessChange(item.component, e.target.value)}
                               style={{ 
                                 width: '60px', 
@@ -2592,8 +2584,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                               }}
                             />
                           ) : (
-                            <span>{item.thickness}</span>
-                          ))}
+                            <span>-</span>
+                          )}
                         </td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
                           {volume ? volume.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
@@ -2908,8 +2900,22 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                         }
                       }
                       const otherDeductions = calcLines.filter(l => (l.toLowerCase().includes('deduct') || l.toLowerCase().includes('reduction')) && !l.toLowerCase().includes('shared wall') && !l.toLowerCase().includes('door') && !l.toLowerCase().includes('window'));
-                      //const finalTotal = calcLines.find(l => l.toLowerCase().includes('final') || l.toLowerCase().includes('total'));
-                      const finalTotal = totalRoomArea-(sharedWallAreavalue+doorAreavalue+windowAreavalue);
+                      // Calculate total reduction area (sum of all deductions)
+                      const totalReductionArea = sharedWallAreavalue + doorAreavalue + windowAreavalue + otherDeductions.reduce((sum, ded) => {
+                        const match = ded.match(/([\d,.]+)\s*sq\s*ft|([\d,.]+)$/i);
+                        if (match) {
+                          const num = match[1] || match[2];
+                          if (num) {
+                            return sum + parseFloat(num.replace(/,/g, ''));
+                          }
+                        }
+                        return sum;
+                      }, 0);
+
+                      // Calculate finalTotal (totalRoomArea minus all deductions)
+                      const finalTotal = totalRoomArea - totalReductionArea;
+                      // Ensure finalTotal is always defined (fallback to 0 if NaN)
+                      let safeFinalTotal = typeof finalTotal !== 'undefined' && !isNaN(finalTotal) ? finalTotal : 0;
 
                       return (
                         <div key={index} style={{ marginBottom: '20px' }}>
@@ -2924,7 +2930,24 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                             </h6>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
                               {roomLines.map((line, lineIdx) => (
-                                <div key={lineIdx} style={{ background: '#e3f2fd', borderRadius: '6px', padding: '10px', marginBottom: '8px', fontWeight: '500', color: '#1976d2', boxShadow: '0 1px 3px rgba(33,150,243,0.07)' }}>
+                                <div
+                                  key={lineIdx}
+                                  style={{
+                                    background: '#e3f2fd',
+                                    border: '1px solid #2196f3',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    marginBottom: '6px',
+                                    fontWeight: 500,
+                                    color: '#1976d2',
+                                    fontSize: '0.92em',
+                                    boxShadow: '0 1px 2px rgba(33,150,243,0.05)',
+                                    maxWidth: '340px',
+                                    minWidth: '160px',
+                                    width: '100%',
+                                    display: 'inline-block'
+                                  }}
+                                >
                                   {line}
                                 </div>
                               ))}
@@ -2940,13 +2963,30 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                               fontWeight: 700,
                               fontSize: '1.05em',
                               boxShadow: '0 1px 4px rgba(255, 215, 64, 0.10)',
-                              display: 'inline-block'
+                              display: 'inline-block',
+                              marginRight: '10px'
                             }}>
                               Total Room Area: {totalRoomArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft
                             </div>
+                            {/* Total Reduction Area */}
+                            <div style={{
+                              marginTop: '14px',
+                              padding: '10px 16px',
+                              background: 'linear-gradient(90deg, #fce4ec 0%, #f8bbd0 100%)',
+                              border: '2px solid #f8bbd0',
+                              borderRadius: '6px',
+                              color: '#c2185b',
+                              fontWeight: 700,
+                              fontSize: '1.05em',
+                              boxShadow: '0 1px 4px rgba(233, 30, 99, 0.10)',
+                              display: 'inline-block',
+                              marginLeft: '10px'
+                            }}>
+                              Total Reduction area: {totalReductionArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft
+                            </div>
                           </div>
                           {/* Calculation Breakdown */}
-                          {(rawTotal || sharedWallDeduction || doorDeduction || windowDeduction || otherDeductions.length > 0 || finalTotal) && (
+                          {(rawTotal || sharedWallDeduction || doorDeduction || windowDeduction || otherDeductions.length > 0 || typeof finalTotal !== 'undefined') && (
                             <div style={{ marginTop: '15px' }}>
                               <h6 style={{ color: '#333', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 🧮 Calculation Breakdown
@@ -2959,13 +2999,13 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                   </div>
                                 )}
                                 {sharedWallDeduction && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e0f7fa', border: '1px solid #00bcd4', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#00838f' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#1976d2' }}>
                                     <span>Shared Wall Reduction: </span>
                                     <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{sharedWallArea}</span>
                                   </div>
                                 )}
                                 {doorDeduction && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#fce4ec', border: '1px solid #e91e63', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#c2185b' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#1976d2' }}>
                                     <span>Door Deduction: </span>
                                     <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{doorArea}</span>
                                   </div>
@@ -2982,12 +3022,10 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                     <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{ded.replace(/deduct(ed)?|reduction:?/gi, '').trim()}</span>
                                   </div>
                                 ))}
-                                {finalTotal && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
-                                    <span>Final Total Area: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{finalTotal} sqft</span>
-                                  </div>
-                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                  <span>Final Total Area: </span>
+                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{safeFinalTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -2996,11 +3034,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     });
                   })()}
                 </div>
-                <div style={{ marginTop: '15px', padding: '8px', background: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '4px' }}>
-                  <div style={{ color: '#856404', fontSize: '0.8rem' }}>
-                    <strong>💡 Note:</strong> Calculations include shared wall reduction, door/window deductions, and use actual room dimensions from Step 2 configuration.
-                  </div>
-                </div>
+                
               </>
             ) : (
               <div style={{ textAlign: 'center', color: '#666', padding: '40px 20px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
