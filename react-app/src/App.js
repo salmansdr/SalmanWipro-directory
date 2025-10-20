@@ -62,7 +62,7 @@ function App() {
       localStorage.setItem('isAuthenticated', 'true');
       return true;
     }
-    if (username === 'salmansdr' && password === 'Faresi@123') {
+    if (username === 'salmansdr' && password === 'Selim@123') {
       setIsAuthenticated(true);
       localStorage.setItem('isAuthenticated', 'true');
       return true;

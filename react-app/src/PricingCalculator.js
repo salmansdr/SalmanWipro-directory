@@ -1292,7 +1292,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
           { name: `Internal Walls (${totalWalls} walls)`, logic: `Advanced calculation: Wall Area = 2×(Length+Width)×Height per room, -20% shared wall reduction, minus doors (22 sqft each) and windows (18 sqft each). Based on actual room dimensions and counts.`, area: internalWallArea },
           { name: 'External Walls', logic: '7% of Carpet Area', area: totalCarpetArea * 0.07 },
           { name: 'Slab Area', logic: 'Same as Super Built-up Area', area: sba },
-          { name: 'Ceiling Plaster', logic: 'Same as Super Built-up Area', area: sba },
+          { name: 'Ceiling Plaster', logic: 'Same as  Built-up Area', area: sba },
           { name: 'Beams & Columns', logic: '5% of Super Built-up Area', area: sba * 0.05 },
           { name: 'Staircase Area', logic: '2% of Super Built-up Area', area: sba * 0.02 },
           { name: 'Lift Shaft Area', logic: 'If lift required, 1.5% of Super Built-up Area', area: lift ? (sba * 0.015) : 0 },
@@ -1514,6 +1514,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               carpetArea: (Number(width) * Number(depth) * (Number(carpetPercent)/100)) || 0,
               super_buildup_area: (Number(width) * Number(depth)) || 0,
               ground_floor_sba: (Number(width) * Number(depth)) || 0,
+              buildup_area: (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
             };
             let area = '-';
             let percentage = comp.percentage ? comp.percentage * 100 : '-';
@@ -1597,8 +1598,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 const calcBreakdownArr = [];
                 calcBreakdownArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay} sqft`);
                 calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Wall Area = ${sharedWallReductionAreaDisplay} sqft`);
-                calcBreakdownArr.push(`Door Deduction: ${doors * (row.units || 1)} × 22 = ${doors * (row.units || 1) * 22} sqft`);
-                calcBreakdownArr.push(`Window Deduction: ${windows * (row.units || 1)} × 18 = ${windows * (row.units || 1) * 18} sqft`);
+                calcBreakdownArr.push(`Door Deduction: ${doors * (row.units || 1)} × ${doorArea} = ${doors * (row.units || 1) * doorArea} sqft`);
+                calcBreakdownArr.push(`Window Deduction: ${windows * (row.units || 1)} × ${windowArea} = ${windows * (row.units || 1) * windowArea} sqft`);
                 calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallAreaPerUnit * (row.units || 1)).toFixed(0)} sqft`);
                 // Join BHK header, room details, and calculation breakdown for modal rendering
                 bhkSections.push([bhkHeader, ...roomDetailsArr, '--- Calculation Breakdown ---', ...calcBreakdownArr].join('\n'));
@@ -1606,7 +1607,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 bhkSections.push([bhkHeader, ...roomDetailsArr].join('\n'));
               });
               area = totalWallArea;
-              logic = `Advanced: Wall area minus ${sharedWallReduction * 100}% shared, doors (${totalDoors}), windows (${totalWindows})`;
+              logic = `Formula: Wall area minus ${sharedWallReduction * 100}% shared wall area, doors (${totalDoors}), windows (${totalWindows})`;
               // Add details for modal (pipe separator for compatibility)
               return {
                 key,
@@ -1615,7 +1616,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 percentage,
                 thickness,
                 logic,
-                logicDetails: 'Advanced calculation: ' + bhkSections.join(' | ')
+                logicDetails: 'Area calculation: ' + bhkSections.join(' | ')
               };
             }
             //Custom Logic for External Walls
@@ -1632,7 +1633,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               const L_bu = layout_ratio * W_bu;
               // Formula: 2×(L_bu+W_bu)×Height per floor
               area = 2 * (L_bu + W_bu) * height * vars.floors;
-              logic = `2×(${L_bu.toFixed(2)}+${W_bu.toFixed(2)})×${height}×${vars.floors} = ${area.toFixed(0)} sqft`;
+              logic = `2×(BA-Length: ${W_bu.toFixed(2)}+BA-Width: ${L_bu.toFixed(2)})×Floor Height: ${height}×${vars.floors} = ${area.toFixed(0)} sqft`;
               return { key, ...comp, area, percentage, thickness, logic };
             }
             if (key === 'beams') {
@@ -1676,10 +1677,15 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               try {
                 if (comp.formula === 'percentage_of_carpet_area') {
                   area = vars.carpetArea * (comp.percentage || 0);
+                } else if (comp.formula === 'percentage_of_buildup') {
+                  area = (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0 * (comp.percentage || 0);
                 } else if (comp.formula === 'percentage_of_super_buildup') {
                   area = vars.super_buildup_area * (comp.percentage || 0);
                 } else if (comp.formula === 'same_as_super_buildup') {
                   area = vars.super_buildup_area;
+                } else if (comp.formula === 'same_as_Built-up Area') {
+                 // area=(Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
+                  area = (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0;
                 } else if (comp.formula === 'conditional_percentage_of_super_buildup') {
                   area = (vars.lift ? vars.super_buildup_area * (comp.percentage || 0) : 0);
                 } else if (comp.formula === 'percentage_of_ground_floor_sba') {
@@ -1698,7 +1704,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               percentage,
               thickness,
               logic,
-              isEditable: editablePercentages[key] !== undefined,
+            isEditable: Object.keys(editablePercentages).some(k => k.toLowerCase() === key.toLowerCase()),
               isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
               component: key
             };
@@ -1984,32 +1990,8 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={2} sm={6} className="mb-3">
-                  <Form.Group>
-                    <Form.Label style={{ 
-                      fontSize: '0.9rem', 
-                      fontWeight: '500', 
-                      color: '#495057', 
-                      marginBottom: '0.5rem',
-                      display: 'block'
-                    }}>
-                      SBA Width (ft)
-                    </Form.Label>
-                    <Form.Control 
-                      type="number" 
-                      value={width} 
-                      onChange={e => setWidth(e.target.value)} 
-                      min={1}
-                      style={{
-                        borderRadius: '6px',
-                        border: '1px solid #ced4da',
-                        padding: '0.75rem',
-                        fontSize: '0.9rem',
-                        height: '42px'
-                      }}
-                    />
-                  </Form.Group>
-                </Col>
+               
+
                 <Col md={2} sm={6} className="mb-3">
                   <Form.Group>
                     <Form.Label style={{ 
@@ -2036,6 +2018,35 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                     />
                   </Form.Group>
                 </Col>
+
+ <Col md={2} sm={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: '500', 
+                      color: '#495057', 
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      SBA Width (ft)
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={width} 
+                      onChange={e => setWidth(e.target.value)} 
+                      min={1}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        height: '42px'
+                      }}
+                    />
+                  </Form.Group>
+                </Col>
+
+
                 <Col md={2} sm={6} className="mb-3">
                   <Form.Group>
                     <Form.Label style={{ 

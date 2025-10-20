@@ -3,6 +3,22 @@
   "description": "Area calculation logic configuration for construction estimation",
   "last_updated": "2025-10-18",
   "calculation_components": {
+    "Foundation_area": {
+      "name": "Foundation Area", 
+      "formula": "percentage_of_super_buildup",
+      "percentage": 0.12,
+      "thickness": 2.0,
+      "description": "12% of Super Built-up Area",
+      "Applicable Floors": ["GroundFloor"]
+    },
+    "parking_area_ground": {
+      "name": "Parking Area (Ground)",
+      "formula": "percentage_of_ground_floor_sba",
+      "percentage": 0.15,
+      "thickness": 0.5,
+      "description": "15% of Ground Floor SBA",
+      "Applicable Floors": ["GroundFloor"]
+    },
     "internal_walls": {
       "name": "Internal Walls",
       "formula": "2×(Length+Width)×Height per room",
@@ -30,16 +46,16 @@
     },
     "slab_area": {
       "name": "Slab Area", 
-      "formula": "same_as_super_buildup",
+      "formula": "same_as_Built-up Area",
       "thickness": 0.5,
-      "description": "Same as Super Built-up Area",
+      "description": "Same as Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "ceiling_plaster": {
       "name": "Ceiling Plaster",
-      "formula": "same_as_super_buildup",
+      "formula": "same_as_Built-up Area",
       "thickness": 0.05,
-      "description": "Same as Super Built-up Area",
+      "description": "Same as Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "beams": {
@@ -109,14 +125,7 @@
       "description": "3% of Carpet Area",
       "Applicable Floors": ["All Floors"]
     },
-    "toilet_bath_area": {
-      "name": "Toilet/Bath Area",
-      "formula": "percentage_of_carpet_area",
-      "percentage": 0.08,
-      "thickness": 0.5,
-      "description": "8% of Carpet Area",
-      "Applicable Floors": ["All Floors"]
-    },
+    
     "common_corridor": {
       "name": "Common Corridor",
       "formula": "percentage_of_super_buildup",
@@ -125,28 +134,14 @@
       "description": "4% of Super Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
-    "parking_area_ground": {
-      "name": "Parking Area (Ground)",
-      "formula": "percentage_of_ground_floor_sba",
-      "percentage": 0.15,
-      "thickness": 0.5,
-      "description": "15% of Ground Floor SBA",
-      "Applicable Floors": ["Ground Floor"]
-    },
-    "foundation_area": {
-      "name": "Foundation Area", 
-      "formula": "percentage_of_super_buildup",
-      "percentage": 0.12,
-      "thickness": 2.0,
-      "description": "12% of Super Built-up Area",
-      "Applicable Floors": ["Ground Floor"]
-    },
+    
+    
     "parapet_walls": {
       "name": "Parapet Walls",
-      "formula": "percentage_of_super_buildup",
+      "formula": "percentage_of_buildup",
       "percentage": 0.02,
       "thickness": 0.5,
-      "description": "2% of Super Built-up Area",
+      "description": "2% of Built-up Area",
       "Applicable Floors": ["TopFloor"]
     }
   },
