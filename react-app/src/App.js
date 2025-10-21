@@ -49,34 +49,85 @@ function AvatarMenu({ onLogout }) {
 
 function App() {
   const [expanded, setExpanded] = useState(false);
-  // Persist login state in localStorage
+  // Hardcoded credentials (should be replaced with secure backend in production)
+  const HARDCODED_USERNAME = 'salmansdr';
+  const HARDCODED_PASSWORD = 'Faresi@123';
+  const AUTH_KEY = 'isAuthenticated';
+  const AUTH_USER_KEY = 'authUser';
+  const AUTH_PASS_KEY = 'authPass';
+  const AUTH_TIME_KEY = 'authTime';
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+  // Check authentication state on load
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     if (!SECURITY_ENABLED) return true;
-    return localStorage.getItem('isAuthenticated') === 'true';
+    const auth = localStorage.getItem(AUTH_KEY) === 'true';
+    const lastAuthTime = parseInt(localStorage.getItem(AUTH_TIME_KEY), 10);
+    const now = Date.now();
+    const storedUser = localStorage.getItem(AUTH_USER_KEY);
+    const storedPass = localStorage.getItem(AUTH_PASS_KEY);
+    // If not authenticated, or expired, or credentials changed, force logout
+    if (!auth) return false;
+    if (!lastAuthTime || now - lastAuthTime > ONE_DAY_MS) {
+      localStorage.setItem(AUTH_KEY, 'false');
+      return false;
+    }
+    if (storedUser !== HARDCODED_USERNAME || storedPass !== HARDCODED_PASSWORD) {
+      localStorage.setItem(AUTH_KEY, 'false');
+      return false;
+    }
+    return true;
   });
 
   // Handler for login success
   const handleLogin = (username, password) => {
     if (!SECURITY_ENABLED) {
       setIsAuthenticated(true);
-      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem(AUTH_KEY, 'true');
+      localStorage.setItem(AUTH_USER_KEY, username);
+      localStorage.setItem(AUTH_PASS_KEY, password);
+      localStorage.setItem(AUTH_TIME_KEY, Date.now().toString());
       return true;
     }
-    if (username === 'salmansdr' && password === 'Faresi@123') {
+    if (username === HARDCODED_USERNAME && password === HARDCODED_PASSWORD) {
       setIsAuthenticated(true);
-      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem(AUTH_KEY, 'true');
+      localStorage.setItem(AUTH_USER_KEY, username);
+      localStorage.setItem(AUTH_PASS_KEY, password);
+      localStorage.setItem(AUTH_TIME_KEY, Date.now().toString());
       return true;
     }
     setIsAuthenticated(false);
-    localStorage.setItem('isAuthenticated', 'false');
+    localStorage.setItem(AUTH_KEY, 'false');
     return false;
   };
+
   // Handler for logout
   const handleLogout = () => {
     if (!SECURITY_ENABLED) return;
     setIsAuthenticated(false);
-    localStorage.setItem('isAuthenticated', 'false');
+    localStorage.setItem(AUTH_KEY, 'false');
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(AUTH_PASS_KEY);
+    localStorage.removeItem(AUTH_TIME_KEY);
   };
+
+  // On mount, check if session expired or credentials changed (for tab refreshes)
+  React.useEffect(() => {
+    if (!SECURITY_ENABLED) return;
+    const auth = localStorage.getItem(AUTH_KEY) === 'true';
+    const lastAuthTime = parseInt(localStorage.getItem(AUTH_TIME_KEY), 10);
+    const now = Date.now();
+    const storedUser = localStorage.getItem(AUTH_USER_KEY);
+    const storedPass = localStorage.getItem(AUTH_PASS_KEY);
+    if (!auth || !lastAuthTime || now - lastAuthTime > ONE_DAY_MS || storedUser !== HARDCODED_USERNAME || storedPass !== HARDCODED_PASSWORD) {
+      setIsAuthenticated(false);
+      localStorage.setItem(AUTH_KEY, 'false');
+      localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(AUTH_PASS_KEY);
+      localStorage.removeItem(AUTH_TIME_KEY);
+    }
+  }, [ONE_DAY_MS]);
 
   return (
     <Router>
