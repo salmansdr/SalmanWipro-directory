@@ -809,11 +809,33 @@ const defaultBHKs = [
 
   // Handler to add/remove row for a floor
   function handleFloorAddRow(floorIdx) {
+    // Add the new row
     if (floorIdx === 0) {
-      setBhkRows([...getFloorRows(floorIdx), { type: '', units: 1, area: '', rooms: '' }]);
+      setBhkRows(prevRows => {
+        const updatedRows = [...prevRows, { type: '', units: 1, area: '', rooms: '' }];
+        // Also add default bhkRoomDetails for the new row
+        setBhkRoomDetails(prevDetails => ({
+          ...prevDetails,
+          [`${floorIdx}-${updatedRows.length - 1}`]: {
+            'Count': {},
+            'Length (ft)': {},
+            'Width (ft)': {}
+          }
+        }));
+        return updatedRows;
+      });
     } else {
       setFloorBHKConfigs(prev => {
         const rows = [...getFloorRows(floorIdx), { type: '', units: 1, area: '', rooms: '' }];
+        // Also add default bhkRoomDetails for the new row
+        setBhkRoomDetails(prevDetails => ({
+          ...prevDetails,
+          [`${floorIdx}-${rows.length - 1}`]: {
+            'Count': {},
+            'Length (ft)': {},
+            'Width (ft)': {}
+          }
+        }));
         return { ...prev, [floorIdx]: rows };
       });
     }
@@ -1536,8 +1558,14 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
               let totalWindows = 0;
               let bhkSections = [];
               bhkRowsForDebug.forEach((row, idx) => {
+                // Always get the latest units from the parent grid
+                let latestUnits = 1;
+                if (Array.isArray(getFloorRows(selectedDebugFloor || 0))) {
+                  const parentRow = getFloorRows(selectedDebugFloor || 0)[idx];
+                  latestUnits = Number(parentRow?.units) || 1;
+                }
                 // BHK header
-                const bhkHeader = `BHK ${idx + 1}`;
+                const bhkHeader = `BHK ${idx + 1} (Units: ${latestUnits})`;
                 let roomDetailsArr = [];
                 // Get room details from modal state if available
                 const roomDataKey = `${selectedDebugFloor || 0}-${idx}`;
@@ -1557,11 +1585,11 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                       roomWallArea += wallAreaPerRoom;
                       doors += 1;
                       windows += 1;
-                      roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)} sqft`);
+                      roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)*latestUnits} sqft`);
                     }
                   });
                 } 
-                // Calculate shared wall reduction area based on total room wall area (before reduction)
+                 // Calculate shared wall reduction area based on total room wall area (before reduction)
                 const sharedWallReductionArea = roomWallArea * sharedWallReduction;
                 // Apply shared wall reduction
                 roomWallArea = roomWallArea - sharedWallReductionArea;
@@ -1578,7 +1606,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 // Removed unused totalRoomsArea variable (was: const totalRoomsArea = ...)
                 // Use the actual total room wall area before reduction for display
                 const totalRoomsAreaDisplay = Object.keys(currentRoomDetails['Length (ft)']).reduce((sum, roomKey) => {
-                  // Exclude Balcony from calculation
+         // Exclude Balcony from calculation
                   if (roomKey.toLowerCase().includes('balcony')) return sum;
                   const length = Number(currentRoomDetails['Length (ft)'][roomKey]) || 0;
                   const width = Number(currentRoomDetails['Width (ft)'][roomKey]) || 0;
@@ -1591,20 +1619,21 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 // Calculate shared wall reduction area for display
                 const sharedWallReductionAreaDisplay = (totalRoomsAreaDisplay * sharedWallReduction).toFixed(0);
                 // Room details for display only (no shared wall here)
-                roomDetailsArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay} sqft`);
-                roomDetailsArr.push(`Total Doors: ${doors * (row.units || 1)}`);
-                roomDetailsArr.push(`Total Windows: ${windows * (row.units || 1)}`);
+                roomDetailsArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay *  latestUnits} sqft`);
+                //roomDetailsArr.push(`Total Doors: ${doors * latestUnits}`);
+                //roomDetailsArr.push(`Total Windows: ${windows * latestUnits}`);
                 // Calculation breakdown steps
+                let TotalDeduction = doorDeduction + windowDeduction + sharedWallReductionArea;
+                TotalDeduction= TotalDeduction *  latestUnits;
+                roomDetailsArr.push(`Total Deduction: ${TotalDeduction} sqft`);
                 const calcBreakdownArr = [];
-                calcBreakdownArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay} sqft`);
-                calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Wall Area = ${sharedWallReductionAreaDisplay} sqft`);
-                calcBreakdownArr.push(`Door Deduction: ${doors * (row.units || 1)} × ${doorArea} = ${doors * (row.units || 1) * doorArea} sqft`);
-                calcBreakdownArr.push(`Window Deduction: ${windows * (row.units || 1)} × ${windowArea} = ${windows * (row.units || 1) * windowArea} sqft`);
-                calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallAreaPerUnit * (row.units || 1)).toFixed(0)} sqft`);
+                //calcBreakdownArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay} sqft`);
+                calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Wall Area = ${sharedWallReductionAreaDisplay*latestUnits} sqft`);
+                calcBreakdownArr.push(`Door Deduction: ${doors * latestUnits} × ${doorArea} = ${doors * latestUnits * doorArea} sqft`);
+                calcBreakdownArr.push(`Window Deduction: ${windows * latestUnits} × ${windowArea} = ${windows * latestUnits * windowArea} sqft`);
+                calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallAreaPerUnit * latestUnits).toFixed(0)} sqft`);
                 // Join BHK header, room details, and calculation breakdown for modal rendering
                 bhkSections.push([bhkHeader, ...roomDetailsArr, '--- Calculation Breakdown ---', ...calcBreakdownArr].join('\n'));
-                // Join BHK header and room details with line breaks for modal rendering
-                bhkSections.push([bhkHeader, ...roomDetailsArr].join('\n'));
               });
               area = totalWallArea;
               logic = `Formula: Wall area minus ${sharedWallReduction * 100}% shared wall area, doors (${totalDoors}), windows (${totalWindows})`;
@@ -1616,7 +1645,7 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                 percentage,
                 thickness,
                 logic,
-                logicDetails: 'Area calculation: ' + bhkSections.join(' | ')
+                logicDetails:  bhkSections.join(' | ')
               };
             }
             //Custom Logic for External Walls
@@ -2839,94 +2868,47 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                       }
                     });
                     return uniqueSections.map((section, index) => {
-                      // Prepare lines and filter out deduction, reduction, and balcony lines from roomLines
+
+                      // Prepare lines for each section
                       const lines = section.split('\n').map(l => l.trim()).filter(l => l);
                       if (!lines.length) return null;
                       const bhkHeader = lines[0];
-                      const roomLines = lines.slice(1).filter(l => 
-                        l && 
-                        !l.startsWith('--- Calculation Breakdown ---') && 
-                        !l.toLowerCase().includes('total') && 
-                        !l.toLowerCase().includes('final') && 
-                        !l.toLowerCase().includes('deduct') && 
+                      // Room lines: exclude calculation breakdown, reduction/deduction, balcony
+                      const roomLines = lines.slice(1).filter(l =>
+                        l &&
+                        !l.startsWith('--- Calculation Breakdown ---') &&
+                        !l.toLowerCase().includes('balcony') &&
                         !l.toLowerCase().includes('reduction') &&
-                        !l.toLowerCase().includes('balcony')
+                        !l.toLowerCase().includes('deduct') &&
+                        !l.toLowerCase().includes('total rooms area') &&
+                        !l.toLowerCase().includes('final total wall area')
                       );
-                      // Calculate total room area by summing numbers at the end of each room line (e.g., 'Bedroom: 120 sqft')
-                      let totalRoomArea = 0;
-                      roomLines.forEach(l => {
-                        // Match a number (possibly decimal) before 'sqft' or at end
-                        const match = l.match(/([\d,.]+)\s*sq\s*ft|([\d,.]+)$/i);
-                        if (match) {
-                          const num = match[1] || match[2];
-                          if (num) {
-                            totalRoomArea += parseFloat(num.replace(/,/g, ''));
+                      // Area reduction lines: only reduction/deduction lines (from calculation breakdown), filter out 'total deduction' if present
+                      const areaReductionLines = lines.slice(1).filter(l =>
+                        l &&
+                        (l.toLowerCase().includes('reduction') || l.toLowerCase().includes('deduct')) &&
+                        !l.toLowerCase().includes('total deduction')
+                      );
+                      // Total Rooms Area, Total Deduction, and Final Total Wall Area (from calculation breakdown)
+                      const totalRoomsAreaLine = lines.find(l => l.toLowerCase().includes('total rooms area'));
+                      const totalDeductionLine = (() => {
+                        // Try to find a line with 'total deduction', otherwise calculate sum
+                        const found = lines.find(l => l.toLowerCase().includes('total deduction'));
+                        if (found) return found;
+                        // Try to sum deduction values from areaReductionLines
+                        let sum = 0;
+                        areaReductionLines.forEach(l => {
+                          // Extract number (sqft) from line
+                          const match = l.match(/([\d,.]+)\s*sq\s*ft|([\d,.]+)$/i);
+                          if (match) {
+                            const num = match[1] || match[2];
+                            if (num) sum += parseFloat(num.replace(/,/g, ''));
                           }
-                        }
-                      });
-                      const calcLines = lines.slice(1).filter(l => l.startsWith('--- Calculation Breakdown ---') || l.toLowerCase().includes('total') || l.toLowerCase().includes('final') || l.toLowerCase().includes('deduct') || l.toLowerCase().includes('reduction'));
-                      // Group calculation steps
-                      const rawTotal = calcLines.find(l => l.toLowerCase().includes('raw'));
-                      // Find deduction details for shared wall, doors, windows
-                      // Parse deduction details for shared wall, doors, windows
-                      let sharedWallDeduction = calcLines.find(l => l.toLowerCase().includes('shared wall'));
-                      let doorDeduction = calcLines.find(l => l.toLowerCase().includes('door'));
-                      let windowDeduction = calcLines.find(l => l.toLowerCase().includes('window'));
-                      // Extract numbers for area calculation
-                      let sharedWallArea = '';
-                      let doorArea = '';
-                      let windowArea = '';
-                      let sharedWallAreavalue = 0;
-                      let doorAreavalue = 0;
-                      let windowAreavalue = 0;
-                      if (doorDeduction) {
-                        // Example: "Door Deduction: Total: 7"
-                        const match = doorDeduction.match(/(\d+)/);
-                        if (match) {
-                          const count = parseInt(match[1], 10);
-                          doorArea = `${count} × 22 = ${count * 22} sqft`;
-                          doorAreavalue = count * 22;
-                        }
-                      }
-                      if (windowDeduction) {
-                        const match = windowDeduction.match(/(\d+)/);
-                        if (match) {
-                          const count = parseInt(match[1], 10);
-                          windowArea = `${count} × 18 = ${count * 18} sqft`;
-                          windowAreavalue = count * 18;
-                        }
-                      }
-                      if (sharedWallDeduction) {
-                        // Example: "Shared Wall Reduction: 20% of Wall Area = 120 sqft"
-                        const percentMatch = sharedWallDeduction.match(/(\d+)%/);
-                        const areaMatch = sharedWallDeduction.match(/=\s*(\d+)/);
-                        if (percentMatch && areaMatch) {
-                          sharedWallArea = `${percentMatch[1]}% × Wall Area = ${areaMatch[1]} sqft`;
-                          sharedWallAreavalue = parseInt(areaMatch[1], 10);
-                        } else if (areaMatch) {
-                          sharedWallArea = `Shared Wall Reduction Area: ${areaMatch[1]} sqft`;
-                          sharedWallAreavalue = parseInt(areaMatch[1], 10);
-                        } else {
-                          sharedWallArea = sharedWallDeduction.replace(/shared wall:?/i, '').trim();
-                        }
-                      }
-                      const otherDeductions = calcLines.filter(l => (l.toLowerCase().includes('deduct') || l.toLowerCase().includes('reduction')) && !l.toLowerCase().includes('shared wall') && !l.toLowerCase().includes('door') && !l.toLowerCase().includes('window'));
-                      // Calculate total reduction area (sum of all deductions)
-                      const totalReductionArea = sharedWallAreavalue + doorAreavalue + windowAreavalue + otherDeductions.reduce((sum, ded) => {
-                        const match = ded.match(/([\d,.]+)\s*sq\s*ft|([\d,.]+)$/i);
-                        if (match) {
-                          const num = match[1] || match[2];
-                          if (num) {
-                            return sum + parseFloat(num.replace(/,/g, ''));
-                          }
-                        }
-                        return sum;
-                      }, 0);
-
-                      // Calculate finalTotal (totalRoomArea minus all deductions)
-                      const finalTotal = totalRoomArea - totalReductionArea;
-                      // Ensure finalTotal is always defined (fallback to 0 if NaN)
-                      let safeFinalTotal = typeof finalTotal !== 'undefined' && !isNaN(finalTotal) ? finalTotal : 0;
+                        });
+                        if (sum > 0) return `Total Deduction: ${sum.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft`;
+                        return null;
+                      })();
+                      const finalTotalWallAreaLine = lines.find(l => l.toLowerCase().includes('final total wall area'));
 
                       return (
                         <div key={index} style={{ marginBottom: '20px' }}>
@@ -2963,66 +2945,59 @@ const totalCarpetArea = Number(width) && Number(depth) ? Number(width) * Number(
                                 </div>
                               ))}
                             </div>
-                            
-                            
                           </div>
-                          {/* Calculation Breakdown */}
-                          {(rawTotal || sharedWallDeduction || doorDeduction || windowDeduction || otherDeductions.length > 0 || typeof finalTotal !== 'undefined') && (
-                            <div style={{ marginTop: '15px' }}>
-                              <h6 style={{ color: '#333', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                🧮 Reduction Area Breakdown details
+                          {/* Area Reduction Section */}
+                          {areaReductionLines.length > 0 && (
+                            <div style={{ marginBottom: '15px' }}>
+                              <h6 style={{ color: '#c2185b', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                ➖ Area Reduction
                               </h6>
-                              <div style={{ background: '#fff', border: '1px solid #e3f2fd', borderRadius: '6px', padding: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                                {rawTotal && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#fff3e0', border: '1px solid #ff9800', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#e65100' }}>
-                                    <span>Raw Total Area: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{rawTotal.replace(/raw total:?/i, '').trim()}</span>
-                                  </div>
-                                )}
-                                {sharedWallDeduction && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#1976d2' }}>
-                                    <span>Shared Wall Reduction: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{sharedWallArea}</span>
-                                  </div>
-                                )}
-                                {doorDeduction && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#1976d2' }}>
-                                    <span>Door Deduction: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{doorArea}</span>
-                                  </div>
-                                )}
-                                {windowDeduction && (
-                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#1976d2' }}>
-                                    <span>Window Deduction: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{windowArea}</span>
-                                  </div>
-                                )}
-                                {otherDeductions.map((ded, dedIdx) => (
-                                  <div key={dedIdx} style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '4px', background: '#fce4ec', border: '1px solid #e91e63', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '500', color: '#c2185b' }}>
-                                    <span>Other Deduction: </span>
-                                    <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{ded.replace(/deduct(ed)?|reduction:?/gi, '').trim()}</span>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
+                                {areaReductionLines.map((line, lineIdx) => (
+                                  <div
+                                    key={lineIdx}
+                                    style={{
+                                      background: '#fce4ec',
+                                      border: '1px solid #e91e63',
+                                      borderRadius: '6px',
+                                      padding: '6px 10px',
+                                      marginBottom: '6px',
+                                      fontWeight: 500,
+                                      color: '#c2185b',
+                                      fontSize: '0.92em',
+                                      boxShadow: '0 1px 2px rgba(233,30,99,0.05)',
+                                      maxWidth: '340px',
+                                      minWidth: '160px',
+                                      width: '100%',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {line}
                                   </div>
                                 ))}
-                                {/* Total Room Area */}
-                            
-                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
-                                  <span>Total Room area: </span>
-                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{totalRoomArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
-                                </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
-                                  <span>Total Reduction area: </span>
-                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{totalReductionArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
-                                </div>
-{/* Total Area */}
-
-                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
-                                  <span>Final Total Area: </span>
-                                  <span style={{ marginLeft: '8px', fontFamily: 'monospace' }}>{safeFinalTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sqft</span>
-                                </div>
                               </div>
                             </div>
                           )}
+                          {/* Total Rooms Area, Total Deduction, and Final Total Wall Area */}
+                          <div style={{ marginBottom: '0' }}>
+                            {totalRoomsAreaLine && (
+                              <>
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '6px', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                  <span>{totalRoomsAreaLine}</span>
+                                </div>
+                                {totalDeductionLine && (
+                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '6px', background: '#fff3e0', border: '1px solid #ff9800', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#e65100' }}>
+                                    <span>{totalDeductionLine}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {finalTotalWallAreaLine && (
+                              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                <span>{finalTotalWallAreaLine}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     });
