@@ -11,14 +11,7 @@
       "description": "12% of Super Built-up Area",
       "Applicable Floors": ["GroundFloor"]
     },
-    "parking_area_ground": {
-      "name": "Parking Area (Ground)",
-      "formula": "percentage_of_ground_floor_sba",
-      "percentage": 0.15,
-      "thickness": 0.5,
-      "description": "15% of Ground Floor SBA",
-      "Applicable Floors": ["GroundFloor"]
-    },
+    
     "internal_walls": {
       "name": "Internal Walls",
       "formula": "2×(Length+Width)×Height per room",
