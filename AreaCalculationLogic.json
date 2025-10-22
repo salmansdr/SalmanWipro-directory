@@ -87,19 +87,19 @@
     },
     "staircase_area": {
       "name": "Staircase Area",
-      "formula": "percentage_of_super_buildup",
+      "formula": "percentage_of_builtup",
       "percentage": 0.02,
       "thickness": 0.75,
-      "description": "2% of Super Built-up Area",
+      "description": "2% of Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "lift_shaft_area": {
       "name": "Lift Shaft Area",
-      "formula": "conditional_percentage_of_super_buildup",
+      "formula": "conditional_percentage_of_builtup",
       "percentage": 0.015,
       "thickness": 0.5,
       "condition": "lift_required",
-      "description": "If lift required, 1.5% of Super Built-up Area",
+      "description": "If lift required, 1.5% of Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "balcony_area": {
@@ -121,10 +121,10 @@
     
     "common_corridor": {
       "name": "Common Corridor",
-      "formula": "percentage_of_super_buildup",
+      "formula": "percentage_of_buildup",
       "percentage": 0.04,
       "thickness": 0.5,
-      "description": "4% of Super Built-up Area",
+      "description": "4% of Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
     
