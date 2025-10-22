@@ -3113,9 +3113,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     <tr style={{ background: '#fffbe7' }}>
                       <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#b8860b', fontSize: '0.8rem' }}>
                         Door Details
+
                         <div style={{ fontSize: '0.7em', fontWeight: 400, color: '#b8860b' }}>
                           (Count, Width×Height, Area)
                         </div>
+                        
                       </td>
                       {dynamicRoomColumns.map(col => {
                         // Find config for this room (by name)
@@ -3134,7 +3136,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                 <div style={{ fontWeight: 700, color: '#b8860b', fontSize: '0.85em', marginBottom: 2 }}>Entry Door</div>
                               )}
                               <div>
-                                <span style={{ fontWeight: 600 }}>Count:</span> <Form.Control type="number" min={0} value={doorCount} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Count */}
+                                 <Form.Control type="number" min={0} value={doorCount} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3149,7 +3152,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                 />
                               </div>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Width:</span> <Form.Control type="number" min={0} value={doorWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Width */}
+                                <Form.Control type="number" min={0} value={doorWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3164,7 +3168,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                 />
                               </div>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Height:</span> <Form.Control type="number" min={0} value={doorHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Height */}
+                                 <Form.Control type="number" min={0} value={doorHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3178,8 +3183,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                   }}
                                 />
                               </div>
+                              {/* Area Display */}
                               <div style={{ fontSize: '0.8em', color: '#b8860b', marginTop: 2 }}>
-                                Area: <b>{doorArea > 0 ? doorArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
+                                <b>{doorArea > 0 ? doorArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
                               </div>
                             </div>
                           </td>
@@ -3207,7 +3213,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                           <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center', color: '#1976d2', fontSize: '0.8rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Count:</span> <Form.Control type="number" min={0} value={windowCount} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Count */}
+                                 <Form.Control type="number" min={0} value={windowCount} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3222,7 +3229,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                 />
                               </div>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Width:</span> <Form.Control type="number" min={0} value={windowWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Width */}
+                                <Form.Control type="number" min={0} value={windowWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3237,7 +3245,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                 />
                               </div>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Height:</span> <Form.Control type="number" min={0} value={windowHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                {/* Span for Height */}
+                                 <Form.Control type="number" min={0} value={windowHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
@@ -3251,8 +3260,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                   }}
                                 />
                               </div>
+                              {/* Area Display */}
                               <div style={{ fontSize: '0.8em', color: '#1976d2', marginTop: 2 }}>
-                                Area: <b>{windowArea > 0 ? windowArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
+                                 <b>{windowArea > 0 ? windowArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
                               </div>
                             </div>
                           </td>
