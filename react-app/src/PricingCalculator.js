@@ -1416,8 +1416,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
       });
       // Door/window fields to ensure
       const doorWindowFields = [
-        'Door Count', 'Door Area (sqft)', 'Window Count', 'Window Area (sqft)'
-      ];
+  'Door Count', 'Door Width (ft)', 'Door Height (ft)', 'Door Area (sqft)',
+  'Window Count', 'Window Width (ft)', 'Window Height (ft)', 'Window Area (sqft)'
+];
       let needsUpdate = false;
       // Try to get config for this BHK type/area
       let bhkConfig = null;
@@ -1448,8 +1449,12 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             if (configRoomMap[roomName]) {
               if (field === 'Door Count') configValue = configRoomMap[roomName].door_count || 0;
               if (field === 'Door Area (sqft)') configValue = configRoomMap[roomName].door_area_sqft || 0;
+              if (field === 'Door Width (ft)') configValue = configRoomMap[roomName].door_width_ft || configRoomMap[roomName].door_width || 0;
+              if (field === 'Door Height (ft)') configValue = configRoomMap[roomName].door_height_ft || configRoomMap[roomName].door_height || 0;
               if (field === 'Window Count') configValue = configRoomMap[roomName].window_count || 0;
               if (field === 'Window Area (sqft)') configValue = configRoomMap[roomName].window_area_sqft || 0;
+              if (field === 'Window Width (ft)') configValue = configRoomMap[roomName].window_width_ft || configRoomMap[roomName].window_width || 0;
+              if (field === 'Window Height (ft)') configValue = configRoomMap[roomName].window_height_ft || configRoomMap[roomName].window_height || 0;
             }
             currentRoomDetails[field][roomName] = configValue;
             needsUpdate = true;
@@ -1796,10 +1801,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const sharedWallReduction = config.shared_wall_reduction || 0.2;
               // Get BHK rows for selected floor
               const bhkRowsForDebug = typeof getFloorRows === 'function' ? getFloorRows(selectedDebugFloor || 0) : [];
-              let totalWallArea = 0;
+              //let totalWallArea = 0;
               let totalDoors = 0;
               let totalWindows = 0;
               let bhkSections = [];
+              let finalWallArea = 0;
               bhkRowsForDebug.forEach((row, idx) => {
                 // Always get the latest units from the parent grid
                 let latestUnits = 1;
@@ -1825,12 +1831,13 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     const width = Number(currentRoomDetails['Width (ft)'][roomKey]) || 0;
                     if (length > 0 && width > 0) {
                       const perimeter = 2 * (length + width);
-                      const wallAreaPerRoom = perimeter * height;
+                      const wallAreaPerRoom = perimeter * height * latestUnits;
                       roomWallArea += wallAreaPerRoom;
-                      roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)*latestUnits} sqft`);
+                      roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)} sqft`);
                     }
                   });
                 }
+                roomDetailsArr.push(`Total Rooms Area: ${roomWallArea} sqft`);
                 // Calculate door/window area and count live from count × width × height
                 if (currentRoomDetails['Door Count']) {
                   Object.keys(currentRoomDetails['Door Count']).forEach(roomKey => {
@@ -1853,38 +1860,29 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 // Calculate shared wall reduction area based on total room wall area (before reduction)
                 const sharedWallReductionArea = roomWallArea * sharedWallReduction;
                 // Apply shared wall reduction
-                roomWallArea = roomWallArea - sharedWallReductionArea;
+                //roomWallArea = roomWallArea - sharedWallReductionArea;
                 // Deduct doors/windows
-                const doorDeduction = doorArea;
-                const windowDeduction = windowArea;
-                totalDoors = doors * (row.units || 1);
-                totalWindows = windows * (row.units || 1);
-                const finalWallAreaPerUnit = Math.max(0, roomWallArea - (doorDeduction + windowDeduction));
-                totalWallArea += finalWallAreaPerUnit * (row.units || 1);
+                const doorDeduction = doorArea*latestUnits;
+                const windowDeduction = windowArea*latestUnits;
+                totalDoors = doors * (latestUnits || 1);
+                totalWindows = windows * (latestUnits || 1);
+                 finalWallArea= Math.max(0, roomWallArea - (sharedWallReductionArea+doorDeduction + windowDeduction));
+                //totalWallArea += finalWallAreaPerUnit ;
+                //const totalRoomsAreaDisplay=totalWallArea;
                 // Add summary for this BHK
-                const totalRoomsAreaDisplay = Object.keys(currentRoomDetails['Length (ft)']).reduce((sum, roomKey) => {
-                  if (roomKey.toLowerCase().includes('balcony')) return sum;
-                  const length = Number(currentRoomDetails['Length (ft)'][roomKey]) || 0;
-                  const width = Number(currentRoomDetails['Width (ft)'][roomKey]) || 0;
-                  const count = Number(currentRoomDetails['Count']?.[roomKey] || 0);
-                  if (length > 0 && width > 0 && count > 0) {
-                    return sum + (2 * (length + width) * height);
-                  }
-                  return sum;
-                }, 0);
-                const sharedWallReductionAreaDisplay = (totalRoomsAreaDisplay * sharedWallReduction).toFixed(0);
-                roomDetailsArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay *  latestUnits} sqft`);
+                
+                
                 let TotalDeduction = doorDeduction + windowDeduction + sharedWallReductionArea;
-                TotalDeduction= TotalDeduction *  latestUnits;
-                roomDetailsArr.push(`Total Deduction: ${TotalDeduction} sqft`);
+
+                roomDetailsArr.push(`Total Deduction: ${TotalDeduction.toFixed(0)} sqft`);
                 const calcBreakdownArr = [];
-                calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Wall Area = ${sharedWallReductionAreaDisplay*latestUnits} sqft`);
-                calcBreakdownArr.push(`Door Deduction: ${doors * latestUnits} × doorArea = ${(doors * latestUnits * (doorArea)).toFixed(2)} sqft`);
-                calcBreakdownArr.push(`Window Deduction: ${windows * latestUnits} × windowArea = ${(windows * latestUnits * (windowArea)).toFixed(2)} sqft`);
-                calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallAreaPerUnit * latestUnits).toFixed(0)} sqft`);
+                calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Room Area = ${sharedWallReductionArea} sqft`);
+                calcBreakdownArr.push(`Door Deduction: For ${doors * latestUnits} Doors = ${(doorDeduction).toFixed(0)} sqft`);
+                calcBreakdownArr.push(`Window Deduction: For ${windows * latestUnits} Windows = ${(windowDeduction).toFixed(0)} sqft`);
+                calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallArea).toFixed(0)} sqft`);
                 bhkSections.push([bhkHeader, ...roomDetailsArr, '--- Calculation Breakdown ---', ...calcBreakdownArr].join('\n'));
               });
-              area = totalWallArea;
+              area = finalWallArea.toFixed(0);
               logic = `Formula: Wall area minus ${sharedWallReduction * 100}% shared wall area, doors (${totalDoors}), windows (${totalWindows})`;
               return {
                 key,
