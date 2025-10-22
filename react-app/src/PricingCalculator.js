@@ -833,6 +833,23 @@ useEffect(() => {
       const updated = [...bhkRows];
       updated[idx][field] = field === 'units' || field === 'area' ? Number(value) : value;
       setBhkRows(updated);
+      // Sync count to bhkRoomDetails if field is 'Count'
+      if (field === 'Count') {
+        setBhkRoomDetails(prev => {
+          const key = `0-${idx}`;
+          const details = { ...(prev[key] || { 'Count': {}, 'Length (ft)': {}, 'Width (ft)': {} }) };
+          // If value is an object, update all counts
+          if (typeof value === 'object') {
+            details['Count'] = { ...value };
+          } else {
+            // If value is a number/string, update all rooms to this count
+            Object.keys(details['Count']).forEach(roomName => {
+              details['Count'][roomName] = value;
+            });
+          }
+          return { ...prev, [key]: details };
+        });
+      }
     } else {
       setFloorBHKConfigs(prev => {
         const rows = [...getFloorRows(floorIdx)];
@@ -1829,9 +1846,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     if (roomKey.toLowerCase().includes('balcony')) return;
                     const length = Number(currentRoomDetails['Length (ft)'][roomKey]) || 0;
                     const width = Number(currentRoomDetails['Width (ft)'][roomKey]) || 0;
+                    const roomCount = Number(currentRoomDetails['Count']?.[roomKey] || 0);
                     if (length > 0 && width > 0) {
                       const perimeter = 2 * (length + width);
-                      const wallAreaPerRoom = perimeter * height * latestUnits;
+                      const wallAreaPerRoom = perimeter * height * roomCount * latestUnits;
                       roomWallArea += wallAreaPerRoom;
                       roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)} sqft`);
                     }
@@ -1841,20 +1859,20 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 // Calculate door/window area and count live from count × width × height
                 if (currentRoomDetails['Door Count']) {
                   Object.keys(currentRoomDetails['Door Count']).forEach(roomKey => {
-                    const count = Number(currentRoomDetails['Door Count'][roomKey]) || 0;
+                    const doorcount = Number(currentRoomDetails['Door Count'][roomKey]) || 0;
                     const width = Number(currentRoomDetails['Door Width (ft)']?.[roomKey] || 0);
                     const height = Number(currentRoomDetails['Door Height (ft)']?.[roomKey] || 0);
-                    doorArea += count * width * height;
-                    doors += count;
+                    doorArea += doorcount * width * height;
+                    doors += doorcount;
                   });
                 }
                 if (currentRoomDetails['Window Count']) {
                   Object.keys(currentRoomDetails['Window Count']).forEach(roomKey => {
-                    const count = Number(currentRoomDetails['Window Count'][roomKey]) || 0;
+                    const windowcount = Number(currentRoomDetails['Window Count'][roomKey]) || 0;
                     const width = Number(currentRoomDetails['Window Width (ft)']?.[roomKey] || 0);
                     const height = Number(currentRoomDetails['Window Height (ft)']?.[roomKey] || 0);
-                    windowArea += count * width * height;
-                    windows += count;
+                    windowArea += windowcount * width * height;
+                    windows += windowcount;
                   });
                 }
                 // Calculate shared wall reduction area based on total room wall area (before reduction)
