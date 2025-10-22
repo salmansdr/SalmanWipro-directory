@@ -1402,6 +1402,68 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
   // Handler to open modal
   async function handleOpenBHKModal(floorIdx, idx) {
+    // Use a single variable for the modal key and currentRoomDetails
+    const modalKey = `${floorIdx}-${idx}`;
+    let currentRoomDetails = bhkRoomDetails && bhkRoomDetails[modalKey];
+    // Ensure all door/window fields exist for every room in currentRoomDetails
+    if (currentRoomDetails) {
+      // Get all room names from any of the existing fields (Count, Length, etc.)
+      const allRoomNames = new Set();
+      ['Count', 'Length (ft)', 'Width (ft)'].forEach(field => {
+        if (currentRoomDetails[field]) {
+          Object.keys(currentRoomDetails[field]).forEach(r => allRoomNames.add(r));
+        }
+      });
+      // Door/window fields to ensure
+      const doorWindowFields = [
+        'Door Count', 'Door Area (sqft)', 'Window Count', 'Window Area (sqft)'
+      ];
+      let needsUpdate = false;
+      // Try to get config for this BHK type/area
+      let bhkConfig = null;
+      if (Array.isArray(allBhkConfigs)) {
+        const rows = getFloorRows(floorIdx);
+        const bhkType = rows[idx]?.type;
+        const bhkArea = rows[idx]?.area;
+        bhkConfig = allBhkConfigs.find(
+          c => c.type === bhkType && (String(c.area) === String(bhkArea) || String(c.total_carpet_area_sqft) === String(bhkArea))
+        );
+      }
+      // Build a lookup for config room details if available
+      let configRoomMap = {};
+      if (bhkConfig && bhkConfig.rooms) {
+        bhkConfig.rooms.forEach(room => {
+          configRoomMap[room.name] = room;
+        });
+      }
+      doorWindowFields.forEach(field => {
+        if (!currentRoomDetails[field]) {
+          currentRoomDetails[field] = {};
+          needsUpdate = true;
+        }
+        allRoomNames.forEach(roomName => {
+          if (!(roomName in currentRoomDetails[field])) {
+            // Map field to config property
+            let configValue = 0;
+            if (configRoomMap[roomName]) {
+              if (field === 'Door Count') configValue = configRoomMap[roomName].door_count || 0;
+              if (field === 'Door Area (sqft)') configValue = configRoomMap[roomName].door_area_sqft || 0;
+              if (field === 'Window Count') configValue = configRoomMap[roomName].window_count || 0;
+              if (field === 'Window Area (sqft)') configValue = configRoomMap[roomName].window_area_sqft || 0;
+            }
+            currentRoomDetails[field][roomName] = configValue;
+            needsUpdate = true;
+          }
+        });
+      });
+      if (needsUpdate) {
+        setBhkRoomDetails(prev => ({
+          ...prev,
+          [modalKey]: { ...currentRoomDetails }
+        }));
+      }
+    }
+    console.log('currentRoomDetails for modal:', currentRoomDetails);
     // Get selected BHK type and area
     const rows = getFloorRows(floorIdx);
     const bhkType = rows[idx]?.type;
@@ -1485,8 +1547,12 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             'Length (ft)': {},
             'Width (ft)': {},
             'Door Count': {},
+            'Door Width (ft)': {},
+            'Door Height (ft)': {},
             'Door Area (sqft)': {},
             'Window Count': {},
+            'Window Width (ft)': {},
+            'Window Height (ft)': {},
             'Window Area (sqft)': {}
           };
           roomMapping.forEach((roomData, displayName) => {
@@ -1498,8 +1564,12 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
             roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
             roomDetails['Door Count'][displayName] = roomData.door_count || 0;
+            roomDetails['Door Width (ft)'][displayName] = (roomData.door_width_ft !== undefined ? roomData.door_width_ft : (roomData.door_width || 0));
+            roomDetails['Door Height (ft)'][displayName] = (roomData.door_height_ft !== undefined ? roomData.door_height_ft : (roomData.door_height || 0));
             roomDetails['Door Area (sqft)'][displayName] = roomData.door_area_sqft || 0;
             roomDetails['Window Count'][displayName] = roomData.window_count || 0;
+            roomDetails['Window Width (ft)'][displayName] = (roomData.window_width_ft !== undefined ? roomData.window_width_ft : (roomData.window_width || 0));
+            roomDetails['Window Height (ft)'][displayName] = (roomData.window_height_ft !== undefined ? roomData.window_height_ft : (roomData.window_height || 0));
             roomDetails['Window Area (sqft)'][displayName] = roomData.window_area_sqft || 0;
           });
           return {
@@ -1512,8 +1582,45 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
         }, 0);
       } else {
         // Fallback to static columns if no match found
-        
         setDynamicRoomColumns([...roomColumns, 'Circulation Space']);
+        // Always initialize bhkRoomDetails with all required fields for fallback
+        const key = `${floorIdx}-${idx}`;
+        setBhkRoomDetails(prev => {
+          if (prev[key]) {
+            return prev;
+          }
+          // Use roomColumns for fallback
+          const roomDetails = {
+            'Count': {},
+            'Length (ft)': {},
+            'Width (ft)': {},
+            'Door Count': {},
+            'Door Width (ft)': {},
+            'Door Height (ft)': {},
+            'Door Area (sqft)': {},
+            'Window Count': {},
+            'Window Width (ft)': {},
+            'Window Height (ft)': {},
+            'Window Area (sqft)': {}
+          };
+          [...roomColumns, 'Circulation Space'].forEach(roomName => {
+            roomDetails['Count'][roomName] = 1;
+            roomDetails['Length (ft)'][roomName] = 0;
+            roomDetails['Width (ft)'][roomName] = 0;
+            roomDetails['Door Count'][roomName] = 0;
+            roomDetails['Door Width (ft)'][roomName] = 0;
+            roomDetails['Door Height (ft)'][roomName] = 0;
+            roomDetails['Door Area (sqft)'][roomName] = 0;
+            roomDetails['Window Count'][roomName] = 0;
+            roomDetails['Window Width (ft)'][roomName] = 0;
+            roomDetails['Window Height (ft)'][roomName] = 0;
+            roomDetails['Window Area (sqft)'][roomName] = 0;
+          });
+          return {
+            ...prev,
+            [key]: roomDetails
+          };
+        });
         console.warn(`No BHK configuration found for ${bhkType} with ${bhkArea} sq ft`);
         setShowBHKModal(true);
       }
@@ -1546,29 +1653,81 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
   // <table>
   //   <thead>
   //     <tr>
-  //       <th>Room</th>
-  //       <th>Count</th>
-  //       <th>Length (ft)</th>
-  //       <th>Width (ft)</th>
-  //       <th>Door Count</th>
-  //       <th>Door Area (sqft)</th>
-  //       <th>Window Count</th>
-  //       <th>Window Area (sqft)</th>
+  //       <th></th>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <th key={roomName}>{roomName}</th>
+  //       ))}
   //     </tr>
   //   </thead>
   //   <tbody>
-  //     {dynamicRoomColumns.map(roomName => (
-  //       <tr key={roomName}>
-  //         <td>{roomName}</td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Count']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Count', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Length (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Length (ft)', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Width (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Width (ft)', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Count']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Door Count', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Area (sqft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Door Area (sqft)', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Count']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Window Count', roomName, e.target.value)} /></td>
-  //         <td><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Area (sqft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Window Area (sqft)', roomName, e.target.value)} /></td>
-  //       </tr>
-  //     ))}
+  //     {/* Door Details Section Header */}
+  //     <tr>
+  //       <td colSpan={dynamicRoomColumns.length + 1} style={{ background: '#fffbe6', color: '#b8860b', fontWeight: 'bold', textAlign: 'left' }}>
+  //         Door Details <span style={{fontWeight:'normal',fontSize:'smaller'}}>(Count, Width×Height, Area)</span>
+  //       </td>
+  //     </tr>
+  //     <tr>
+  //       <td>Count</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':door:count'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Count']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Door Count', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Width (ft)</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':door:width'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Width (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Door Width (ft)', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Height (ft)</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':door:height'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Height (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Door Height (ft)', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Area</td>
+  //       {dynamicRoomColumns.map(roomName => {
+  //         const count = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Count']?.[roomName] || 0);
+  //         const width = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Width (ft)']?.[roomName] || 0);
+  //         const height = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Door Height (ft)']?.[roomName] || 0);
+  //         const area = count && width && height ? (count * width * height).toFixed(2) : '-';
+  //         return <td key={roomName+':door:area'} style={{fontSize:'smaller'}}>Area: {area} sq ft</td>;
+  //       })}
+  //     </tr>
+  //     {/* Window Details Section Header */}
+  //     <tr>
+  //       <td colSpan={dynamicRoomColumns.length + 1} style={{ background: '#e6f7ff', color: '#1890ff', fontWeight: 'bold', textAlign: 'left' }}>
+  //         Window Details <span style={{fontWeight:'normal',fontSize:'smaller'}}>(Count, Width×Height, Area)</span>
+  //       </td>
+  //     </tr>
+  //     <tr>
+  //       <td>Count</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':window:count'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Count']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Window Count', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Width (ft)</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':window:width'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Width (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Window Width (ft)', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Height (ft)</td>
+  //       {dynamicRoomColumns.map(roomName => (
+  //         <td key={roomName+':window:height'}><Form.Control type="number" value={bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Height (ft)']?.[roomName] || ''} onChange={e => handleRoomDetailChange('Window Height (ft)', roomName, e.target.value)} /></td>
+  //       ))}
+  //     </tr>
+  //     <tr>
+  //       <td>Area</td>
+  //       {dynamicRoomColumns.map(roomName => {
+  //         const count = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Count']?.[roomName] || 0);
+  //         const width = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Width (ft)']?.[roomName] || 0);
+  //         const height = Number(bhkRoomDetails[`${bhkModalFloorIdx}-${bhkModalIdx}`]?.['Window Height (ft)']?.[roomName] || 0);
+  //         const area = count && width && height ? (count * width * height).toFixed(2) : '-';
+  //         return <td key={roomName+':window:area'} style={{fontSize:'smaller'}}>Area: {area} sq ft</td>;
+  //       })}
+  //     </tr>
   //   </tbody>
   // </table>
   }
@@ -1635,8 +1794,6 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const config = comp;
               const height = config.height || 10;
               const sharedWallReduction = config.shared_wall_reduction || 0.2;
-              const doorArea = config.door_area || 22;
-              const windowArea = config.window_area || 18;
               // Get BHK rows for selected floor
               const bhkRowsForDebug = typeof getFloorRows === 'function' ? getFloorRows(selectedDebugFloor || 0) : [];
               let totalWallArea = 0;
@@ -1650,23 +1807,18 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                   const parentRow = getFloorRows(selectedDebugFloor || 0)[idx];
                   latestUnits = Number(parentRow?.units) || 1;
                 }
-                // BHK header
-                //const bhkHeader = `BHK ${idx + 1} (Units: ${latestUnits})`;
                 const bhkHeader = `${idx + 1}.${row.type} (Units: ${latestUnits})`;
                 let roomDetailsArr = [];
                 // Get room details from modal state if available
                 const roomDataKey = `${selectedDebugFloor || 0}-${idx}`;
                 const currentRoomDetails = bhkRoomDetails && bhkRoomDetails[roomDataKey];
-                // Skip this row if no room details
                 if (!currentRoomDetails) {
                   return;
                 }
-                // Fallback: estimate 4 walls per unit if no details
                 let roomWallArea = 0;
-                let doors = 1, windows = 1;
-                
+                let doors = 0, windows = 0;
+                let doorArea = 0, windowArea = 0;
                 if (currentRoomDetails['Length (ft)'] && currentRoomDetails['Width (ft)']) {
-                  // Sum for each room type, excluding Balcony
                   Object.keys(currentRoomDetails['Length (ft)']).forEach(roomKey => {
                     if (roomKey.toLowerCase().includes('balcony')) return;
                     const length = Number(currentRoomDetails['Length (ft)'][roomKey]) || 0;
@@ -1675,30 +1827,42 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                       const perimeter = 2 * (length + width);
                       const wallAreaPerRoom = perimeter * height;
                       roomWallArea += wallAreaPerRoom;
-                      doors += 1;
-                      windows += 1;
                       roomDetailsArr.push(`${roomKey}: ${length}x${width}x${height} = ${wallAreaPerRoom.toFixed(0)*latestUnits} sqft`);
                     }
                   });
-                } 
-                 // Calculate shared wall reduction area based on total room wall area (before reduction)
+                }
+                // Calculate door/window area and count live from count × width × height
+                if (currentRoomDetails['Door Count']) {
+                  Object.keys(currentRoomDetails['Door Count']).forEach(roomKey => {
+                    const count = Number(currentRoomDetails['Door Count'][roomKey]) || 0;
+                    const width = Number(currentRoomDetails['Door Width (ft)']?.[roomKey] || 0);
+                    const height = Number(currentRoomDetails['Door Height (ft)']?.[roomKey] || 0);
+                    doorArea += count * width * height;
+                    doors += count;
+                  });
+                }
+                if (currentRoomDetails['Window Count']) {
+                  Object.keys(currentRoomDetails['Window Count']).forEach(roomKey => {
+                    const count = Number(currentRoomDetails['Window Count'][roomKey]) || 0;
+                    const width = Number(currentRoomDetails['Window Width (ft)']?.[roomKey] || 0);
+                    const height = Number(currentRoomDetails['Window Height (ft)']?.[roomKey] || 0);
+                    windowArea += count * width * height;
+                    windows += count;
+                  });
+                }
+                // Calculate shared wall reduction area based on total room wall area (before reduction)
                 const sharedWallReductionArea = roomWallArea * sharedWallReduction;
                 // Apply shared wall reduction
                 roomWallArea = roomWallArea - sharedWallReductionArea;
                 // Deduct doors/windows
-                const doorDeduction = doors * doorArea;
-                const windowDeduction = windows * windowArea;
+                const doorDeduction = doorArea;
+                const windowDeduction = windowArea;
+                totalDoors = doors * (row.units || 1);
+                totalWindows = windows * (row.units || 1);
                 const finalWallAreaPerUnit = Math.max(0, roomWallArea - (doorDeduction + windowDeduction));
                 totalWallArea += finalWallAreaPerUnit * (row.units || 1);
-                totalDoors += doors * (row.units || 1);
-                totalWindows += windows * (row.units || 1);
                 // Add summary for this BHK
-                // Show shared wall reduction area
-                // For modal breakdown, collect calculation steps
-                // Removed unused totalRoomsArea variable (was: const totalRoomsArea = ...)
-                // Use the actual total room wall area before reduction for display
                 const totalRoomsAreaDisplay = Object.keys(currentRoomDetails['Length (ft)']).reduce((sum, roomKey) => {
-         // Exclude Balcony from calculation
                   if (roomKey.toLowerCase().includes('balcony')) return sum;
                   const length = Number(currentRoomDetails['Length (ft)'][roomKey]) || 0;
                   const width = Number(currentRoomDetails['Width (ft)'][roomKey]) || 0;
@@ -1708,28 +1872,20 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                   }
                   return sum;
                 }, 0);
-                // Calculate shared wall reduction area for display
                 const sharedWallReductionAreaDisplay = (totalRoomsAreaDisplay * sharedWallReduction).toFixed(0);
-                // Room details for display only (no shared wall here)
                 roomDetailsArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay *  latestUnits} sqft`);
-                //roomDetailsArr.push(`Total Doors: ${doors * latestUnits}`);
-                //roomDetailsArr.push(`Total Windows: ${windows * latestUnits}`);
-                // Calculation breakdown steps
                 let TotalDeduction = doorDeduction + windowDeduction + sharedWallReductionArea;
                 TotalDeduction= TotalDeduction *  latestUnits;
                 roomDetailsArr.push(`Total Deduction: ${TotalDeduction} sqft`);
                 const calcBreakdownArr = [];
-                //calcBreakdownArr.push(`Total Rooms Area: ${totalRoomsAreaDisplay} sqft`);
                 calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Wall Area = ${sharedWallReductionAreaDisplay*latestUnits} sqft`);
-                calcBreakdownArr.push(`Door Deduction: ${doors * latestUnits} × ${doorArea} = ${doors * latestUnits * doorArea} sqft`);
-                calcBreakdownArr.push(`Window Deduction: ${windows * latestUnits} × ${windowArea} = ${windows * latestUnits * windowArea} sqft`);
+                calcBreakdownArr.push(`Door Deduction: ${doors * latestUnits} × doorArea = ${(doors * latestUnits * (doorArea)).toFixed(2)} sqft`);
+                calcBreakdownArr.push(`Window Deduction: ${windows * latestUnits} × windowArea = ${(windows * latestUnits * (windowArea)).toFixed(2)} sqft`);
                 calcBreakdownArr.push(`Final Total Wall Area: ${(finalWallAreaPerUnit * latestUnits).toFixed(0)} sqft`);
-                // Join BHK header, room details, and calculation breakdown for modal rendering
                 bhkSections.push([bhkHeader, ...roomDetailsArr, '--- Calculation Breakdown ---', ...calcBreakdownArr].join('\n'));
               });
               area = totalWallArea;
               logic = `Formula: Wall area minus ${sharedWallReduction * 100}% shared wall area, doors (${totalDoors}), windows (${totalWindows})`;
-              // Add details for modal (pipe separator for compatibility)
               return {
                 key,
                 ...comp,
