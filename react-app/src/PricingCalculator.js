@@ -3159,11 +3159,25 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                                   onChange={e => {
                                     const val = Number(e.target.value);
                                     setBhkRoomDetails(prev => {
+                                      // Make a shallow copy of the previous state
                                       const updated = { ...prev };
-                                      if (!updated[key]) updated[key] = { ...details };
-                                      if (!updated[key]['Door']) updated[key]['Door'] = {};
-                                      if (!updated[key]['Door'][col]) updated[key]['Door'][col] = {};
-                                      updated[key]['Door'][col].count = val;
+
+                                      // Ensure the key exists
+                                      if (!updated[key]) {
+                                        //updated[key] = { ...details };
+                                        updated[key] = {};
+                                      }
+
+                                      // Ensure the 'Door' property exists
+                                      if (!updated[key]['Door Count']) {
+                                        updated[key]['Door Count'] = {};
+                                      }
+
+                                      // Set the count value
+                                     // updated[key].Door[col].count = val;
+                                      updated[key]['Door Count'][col] = val;
+
+                                      // Return a new object to trigger state update
                                       return { ...updated };
                                     });
                                   }}
