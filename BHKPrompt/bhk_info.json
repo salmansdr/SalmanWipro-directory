@@ -9,80 +9,47 @@
         {
           "name": "Bedroom",
           "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
-          "area_sqft": 120,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 },
+          "area_sqft": 120
+          
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 14, "width": 10, "height": 9 },
-          "area_sqft": 140,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 53, "height": 37 },
+          "Window": { "count": 1, "width": 54, "height": 24 },
+          "area_sqft": 140
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 8, "width": 7, "height": 9 },
-          "area_sqft": 56,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 53, "height": 37 },
+          "Window": { "count": 1, "width": 54, "height": 24 },
+          "area_sqft": 56
         },
+        
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
           "area_sqft": 42,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
+          "Door": { "count": 1, "width": 53, "height": 37 },
+          "Window": { "count": 1, "width": 54, "height": 24 },
           "window_area_sqft": 4
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
           "area_sqft": 42,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 8, "width": 8, "height": 9 },
           "area_sqft": 64,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 38,
@@ -97,93 +64,53 @@
         {
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
+          
           "area_sqft": 154,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 13, "width": 10, "height": 9 },
           "area_sqft": 130,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 16, "width": 12, "height": 9 },
           "area_sqft": 192,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
+
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
           "area_sqft": 90,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 9, "width": 4, "height": 9 },
           "area_sqft": 36,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 10, "width": 10, "height": 9 },
           "area_sqft": 100,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 60,
@@ -199,105 +126,59 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 15, "width": 13, "height": 9 },
           "area_sqft": 195,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
+      
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 14, "width": 11, "height": 9 },
           "area_sqft": 154,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
+          
         },
         {
           "name": "Bedroom 3",
           "dimensions_ft": { "length": 12, "width": 11, "height": 9 },
           "area_sqft": 132,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 20, "width": 13, "height": 9 },
           "area_sqft": 260,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 12, "width": 9, "height": 9 },
           "area_sqft": 108,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 10, "width": 5, "height": 9 },
           "area_sqft": 50,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 12, "width": 12, "height": 9 },
           "area_sqft": 144,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 90,
@@ -313,105 +194,57 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 16, "width": 13, "height": 9 },
           "area_sqft": 208,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
           "area_sqft": 180,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 3",
           "dimensions_ft": { "length": 14, "width": 12, "height": 9 },
           "area_sqft": 168,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 4",
           "dimensions_ft": { "length": 13, "width": 12, "height": 9 },
           "area_sqft": 156,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 22, "width": 15, "height": 9 },
           "area_sqft": 330,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 14, "width": 10, "height": 9 },
           "area_sqft": 140,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 12, "width": 6, "height": 9 },
           "area_sqft": 72,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
@@ -440,105 +273,57 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 13, "width": 12, "height": 9 },
           "area_sqft": 156,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 12, "width": 12, "height": 9 },
           "area_sqft": 144,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 3",
           "dimensions_ft": { "length": 11, "width": 12, "height": 9 },
           "area_sqft": 132,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 18, "width": 14, "height": 9 },
           "area_sqft": 252,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 10, "width": 10, "height": 9 },
           "area_sqft": 100,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 10, "width": 6, "height": 9 },
           "area_sqft": 60,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 13, "width": 10, "height": 9 },
           "area_sqft": 130,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 90,
@@ -554,105 +339,57 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 15, "width": 13, "height": 9 },
           "area_sqft": 195,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 14, "width": 12, "height": 9 },
           "area_sqft": 168,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 3",
           "dimensions_ft": { "length": 13, "width": 12, "height": 9 },
           "area_sqft": 156,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 22, "width": 15, "height": 9 },
           "area_sqft": 330,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 14, "width": 10, "height": 9 },
           "area_sqft": 140,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 12, "width": 6, "height": 9 },
           "area_sqft": 72,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
           "area_sqft": 180,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 110,
@@ -668,118 +405,64 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 18, "width": 15, "height": 10 },
           "area_sqft": 270,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 5,
-          "window_height_ft": 4,
-          "window_area_sqft": 20
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 5, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 16, "width": 14, "height": 10 },
           "area_sqft": 224,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 5,
-          "window_height_ft": 4,
-          "window_area_sqft": 20
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 5, "height": 4 }
         },
         {
           "name": "Bedroom 3",
           "dimensions_ft": { "length": 15, "width": 13, "height": 10 },
           "area_sqft": 195,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 5,
-          "window_height_ft": 4,
-          "window_area_sqft": 20
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 5, "height": 4 }
         },
         {
           "name": "Bedroom 4",
           "dimensions_ft": { "length": 14, "width": 13, "height": 10 },
           "area_sqft": 182,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 5,
-          "window_height_ft": 4,
-          "window_area_sqft": 20
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 5, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 28, "width": 16, "height": 10 },
           "area_sqft": 448,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 3,
-          "window_width_ft": 5,
-          "window_height_ft": 4,
-          "window_area_sqft": 60
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 3, "width": 5, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 16, "width": 12, "height": 10 },
           "area_sqft": 192,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 10, "width": 8, "height": 10 },
           "area_sqft": 80,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 16, "width": 8, "height": 10 },
           "area_sqft": 128,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 20, "width": 12.5, "height": 10 },
           "area_sqft": 250,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 160,
@@ -795,92 +478,50 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 12, "width": 11, "height": 9 },
           "area_sqft": 132,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 11, "width": 11, "height": 9 },
           "area_sqft": 121,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 15, "width": 12, "height": 9 },
           "area_sqft": 180,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 9, "width": 8, "height": 9 },
           "area_sqft": 72,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
           "area_sqft": 35,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 8, "width": 5, "height": 9 },
           "area_sqft": 40,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 10, "width": 10, "height": 9 },
           "area_sqft": 100,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 60,
@@ -896,92 +537,50 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 13, "width": 12, "height": 9 },
           "area_sqft": 156,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 12, "width": 12, "height": 9 },
           "area_sqft": 144,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 16, "width": 13, "height": 9 },
           "area_sqft": 208,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
           "area_sqft": 90,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 8, "width": 6, "height": 9 },
           "area_sqft": 48,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 9, "width": 6, "height": 9 },
           "area_sqft": 54,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
           "area_sqft": 120,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 70,
@@ -997,92 +596,50 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 10, "width": 10, "height": 9 },
           "area_sqft": 100,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 9, "width": 10, "height": 9 },
           "area_sqft": 90,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
           "area_sqft": 120,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 8, "width": 7, "height": 9 },
           "area_sqft": 56,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 6, "width": 5, "height": 9 },
           "area_sqft": 30,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 7, "width": 5, "height": 9 },
           "area_sqft": 35,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 7, "width": 10, "height": 9 },
           "area_sqft": 70,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 45,
@@ -1098,92 +655,50 @@
           "name": "Bedroom 1",
           "dimensions_ft": { "length": 9, "width": 9, "height": 9 },
           "area_sqft": 81,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Bedroom 2",
           "dimensions_ft": { "length": 8, "width": 9, "height": 9 },
           "area_sqft": 72,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 10, "width": 9, "height": 9 },
           "area_sqft": 90,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 7, "width": 6, "height": 9 },
           "area_sqft": 42,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 5, "width": 5, "height": 9 },
           "area_sqft": 25,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 6, "width": 5, "height": 9 },
           "area_sqft": 30,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 6, "width": 10, "height": 9 },
           "area_sqft": 60,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 35,
@@ -1199,79 +714,43 @@
           "name": "Bedroom",
           "dimensions_ft": { "length": 10, "width": 10, "height": 9 },
           "area_sqft": 100,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 1,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 16
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 1, "width": 4, "height": 4 }
         },
         {
           "name": "Living Room",
           "dimensions_ft": { "length": 12, "width": 10, "height": 9 },
           "area_sqft": 120,
-          "door_count": 1,
-          "door_width_ft": 3,
-          "door_height_ft": 7,
-          "door_area_sqft": 21,
-          "window_count": 2,
-          "window_width_ft": 4,
-          "window_height_ft": 4,
-          "window_area_sqft": 32
+          "Door": { "count": 1, "width": 3, "height": 7 },
+          "Window": { "count": 2, "width": 4, "height": 4 }
         },
         {
           "name": "Kitchen",
           "dimensions_ft": { "length": 8, "width": 7, "height": 9 },
           "area_sqft": 56,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 17.5,
-          "window_count": 1,
-          "window_width_ft": 3,
-          "window_height_ft": 3,
-          "window_area_sqft": 9
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 3, "height": 3 }
         },
         {
           "name": "Bathroom",
           "dimensions_ft": { "length": 6, "width": 5, "height": 9 },
           "area_sqft": 30,
-          "door_count": 1,
-          "door_width_ft": 2.5,
-          "door_height_ft": 7,
-          "door_area_sqft": 5,
-          "window_count": 1,
-          "window_width_ft": 2,
-          "window_height_ft": 2,
-          "window_area_sqft": 4
+          "Door": { "count": 1, "width": 2.5, "height": 7 },
+          "Window": { "count": 1, "width": 2, "height": 2 }
         },
         {
           "name": "Balcony",
           "dimensions_ft": { "length": 6, "width": 5, "height": 9 },
           "area_sqft": 30,
-          "door_count": 0,
-          "door_width_ft": 0,
-          "door_height_ft": 0,
-          "door_area_sqft": 0,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 0, "width": 0, "height": 0 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         },
         {
           "name": "Circulation Space",
           "dimensions_ft": { "length": 6, "width": 10, "height": 9 },
           "area_sqft": 60,
-          "door_count": 1,
-          "door_width_ft": 3.5,
-          "door_height_ft": 7.5,
-          "door_area_sqft": 26.25,
-          "window_count": 0,
-          "window_width_ft": 0,
-          "window_height_ft": 0,
-          "window_area_sqft": 0
+          "Door": { "count": 1, "width": 3.5, "height": 7.5 },
+          "Window": { "count": 0, "width": 0, "height": 0 }
         }
       ],
       "internal_wall_area_sqft": 35,
