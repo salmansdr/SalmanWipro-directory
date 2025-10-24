@@ -60,11 +60,9 @@
             {
               "name": "Bedroom",
               "count": 1,
-              "dimensions": {
-                "length": 12,
-                "width": 10,
-                "height": 9
-              },
+              "dimensions": {"length": 12,"width": 10,"height": 9},
+              "Door": {"count": 1, "width": 3, "height": 7},
+              "Window": {"count": 2, "width": 4, "height": 4},
               "areaSqft": 120
             },
             {
@@ -75,7 +73,9 @@
                 "width": 10,
                 "height": 9
               },
-              "areaSqft": 140
+              "areaSqft": 140,
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 }
             },
             {
               "name": "Kitchen",
@@ -85,7 +85,9 @@
                 "width": 7,
                 "height": 9
               },
-              "areaSqft": 56
+              "areaSqft": 56,
+              "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Bathroom",
@@ -95,7 +97,9 @@
                 "width": 6,
                 "height": 9
               },
-              "areaSqft": 42
+              "areaSqft": 42,
+              "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 0, "width": 0, "height": 0 }
             },
             {
               "name": "Balcony",
@@ -105,7 +109,9 @@
                 "width": 6,
                 "height": 9
               },
-              "areaSqft": 42
+              "areaSqft": 42,
+              "Door": { "count": 0, "width": 0, "height": 0 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Circulation Space",
@@ -115,7 +121,9 @@
                 "width": 10,
                 "height": 9
               },
-              "areaSqft": 100
+              "areaSqft": 100,
+              "Door": { "count": 0, "width": 0, "height": 0 },
+              "Window": { "count": 0, "width": 0, "height": 0 }
             }
           ],
           "totalRoomsArea": 500
@@ -763,6 +771,8 @@
                 "width": 10,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 120
             },
             {
@@ -773,6 +783,8 @@
                 "width": 10,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 140
             },
             {
@@ -783,6 +795,8 @@
                 "width": 7,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 36, "height": 8 },
+              "Window": { "count": 1, "width": 5, "height": 5 },
               "areaSqft": 56
             },
             {
@@ -793,6 +807,8 @@
                 "width": 6,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 42
             },
             {
@@ -832,6 +848,8 @@
                 "width": 11,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 154
             },
             {
@@ -842,6 +860,8 @@
                 "width": 10,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 130
             },
             {
@@ -852,6 +872,8 @@
                 "width": 12,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 192
             },
             {
@@ -862,6 +884,8 @@
                 "width": 9,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 90
             },
             {
@@ -911,6 +935,8 @@
                 "width": 12,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 53, "height": 37 },
+              "Window": { "count": 1, "width": 54, "height": 24 },
               "areaSqft": 168
             },
             {
@@ -921,6 +947,8 @@
                 "width": 11,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 143
             },
             {
@@ -931,6 +959,8 @@
                 "width": 10,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 120
             },
             {
@@ -941,6 +971,8 @@
                 "width": 12,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 216
             },
             {
@@ -951,6 +983,8 @@
                 "width": 8,
                 "height": 9
               },
+              "Door": { "count": 1, "width": 3, "height": 7 },
+              "Window": { "count": 1, "width": 4, "height": 4 },
               "areaSqft": 88
             },
             {

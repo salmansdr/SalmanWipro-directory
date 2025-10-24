@@ -4,6 +4,7 @@ import { Container, Card, Button, Table, Spinner, Alert } from 'react-bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectEstimation() {
+ const [fullProjects, setFullProjects] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,10 +21,11 @@ function ProjectEstimation() {
         }
         
         const data = await response.json();
-        
+         
+        setFullProjects(data); // Store the full objects
         // Handle both array and single object structures
         const projects = Array.isArray(data) ? data : [data];
-        
+        //setFullProjects(projects); // Store the full objects
         // Transform the JSON data to match the grid structure
         const projectRows = projects.map(project => ({
           ref: project.estimationRef || 'N/A',
@@ -111,28 +113,30 @@ function ProjectEstimation() {
   };
 
   const handleRefClick = (ref) => {
-    // Find the project data for this reference
-    const projectData = rows.find(row => row.ref === ref);
-    navigate('/pricing-calculator', { 
-      state: { 
-        mode: 'view', 
-        ref: ref,
-        projectData: projectData // Pass complete project data
-      } 
-    });
-  };
-
-  const handleEditClick = (ref) => {
-    // Find the project data for this reference
-    const projectData = rows.find(row => row.ref === ref);
-    navigate('/pricing-calculator', { 
-      state: { 
-        mode: 'edit', 
-        ref: ref,
-        projectData: projectData // Pass complete project data
-      } 
-    });
-  };
+  // Find the full project object for this reference
+  const project = fullProjects.find(
+    (p) => p.estimationRef === ref
+  );
+  navigate('/pricing-calculator', { 
+    state: { 
+      mode: 'view', 
+    ref: ref,
+    projectData: project // <-- use 'projectData'
+    } 
+  });
+};
+  const handleEditClick = (row) => {
+  const project = fullProjects.find(
+    (p) => p.projectName === row.projectName
+  );
+  navigate('/pricing-calculator', {
+    state: {
+      Mode: 'Edit', // or whatever value you want for Mode
+      ref: row.ref , // or the appropriate value for ref
+      projectData: project // <-- use 'projectData'
+    }
+  });
+};
 
   // Delete row handler
   const handleDelete = (ref) => {
