@@ -916,7 +916,7 @@ useEffect(() => {
   }, [bhkRows, floors]);
 
   const plotArea = (width && depth) ? (Number(width) * Number(depth)) : '';
-  let rectangleVisualization = null;
+  //let rectangleVisualization = null;
 
   // Helper to get BHK config for a floor
   const getFloorRows = floorIdx => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs);
@@ -1086,191 +1086,25 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
   if (width && depth) {
     // Responsive base sizes
-    const OUTER_WIDTH = Math.min(window.innerWidth * 0.96, 800);
-    const OUTER_HEIGHT = Math.min(window.innerWidth * 0.60, 320);
-    const MAX_WIDTH = OUTER_WIDTH * 0.8;
-    const MAX_HEIGHT = OUTER_HEIGHT * 0.8;
+    //const OUTER_WIDTH = Math.min(window.innerWidth * 0.96, 800);
+    //const OUTER_HEIGHT = Math.min(window.innerWidth * 0.60, 320);
+    //const MAX_WIDTH = OUTER_WIDTH * 0.8;
+    //const MAX_HEIGHT = OUTER_HEIGHT * 0.8;
     // Rectangle sizes (clamped for mobile)
     // Increase scale so rectangles are always visible, even for small SBA
-  const SCALE_FACTOR = 0.5; // Even higher scale for maximum visibility
-    const sbaWidth = Math.max(120, Math.min(MAX_WIDTH, Number(width) * SCALE_FACTOR));
-    const sbaHeight = Math.max(60, Math.min(MAX_HEIGHT, Number(depth) * SCALE_FACTOR));
-    const buaWidth = Math.max(90, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) * SCALE_FACTOR));
-    const buaHeight = Math.max(45, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) * SCALE_FACTOR));
-    const caWidth = Math.max(60, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) * SCALE_FACTOR));
-    const caHeight = Math.max(30, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) * SCALE_FACTOR));
+  //const SCALE_FACTOR = 0.5; // Even higher scale for maximum visibility
+    //const sbaWidth = Math.max(120, Math.min(MAX_WIDTH, Number(width) * SCALE_FACTOR));
+    //const sbaHeight = Math.max(60, Math.min(MAX_HEIGHT, Number(depth) * SCALE_FACTOR));
+    //const buaWidth = Math.max(90, Math.min(sbaWidth - 24, (Number(width) * (buildupPercent/100)) * SCALE_FACTOR));
+    //const buaHeight = Math.max(45, Math.min(sbaHeight - 24, (Number(depth) * (buildupPercent/100)) * SCALE_FACTOR));
+    //const caWidth = Math.max(60, Math.min(buaWidth - 24, (Number(width) * (carpetPercent/100)) * SCALE_FACTOR));
+    //const caHeight = Math.max(30, Math.min(buaHeight - 24, (Number(depth) * (carpetPercent/100)) * SCALE_FACTOR));
 
   
 
 
-    rectangleVisualization = (
-      <div
-        ref={rectangleRef}
-        className="ner"
-        style={{
-          margin: '2rem auto',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '320px',
-          width: '100%',
-          position: 'relative'
-        }}
-      >
-        <div
-          style={{
-            position: 'relative',
-            width: 'min(96vw, 800px)',
-            height: 'min(80vw, 280px)',
-            maxWidth: '800px',
-            maxHeight: '280px',
-            background: 'transparent',
-            borderRadius: '12px',
-            border: '1.5px solid #e0e0e0',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            margin: '0 auto',
-            overflow: 'hidden'
-          }}
-        >
-          <div style={{ position: 'relative', width: `${sbaWidth}px`, height: `${sbaHeight}px`, margin: '0 auto' }}>
-            {/* SBA Rectangle */}
-            <div style={{
-              width: '100%',
-              height: '100%',
-              background: '#fffde7',
-              border: '3px solid #ffd600',
-              borderRadius: '6px',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              zIndex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column'
-            }}>
-              <span style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                <span title="Total area including common spaces (lobby, stairs, etc.)" style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                  Super Built-up<br />
-                  {Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                </span>
-              </span>
-              {/* SBA width label (top edge) */}
-              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#616161', fontWeight: 400, background: '#fffde7', padding: '0 4px', borderRadius: '3px' }}>
-                {Number(width).toFixed(2)} ft
-              </span>
-              {/* SBA height label (left border, vertical) */}
-              <span style={{
-                position: 'absolute',
-                left: '-23px',
-                top: '50%',
-                transform: 'translateY(-50%) rotate(-90deg)',
-                fontSize: '0.55rem',
-                color: '#616161',
-                fontWeight: 400,
-                background: '#fffde7',
-                padding: '0 4px',
-                borderRadius: '3px',
-                whiteSpace: 'nowrap'
-              }}>
-                {Number(depth).toFixed(2)} ft
-              </span>
-            </div>
-            {/* Build-up area Rectangle */}
-            <div style={{
-              width: `${buaWidth}px`,
-              height: `${buaHeight}px`,
-              background: '#e3f2fd',
-              border: '2px solid #1976d2',
-              borderRadius: '6px',
-              position: 'absolute',
-              top: `${(sbaHeight - buaHeight) / 2}px`,
-              left: `${(sbaWidth - buaWidth) / 2}px`,
-              zIndex: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column'
-            }}>
-              <span style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                <span title="Usable area including walls, balcony, etc." style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                  Build-up Area<br />
-                  {(plotArea * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                </span>
-              </span>
-              {/* BUA width label (top edge) */}
-              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#1976d2', fontWeight: 400, background: '#e3f2fd', padding: '0 4px', borderRadius: '3px' }}>
-                {(Number(width) * (buildupPercent/100)).toFixed(2)} ft
-              </span>
-              {/* BUA height label (left border, vertical) */}
-              <span style={{
-                position: 'absolute',
-                left: '-23px',
-                top: '50%',
-                transform: 'translateY(-50%) rotate(-90deg)',
-                fontSize: '0.55rem',
-                color: '#1976d2',
-                fontWeight: 400,
-                background: '#e3f2fd',
-                padding: '0 4px',
-                borderRadius: '3px',
-                whiteSpace: 'nowrap'
-              }}>
-                {(Number(depth) * (buildupPercent/100)).toFixed(2)} ft
-              </span>
-            </div>
-            {/* Carpet area Rectangle */}
-            <div style={{
-              width: `${caWidth}px`,
-              height: `${caHeight}px`,
-              background: '#fce4ec',
-              border: '2px solid #d81b60',
-              borderRadius: '6px',
-              position: 'absolute',
-              top: `${(sbaHeight - caHeight) / 2}px`,
-              left: `${(sbaWidth - caWidth) / 2}px`,
-              zIndex: 3,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column'
-            }}>
-              <span style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                <span title="Actual area within walls (where carpet can be laid)" style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                  Carpet Area<br />
-                  {(plotArea * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                </span>
-              </span>
-              {/* Carpet width label (top edge) */}
-              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#d81b60', fontWeight: 400, background: '#fce4ec', padding: '0 4px', borderRadius: '3px' }}>
-                {(Number(width) * (carpetPercent/100)).toFixed(2)} ft
-              </span>
-              {/* Carpet height label (left border, vertical) */}
-              <span style={{
-                position: 'absolute',
-                left: '-23px',
-                top: '50%',
-                transform: 'translateY(-50%) rotate(-90deg)',
-                fontSize: '0.55rem',
-                color: '#d81b60',
-                fontWeight: 400,
-                background: '#fce4ec',
-                padding: '0 4px',
-                borderRadius: '3px',
-                whiteSpace: 'nowrap'
-              }}>
-                {(Number(depth) * (carpetPercent/100)).toFixed(2)} ft
-              </span>
-            </div>
-            {/* Grid below Carpet Area Rectangle */}
-            
-          </div>
-        </div>
-      </div>
-    );
+   
+    
   }
 
   const handleCircleClick = (s) => setStep(s);
@@ -2572,55 +2406,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
               
               {/* ...existing code for Step 1 form controls, including Select City ... */}
+              {/* Rectangle Visualization 
               {rectangleVisualization}
+              */}
 
-              {/* Area Definitions Grid */}
-              <div style={{
-                width: '100%',
-                maxWidth: '600px',
-                margin: '2rem auto',
-                background: '#fafafa',
-                borderRadius: '8px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                border: '1px solid #e0e0e0',
-                padding: '12px 8px',
-                fontSize: '.95rem',
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f5f5f5' }}>
-                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Type</th>
-                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Area (sq ft)</th>
-                      <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600, color: '#333', borderBottom: '1px solid #e0e0e0' }}>Definition</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '8px', color: '#616161' }}>Super Built-up</td>
-                      <td style={{ padding: '8px', color: '#616161' }}>
-                        {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-                      </td>
-                      <td style={{ padding: '8px', color: '#616161' }}>Total area including common spaces (lobby, stairs, etc.)</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '8px', color: '#1976d2' }}>Build-up Area</td>
-                      <td style={{ padding: '8px', color: '#1976d2' }}>
-                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-                      </td>
-                      <td style={{ padding: '8px', color: '#1976d2' }}>Usable area including walls, balcony, etc.</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '8px', color: '#d81b60' }}>Carpet Area</td>
-                      <td style={{ padding: '8px', color: '#d81b60' }}>
-                        {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
-                      </td>
-                      <td style={{ padding: '8px', color: '#d81b60' }}>Actual area within walls (where carpet can be laid)</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              
 
 
 
