@@ -333,12 +333,7 @@ const PricingCalculator = () => {
   // Removed unused state: sitePlanFile
 
   // Update file and preview URL on upload
-  function handleSitePlanUpload(e) {
-    const file = e.target.files[0];
-    if (file) {
-      setSitePlanUrl(URL.createObjectURL(file));
-    }
-  }
+
 
   // Process button handler: send image to Flask backend
   // Removed unused state: bhkLoading, bhkError, bhkTokens
@@ -1158,7 +1153,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               flexDirection: 'column'
             }}>
               <span style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                Super Built-up<br />{Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                <span title="Total area including common spaces (lobby, stairs, etc.)" style={{ color: '#616161', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                  Super Built-up<br />
+                  {Number(plotArea).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                </span>
               </span>
               {/* SBA width label (top edge) */}
               <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#616161', fontWeight: 400, background: '#fffde7', padding: '0 4px', borderRadius: '3px' }}>
@@ -1198,7 +1196,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               flexDirection: 'column'
             }}>
               <span style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                Build-up Area<br />{(plotArea * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                <span title="Usable area including walls, balcony, etc." style={{ color: '#1976d2', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                  Build-up Area<br />
+                  {(plotArea * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                </span>
               </span>
               {/* BUA width label (top edge) */}
               <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#1976d2', fontWeight: 400, background: '#e3f2fd', padding: '0 4px', borderRadius: '3px' }}>
@@ -1238,7 +1239,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               flexDirection: 'column'
             }}>
               <span style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
-                Carpet Area<br />{(plotArea * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                <span title="Actual area within walls (where carpet can be laid)" style={{ color: '#d81b60', fontWeight: 400, fontSize: '.80rem', textAlign: 'center' }}>
+                  Carpet Area<br />
+                  {(plotArea * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                </span>
               </span>
               {/* Carpet width label (top edge) */}
               <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.65rem', color: '#d81b60', fontWeight: 400, background: '#fce4ec', padding: '0 4px', borderRadius: '3px' }}>
@@ -1838,13 +1842,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
   }
 
   // New state and handlers for Site Plan upload
-  const [sitePlanUrl, setSitePlanUrl] = useState(process.env.PUBLIC_URL + '/Image/IMG_20251006_132101.jpg');
-  const [showSitePlanModal, setShowSitePlanModal] = useState(false);
+  // const [sitePlanUrl, setSitePlanUrl] = useState(process.env.PUBLIC_URL + '/Image/IMG_20251006_132101.jpg');
+  // const [showSitePlanModal, setShowSitePlanModal] = useState(false);
   // Only keep one definition of handleSitePlanUpload (already defined above)
   // Remove stray code block
-  function handleSitePlanDoubleClick() {
-    setShowSitePlanModal(true);
-  }
+
 
   // Removed unused state: pollinationText
   // Removed unused state: pollinationLoading, pollinationError
@@ -2645,7 +2647,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               <div className="row w-100" style={{ maxWidth: 600 }}>
                 <div className="col-12 col-md-4 mb-3 mb-md-0">
                   <div style={{ background: '#e3f2fd', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(33,150,243,0.07)', minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: '#1976d2', fontSize: '0.85rem' }}>Super Built-up</div>
+                    <div style={{ fontWeight: 600, color: '#1976d2', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em' }}>
+                      Super Built-up
+                      <span title="Total area including common spaces (lobby, stairs, etc.)" style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#1976d2', verticalAlign: 'middle' }}>ℹ️</span>
+                    </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
                       {Number(width) && Number(depth) ? (Number(width) * Number(depth)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                     </div>
@@ -2653,7 +2658,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 </div>
                 <div className="col-12 col-md-4 mb-3 mb-md-0">
                   <div style={{ background: '#e8f5e9', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(76,175,80,0.07)', minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: '#388e3c', fontSize: '0.85rem' }}>Build-up Area</div>
+                    <div style={{ fontWeight: 600, color: '#388e3c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em' }}>
+                      Build-up Area
+                      <span title="Usable area including walls, balcony, etc." style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#388e3c', verticalAlign: 'middle' }}>ℹ️</span>
+                    </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
                       {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (buildupPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                     </div>
@@ -2661,7 +2669,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 </div>
                 <div className="col-12 col-md-4">
                   <div style={{ background: '#fce4ec', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(233,30,99,0.07)', minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: '#d81b60', fontSize: '0.85rem' }}>Carpet Area</div>
+                    <div style={{ fontWeight: 600, color: '#d81b60', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em' }}>
+                      Carpet Area
+                      <span title="Actual area within walls (where carpet can be laid)" style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#d81b60', verticalAlign: 'middle' }}>ℹ️</span>
+                    </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: 2 }}>
                       {Number(width) && Number(depth) ? (Number(width) * Number(depth) * (carpetPercent/100)).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                     </div>
@@ -2672,58 +2683,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
 {/* File upload section */}
             {/* Site Plan Upload Section */}
-<div className="d-flex justify-content-center align-items-center" style={{ marginBottom: '2rem', gap: '2rem' }}>
-  <div style={{ maxWidth: 320 }}>
-    <Form.Group controlId="sitePlanUpload">
-      <Form.Label style={{ fontWeight: 600, color: '#1976d2' }}>Upload Site Plan</Form.Label>
-      <Form.Control type="file" accept="image/*" onChange={handleSitePlanUpload} />
-    </Form.Group>
-  </div>
-  <div style={{
-    maxWidth: 320,
-    minHeight: 90,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: '1px solid #e0e0e0',
-    borderRadius: 8,
-    background: '#fafafa',
-    boxShadow: '0 2px 8px rgba(33,150,243,0.07)'
-  }}>
-    {sitePlanUrl ? (
-        <img
-          src={sitePlanUrl}
-          alt="Site Plan"
-          style={{
-            width: 200,
-            height: 120,
-            objectFit: 'cover',
-            borderRadius: 6,
-            cursor: 'pointer',
-            boxShadow: '0 1px 4px rgba(33,150,243,0.10)'
-          }}
-          onClick={handleSitePlanDoubleClick}
-        />
-    ) : (
-      <span style={{ color: '#888', fontSize: '1rem' }}>No Site Plan Uploaded</span>
-    )}
-  </div>
-  <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1.5rem' }}>
-    <Button variant="secondary" style={{ height: '38px' }} >Process</Button>
-  </div>
-</div>
+{/* Site plan image and process button hidden as requested */}
 
 {/* Large Site Plan Modal */}
-<Modal show={showSitePlanModal} onHide={() => setShowSitePlanModal(false)} centered size="lg">
-  <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
-    <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>Site Plan</Modal.Title>
-  </Modal.Header>
-  <Modal.Body style={{ background: '#fafafa', textAlign: 'center' }}>
-    {sitePlanUrl && (
-      <img src={sitePlanUrl} alt="Site Plan Large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }} />
-    )}
-  </Modal.Body>
-</Modal>
+
             {/* Controls section */}
             <div className="d-flex justify-content-center">
               <div style={{ width: '100%', maxWidth: 600, padding: '0 16px' }}>
@@ -3561,16 +3524,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
       </Modal>
 
       {/* Large Site Plan Modal */}
-      <Modal show={showSitePlanModal} onHide={() => setShowSitePlanModal(false)} centered size="lg">
-        <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
-          <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>Site Plan</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: '#fafafa', textAlign: 'center' }}>
-          {sitePlanUrl && (
-            <img src={sitePlanUrl} alt="Site Plan Large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }} />
-          )}
-        </Modal.Body>
-      </Modal>
+
 
       {/* Internal Walls Details Modal */}
       <Modal show={showInternalWallsModal} onHide={() => setShowInternalWallsModal(false)} size="lg">
