@@ -3,15 +3,58 @@
   "description": "Area calculation logic configuration for construction estimation",
   "last_updated": "2025-10-18",
   "calculation_components": {
-    "Foundation_area": {
-      "name": "Foundation Area", 
+   
+     "ExcavationVolume": {
+      "name": "Excavation",
+      "formula": "percentage_of_super_buildup*thickness",
+      "percentage": 0.12,
+      "thickness": 10.0,
+      "description": "12% of Super Built-up Area",
+      "Applicable Floors": ["Foundation"]
+    },
+    "BasementSlab": {
+      "name": "SlabVolume",
       "formula": "percentage_of_super_buildup",
       "percentage": 0.12,
-      "thickness": 2.0,
+      "thickness": 0.75,
       "description": "12% of Super Built-up Area",
-      "Applicable Floors": ["GroundFloor"]
+      "Applicable Floors": ["Foundation"]
     },
-    
+    "BasementWallVolume": {
+      "name": "WallVolume",
+      "formula": "2×(L_sb+W_sb)×thickness",
+      "thickness": 0.75,
+      "wallHeight":10,
+      "description": "wallPerimeter * wallHeight * wallThickness",
+      "Applicable Floors": ["Foundation"]
+    },
+    "BasementBeam": {
+      "name": "BeamVolume",
+      "Columns per Row":"L_sb/(Grid spacing)+1",
+      "Rows of Columns":"W_sb/(Grid spacing)+1",
+      "Grid spacing": "15",
+      "Column width": "1",
+      "Column Depth": "1.5",
+      "Cross-section": "Column width× Column Depth",
+      "formula": "Rows of Columns*(Columns per Row-1)+Columns per Row*(Rows of Columns-1)*Cross-section*Grid spacing",
+      "description": "Advance Logical Calculation based on Grid Spacing and Cross-section",
+      "Applicable Floors": ["Foundation"]
+    },
+     "Basementcolumns": {
+      "name": "ColumnVolume",
+      "Columns per Row":"L_sb/(Grid spacing)+1",
+      "Rows of Columns":"W_sb/(Grid spacing)+1",
+      "Grid spacing": "15",
+      "Columns Count":"Columns per Row*Rows of Columns",
+      "Column width": "1.5",
+      "Column Depth": "1.5",
+      "Cross-section": "Column width× Column Depth",
+      "formula": "Columns Count*Cross-section",
+      "Height": 10,
+      "description": "Advance Logical Calculation based on Grid Spacing and Cross-section",
+      "Applicable Floors": ["Foundation"]
+    },
+
     "internal_walls": {
       "name": "Internal Walls",
       "formula": "2×(Length+Width)×Height per room",
@@ -38,7 +81,7 @@
       "Applicable Floors": ["MiddleFloors", "TopFloor"]
     },
     "slab_area": {
-      "name": "Slab Area", 
+      "name": "SlabVolume", 
       "formula": "same_as_Built-up Area",
       "thickness": 0.5,
       "description": "Same as Built-up Area",
@@ -51,8 +94,8 @@
       "description": "Same as Built-up Area",
       "Applicable Floors": ["All Floors"]
     },
-    "beams": {
-      "name": "Beams",
+    "Beams": {
+      "name": "BeamVolume",
       "A_bu" : ".85xL_sb*W_sb",
       "layout_ratio" : "L_sb / W_sb",
       "W_bu" : "(A_bu / layout_ratio) ** 0.5",
@@ -67,8 +110,8 @@
       "description": "Advance Logical Calculation based on Grid Spacing and Cross-section",
       "Applicable Floors": ["All Floors"]
     },
-    "columns": {
-      "name": "Columns",
+    "Columns": {
+      "name": "ColumnVolume",
       "A_bu" : ".85xL_sb*W_sb",
       "layout_ratio" : "L_sb / W_sb",
       "W_bu" : "(A_bu / layout_ratio) ** 0.5",
@@ -86,20 +129,20 @@
       "Applicable Floors": ["All Floors"]
     },
     "staircase_area": {
-      "name": "Staircase Area",
-      "formula": "percentage_of_builtup",
+      "name": "StaircaseVolume",
+      "formula": "percentage_of_buildup",
       "percentage": 0.02,
       "thickness": 0.75,
-      "description": "2% of Built-up Area",
+      "description": "2% of Build-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "lift_shaft_area": {
       "name": "Lift Shaft Area",
-      "formula": "conditional_percentage_of_builtup",
+      "formula": "conditional_percentage_of_buildup",
       "percentage": 0.015,
       "thickness": 0.5,
       "condition": "lift_required",
-      "description": "If lift required, 1.5% of Built-up Area",
+      "description": "If lift required, 1.5% of Build-up Area",
       "Applicable Floors": ["All Floors"]
     },
     "balcony_area": {
