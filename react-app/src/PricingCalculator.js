@@ -1960,7 +1960,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               if (editableThickness[key] !== undefined) {
                 usedThickness = editableThickness[key];
               }
-              area = vars.super_buildup_area * (usedPercentage || 0) * (usedThickness || 0);
+              area = vars.super_buildup_area * (usedPercentage || 0);
               logic = `Excavation: ${percentage}% × Super Built-up Area (${vars.super_buildup_area}) = ${area.toFixed(0)} sqft, Thickness: ${usedThickness}ft`;
               return { key, ...comp, area, percentage, thickness: usedThickness, logic, isEditable: comp.percentage !== undefined };
             }
@@ -1984,7 +1984,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const wallThickness = comp.thickness || 0.75;
               const perimeter = 2 * (vars.width + vars.depth);
               area = perimeter * wallHeight ;
-              logic = `Basement Wall: 2×(${vars.width}+${vars.depth})×${wallHeight}×${wallThickness} = ${area.toFixed(0)} cuft`;
+              logic = `Basement Wall: 2×(${vars.width}+${vars.depth})×${wallHeight}×${wallThickness} = ${(area*wallThickness).toFixed(0)} cuft`;
               return { key, ...comp, area, percentage, thickness, logic };
             }
             else if (key === 'BasementBeam') {
@@ -2930,7 +2930,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Component</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Logic</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Percentage (%)</th>
-                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area Per Floor (sq ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area (sq ft)</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Thickness (Ft)</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Volume (cuft)</th>
                   </tr>
