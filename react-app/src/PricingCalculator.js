@@ -2933,6 +2933,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area (sq ft)</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Thickness (Ft)</th>
                     <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Volume (cuft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Category</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2951,9 +2952,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     }
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                          {item.name}
-                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                           {item.name.includes('Internal Walls') ? (
                             <span>
@@ -3042,6 +3041,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                         <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
                           {volume ? volume.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                         </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {item.Category || item.category || '-'}
+                        </td>
                       </tr>
                     );
                   })}
@@ -3049,42 +3051,32 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                   {/* RCC Volume Summary Row */}
                   {(() => {
                     if (!Gridcomponents) return null;
-                    // Map keys to volumes
-                    const getVolumeByKey = (key) => {
-                      const comp = Gridcomponents.find(i => i.key === key);
-                      if (!comp) return 0;
-                      if ((key === 'Beams' || key === 'Columns' || key === 'BasementBeam' || key === 'Basementcolumns') && comp.area) return comp.area;
-                      if (comp.area && comp.thickness) return comp.area * comp.thickness;
-                      return 0;
-                    };
-                    const isFoundation = selectedDebugFloor === 0;
-                    // Foundation keys
-                    // For Foundation, use basement keys. For others, include all possible variants.
-                    let slabKeys, columnKeys, beamKeys, staircaseKeys;
-                    if (isFoundation) {
-                      slabKeys = ['BasementSlab'];
-                      columnKeys = ['Basementcolumns'];
-                      beamKeys = ['BasementBeam'];
-                      staircaseKeys = [];
-                    } else {
-                      slabKeys = ['Slab','slab_area', 'SlabVolume'];
-                      columnKeys = ['Columns', 'ColumnVolume'];
-                      beamKeys = ['Beams', 'BeamVolume'];
-                      staircaseKeys = ['Staircase', 'StaircaseVolume', 'staircase_area'];
-                    }
-                    const wallKey = isFoundation ? 'BasementWallVolume' : 'WallVolume';
-                    let rccVolume = 0;
-                    slabKeys.forEach(k => { rccVolume += getVolumeByKey(k); });
-                    rccVolume += getVolumeByKey(wallKey);
-                    columnKeys.forEach(k => { rccVolume += getVolumeByKey(k); });
-                    beamKeys.forEach(k => { rccVolume += getVolumeByKey(k); });
-                    staircaseKeys.forEach(k => { rccVolume += getVolumeByKey(k); });
-                    return (
-                      <tr style={{ background: '#e3f2fd', fontWeight: 700 }}>
-                        <td colSpan={5} style={{ textAlign: 'right', color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2' }}>RCC Volume (cuft)</td>
-                        <td style={{ color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2', textAlign: 'right' }}>{rccVolume ? rccVolume.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
+                    // Group by category and sum the displayed volume column
+                    const categoryMap = {};
+                    Gridcomponents.forEach(item => {
+                      // Get the displayed volume value (same as in the table)
+                      let volume = 0;
+                      const key = item.key || item.name || '';
+                      if (key === 'Beams' || key === 'Columns' || key === 'BasementBeam' || key === 'Basementcolumns') {
+                        volume = item.area;
+                      } else if (item.area && item.thickness) {
+                        volume = item.area * item.thickness;
+                      }
+                      // Normalize category for grouping (trim and uppercase)
+                      const catRaw = (item.Category || item.category || '-').toString();
+                      const cat = catRaw.trim().toUpperCase();
+                      if (!categoryMap[cat]) categoryMap[cat] = 0;
+                      if (!isNaN(volume) && volume) {
+                        categoryMap[cat] += Number(volume);
+                      }
+                    });
+                    return Object.entries(categoryMap).map(([cat, totalVol], idx) => (
+                      <tr key={cat} style={{ background: '#e3f2fd', fontWeight: 700 }}>
+                        <td colSpan={5} style={{ textAlign: 'right', color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2' }}>{cat} Volume (cuft)</td>
+                        <td style={{ color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2', textAlign: 'right' }}>{totalVol ? Math.round(totalVol).toLocaleString('en-IN') : '-'}</td>
+                        <td style={{ color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2', textAlign: 'center' }}></td>
                       </tr>
-                    );
+                    ));
                   })()}
                 </tbody>
               </table>

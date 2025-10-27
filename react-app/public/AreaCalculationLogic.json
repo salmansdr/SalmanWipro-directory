@@ -10,6 +10,8 @@
       "percentage": 0.12,
       "thickness": 10.0,
       "description": "12% of Super Built-up Area",
+      "Category": "Earthwork",
+      "Material": "involves soil removal",
       "Applicable Floors": ["Foundation"]
     },
     "BasementSlab": {
@@ -18,7 +20,7 @@
       "percentage": 0.12,
       "thickness": 0.75,
       "description": "12% of Super Built-up Area",
-      "Categoyry": "RCC",
+      "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
       "Applicable Floors": ["Foundation"]
     },
@@ -156,7 +158,7 @@
       "description": "2% of Build-up Area",
       "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor"]
     },
     "lift_shaft_area": {
       "name": "Lift Shaft Area",
@@ -167,7 +169,7 @@
       "description": "If lift required, 1.5% of Build-up Area",
       "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor"]
     },
     "balcony_area": {
       "name": "Balcony Area",
@@ -187,6 +189,8 @@
       "percentage": 0.02,
       "thickness": 0.5,
       "description": "2% of Built-up Area",
+      "Category": "Mixed",
+      "Material": "RCC Slab + Tile Finish",
       "Applicable Floors": ["all floors"]
     }
   },
