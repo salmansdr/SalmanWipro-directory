@@ -2940,9 +2940,12 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     let volume = 0;
                     // Use item.key for logic, fallback to name for display
                     const key = item.key || item.name || '';
+                    // Only show Parapet Walls for the true top floor (selectedDebugFloor === Number(floors) + 1)
+                    if (key === 'parapet_walls' || item.name === 'Parapet Walls') {
+                      if (!((selectedDebugFloor || 0) === Number(floors) + 1)) return null;
+                    }
                     if (key === 'Beams' || key === 'Columns' || key === 'BasementBeam' || key === 'Basementcolumns') {
                       volume = item.area;
-                      //item.area = undefined; // Hide area for beams/columns
                     } else if (item.area && item.thickness) {
                       volume = item.area * item.thickness;
                     }
