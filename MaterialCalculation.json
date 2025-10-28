@@ -1,0 +1,204 @@
+{
+  "floors": [
+    {
+      "name": "Foundation",
+      "components": {
+        "RCC": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": 0.42,
+              "unit": "bags",
+              "formula": "volume_cuft × 0.42",
+              "qty": "{{volume_cuft * 0.42}}"
+            },
+            "steel": {
+              "mt": 0.09,
+              "unit": "kg",
+              "formula": "volume_cuft × 0.09",
+              "qty": "{{volume_cuft * 0.09}}"
+            },
+            "sand": {
+              "mt": 0.14,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.14",
+              "qty": "{{volume_cuft * 0.14}}"
+            },
+            "aggregate": {
+              "mt": 0.28,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.28",
+              "qty": "{{volume_cuft * 0.28}}"
+            }
+          }
+        },
+        
+        "CeilingPlaster": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": "(0.2 × 28.3 ÷ 1.25)",
+              "unit": "bags",
+              "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
+              "qty": "{{volume_cuft * 4.53}}"
+            },
+            "sand": {
+              "mt": "(0.8 × 28.3)",
+              "unit": "cuft",
+              "formula": "volume_cuft × (0.8 × 28.3)",
+              "qty": "{{volume_cuft * 22.64}}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GroundFloor",
+      "components": {
+        "RCC": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": 0.40,
+              "unit": "bags",
+              "formula": "volume_cuft × 0.40",
+              "qty": "{{volume_cuft * 0.40}}"
+            },
+            "steel": {
+              "mt": 0.08,
+              "unit": "kg",
+              "formula": "volume_cuft × 0.08",
+              "qty": "{{volume_cuft * 0.08}}"
+            },
+            "sand": {
+              "mt": 0.13,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.13",
+              "qty": "{{volume_cuft * 0.13}}"
+            },
+            "aggregate": {
+              "mt": 0.27,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.27",
+              "qty": "{{volume_cuft * 0.27}}"
+            }
+          }
+        },
+        "Walls": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": "(0.2 × 28.3 ÷ 1.25)",
+              "unit": "bags",
+              "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
+              "qty": "{{volume_cuft * 4.53}}"
+            },
+            "sand": {
+              "mt": "(0.8 × 28.3)",
+              "unit": "cuft",
+              "formula": "volume_cuft × (0.8 × 28.3)",
+              "qty": "{{volume_cuft * 22.64}}"
+            },
+            "bricks": {
+              "mt": 14.16,
+              "unit": "nos",
+              "formula": "volume_cuft × 14.16",
+              "qty": "{{volume_cuft * 14.16}}"
+            }
+          }
+        },
+        "Ceiling Plaster": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": "(0.2 × 28.3 ÷ 1.25)",
+              "unit": "bags",
+              "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
+              "qty": "{{volume_cuft * 4.53}}"
+            },
+            "sand": {
+              "mt": "(0.8 × 28.3)",
+              "unit": "cuft",
+              "formula": "volume_cuft × (0.8 × 28.3)",
+              "qty": "{{volume_cuft * 22.64}}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Other Floor",
+      "components": {
+        "RCC": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": 0.36,
+              "unit": "bags",
+              "formula": "volume_cuft × 0.36",
+              "qty": "{{volume_cuft * 0.36}}"
+            },
+            "steel": {
+              "mt": 0.07,
+              "unit": "kg",
+              "formula": "volume_cuft × 0.07",
+              "qty": "{{volume_cuft * 0.07}}"
+            },
+            "sand": {
+              "mt": 0.12,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.12",
+              "qty": "{{volume_cuft * 0.12}}"
+            },
+            "aggregate": {
+              "mt": 0.25,
+              "unit": "cuft",
+              "formula": "volume_cuft × 0.25",
+              "qty": "{{volume_cuft * 0.25}}"
+            }
+          }
+        },
+        "Walls": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": "(0.2 × 28.3 ÷ 1.25)",
+              "unit": "bags",
+              "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
+              "qty": "{{volume_cuft * 4.53}}"
+            },
+            "sand": {
+              "mt": "(0.8 × 28.3)",
+              "unit": "cuft",
+              "formula": "volume_cuft × (0.8 × 28.3)",
+              "qty": "{{volume_cuft * 22.64}}"
+            },
+            "bricks": {
+              "mt": 14.16,
+              "unit": "nos",
+              "formula": "volume_cuft × 14.16",
+              "qty": "{{volume_cuft * 14.16}}"
+            }
+          }
+        },
+        "Ceiling Plaster": {
+          "volume_cuft": "{{volume_cuft}}",
+          "materials": {
+            "cement": {
+              "mt": "(0.2 × 28.3 ÷ 1.25)",
+              "unit": "bags",
+              "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
+              "qty": "{{volume_cuft * 4.53}}"
+            },
+            "sand": {
+              "mt": "(0.8 × 28.3)",
+              "unit": "cuft",
+              "formula": "volume_cuft × (0.8 × 28.3)",
+              "qty": "{{volume_cuft * 22.64}}"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

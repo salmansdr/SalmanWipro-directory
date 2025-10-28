@@ -75,7 +75,7 @@
       "window_area": 18,
       "thickness": 0.5,
       "description": "Advanced calculation: Wall Area = 2×(Length+Width)×Height per room. Parameters used: Height=10ft, Shared Wall Reduction=20%, Door Area=22 sqft each, Window Area=18 sqft each. Formula: Total Wall Area - (Shared Wall Reduction × Total Wall Area) - (Door Count × Door Area) - (Window Count × Window Area). Based on actual room dimensions from Step 2 configuration.",
-      "Category": "Non-RCC",
+      "Category": "Wall",
       "Material": "AAC Block / Brickwork + Cement Mortar",
       "Applicable Floors": ["MiddleFloors", "TopFloor"]
     },
@@ -90,7 +90,7 @@
       "height": 10,
       "thickness": 0.75,
       "description": "Based on  Built-up Area",
-      "Category": "Non-RCC",
+      "Category": "Wall",
       "Material": "AAC Block / Brickwork + Cement Mortar",
       "Applicable Floors": ["MiddleFloors", "TopFloor"]
     },
@@ -108,7 +108,7 @@
       "formula": "same_as_Built-up Area",
       "thickness": 0.05,
       "description": "Same as Built-up Area",
-      "Category": "Non-RCC",
+      "Category": "Ceiling plaster",
       "Material": "Cement Plaster (1:4)",
       "Applicable Floors": ["All Floors"]
     },
@@ -177,7 +177,7 @@
       "percentage": 0.05,
       "thickness": 0.5,
       "description": "5% of Carpet Area",
-      "Category": "Mixed",
+      "Category": "RCC",
       "Material": "RCC Slab + Tile Finish",
       "Applicable Floors": ["MiddleFloors", "TopFloor"]
     },
@@ -189,7 +189,7 @@
       "percentage": 0.02,
       "thickness": 0.5,
       "description": "2% of Built-up Area",
-      "Category": "Mixed",
+      "Category": "Wall",
       "Material": "RCC Slab + Tile Finish",
       "Applicable Floors": ["all floors"]
     }
