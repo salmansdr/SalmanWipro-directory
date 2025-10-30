@@ -23,13 +23,15 @@
               "mt": 0.14,
               "unit": "cft",
               "formula": "volume_cuft × 0.14",
-              "qty": 0.14
+              "qty": 0.14,
+              "Rate": 23
             },
             "Aggregate": {
               "mt": 0.28,
               "unit": "cft",
               "formula": "volume_cuft × 0.28",
-              "qty": 0.28
+              "qty": 0.28,
+              "Rate": 67
             }
           }
         },
@@ -41,13 +43,15 @@
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": 4.53
+              "qty": 4.53,
+              "Rate": 350
             },
             "Sand": {
               "mt": "(0.8 × 28.3)",
               "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": 22.64
+              "qty": 22.64,
+              "Rate": 23
             }
           }
         }
@@ -63,25 +67,29 @@
               "mt": 0.40,
               "unit": "bags",
               "formula": "volume_cuft × 0.40",
-              "qty": 0.40
+              "qty": 0.40,
+              "Rate": 350
             },
             "Steel": {
               "mt": 0.08,
               "unit": "kg",
               "formula": "volume_cuft × 0.08",
-              "qty": 0.08
+              "qty": 0.08,
+              "Rate": 60
             },
             "Sand": {
               "mt": 0.13,
               "unit": "cft",
               "formula": "volume_cuft × 0.13",
-              "qty": 0.13
+              "qty": 0.13,
+              "Rate": 23
             },
             "Aggregate": {
               "mt": 0.27,
               "unit": "cft",
               "formula": "volume_cuft × 0.27",
-              "qty": 0.27
+              "qty": 0.27,
+              "Rate": 67
             }
           }
         },
@@ -92,19 +100,23 @@
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": 4.53
+              "qty": 4.53,
+              "Rate": 350
             },
             "Sand": {
               "mt": "(0.8 × 28.3)",
               "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": 22.64
+              "qty": 22.64,
+              "Rate": 23
             },
             "Bricks": {
               "mt": 14.16,
-              "unit": "nos",
+              "unit": "pc",
               "formula": "volume_cuft × 14.16",
-              "qty": 14.16
+              "qty": 14.16,
+              "Rate": 10
+
             }
           }
         },
@@ -115,13 +127,15 @@
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": 4.53
+              "qty": 4.53,
+              "Rate": 350
             },
             "Sand": {
               "mt": "(0.8 × 28.3)",
               "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": 22.64
+              "qty": 22.64,
+              "Rate": 23
             }
           }
         }
@@ -176,7 +190,7 @@
             },
             "Bricks": {
               "mt": 14.16,
-              "unit": "nos",
+              "unit": "pc",
               "formula": "volume_cuft × 14.16",
               "qty": 14.16
             }

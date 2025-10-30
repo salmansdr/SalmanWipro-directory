@@ -1,0 +1,25 @@
+{
+  "location": "Kolkata",
+  "rate_structure": {
+    "Cement": {
+      "unit": "bag",
+      "rate": 365
+    },
+    "Steel": {
+      "unit": "kg",
+      "rate": 60
+    },
+    "Sand": {
+      "unit": "cft",
+      "rate": 23
+    },
+    "Aggregate": {
+      "unit": "cft",
+      "rate": 67
+    },
+    "Bricks": {
+      "unit": "piece",
+      "rate": 7
+    }
+  }
+}
