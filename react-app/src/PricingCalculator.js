@@ -2365,7 +2365,32 @@ useEffect(() => {
     });
 }, []);
 
+// 1. Load MaterialRate.json at runtime
+const [materialRateConfig, setMaterialRateConfig] = useState(null);
 
+useEffect(() => {
+  fetch(process.env.PUBLIC_URL + '/MaterialRate.json')
+    .then(res => res.json())
+    .then(data => setMaterialRateConfig(data))
+    .catch(err => {
+      console.error('Failed to load MaterialRate.json:', err);
+      setMaterialRateConfig(null);
+    });
+}, []);
+
+// 2. Build a material rate map (case-insensitive)
+const getMaterialRate = (materialName) => {
+  if (!materialRateConfig || !materialRateConfig.rate_structure) return '';
+  // Try exact match first
+  if (materialRateConfig.rate_structure[materialName]) {
+    return materialRateConfig.rate_structure[materialName].rate;
+  }
+  // Try case-insensitive match
+  const foundKey = Object.keys(materialRateConfig.rate_structure).find(
+    k => k.toLowerCase() === materialName.toLowerCase()
+  );
+  return foundKey ? materialRateConfig.rate_structure[foundKey].rate : '';
+};
 
 // Helper to map floor label to MaterialCalculation.json floor name
 const getMaterialFloorName = (floorLabel) => {
@@ -2425,7 +2450,8 @@ useEffect(() => {
       }
       const key = `${category}_${mat}_${floor || ''}`;
       const wastage = wastageMap[key] !== undefined ? wastageMap[key] : 5;
-      const rate = rateMap[`${category}_${mat}`] ?? '';
+      //const rate = rateMap[`${category}_${mat}`] ?? '';
+      const rate = getMaterialRate(mat);
       const totalQty = qty * (1 + wastage / 100);
       const totalValue = rate ? totalQty * rate : '';
       rows.push({
