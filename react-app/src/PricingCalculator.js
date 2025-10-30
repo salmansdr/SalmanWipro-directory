@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useCallback } from 'react';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome } from 'react-icons/fa';
@@ -2379,18 +2379,16 @@ useEffect(() => {
 }, []);
 
 // 2. Build a material rate map (case-insensitive)
-const getMaterialRate = (materialName) => {
+const getMaterialRate = useCallback((materialName) => {
   if (!materialRateConfig || !materialRateConfig.rate_structure) return '';
-  // Try exact match first
   if (materialRateConfig.rate_structure[materialName]) {
     return materialRateConfig.rate_structure[materialName].rate;
   }
-  // Try case-insensitive match
   const foundKey = Object.keys(materialRateConfig.rate_structure).find(
     k => k.toLowerCase() === materialName.toLowerCase()
   );
   return foundKey ? materialRateConfig.rate_structure[foundKey].rate : '';
-};
+}, [materialRateConfig]);
 
 // Helper to map floor label to MaterialCalculation.json floor name
 const getMaterialFloorName = (floorLabel) => {
@@ -2451,9 +2449,11 @@ useEffect(() => {
       const key = `${category}_${mat}_${floor || ''}`;
       const wastage = wastageMap[key] !== undefined ? wastageMap[key] : 5;
       //const rate = rateMap[`${category}_${mat}`] ?? '';
-      const rate = getMaterialRate(mat);
+      const rateNum = Number(getMaterialRate(mat));
       const totalQty = qty * (1 + wastage / 100);
-      const totalValue = rate ? totalQty * rate : '';
+      const totalValue = rateNum ? totalQty * rateNum : '';
+      // Debug log for each material row
+      
       rows.push({
         floor,
         category,
@@ -2463,13 +2463,13 @@ useEffect(() => {
         qty: info.qty,
         wastage,
         totalQty,
-        rate,
+        rate: rateNum,
         totalValue
       });
     });
   });
   setMaterialRows(rows);
-}, [materialConfig, allFloorsComponents, wastageMap, rateMap]);
+}, [materialConfig, allFloorsComponents, wastageMap, rateMap, getMaterialRate]);
 
 const handleWastageChange = (key, value) => {
   setWastageMap(prev => ({ ...prev, [key]: Number(value) }));
@@ -2481,9 +2481,9 @@ const handleRateChange = (key, value) => {
     prevRows.map(row => {
       const rowKey = `${row.category}_${row.material}_${row.floor || ''}`;
       if (rowKey === key) {
-        const rate = Number(value);
-        const totalValue = rate ? row.totalQty * rate : '';
-        return { ...row, rate, totalValue };
+  const rateNum = Number(value);
+  const totalValue = rateNum ? row.totalQty * rateNum : '';
+  return { ...row, rate: rateNum, totalValue };
       }
       return row;
     })
