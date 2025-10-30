@@ -142,7 +142,9 @@
                 "width": 11,
                 "height": 9
               },
-              "areaSqft": 154
+              "areaSqft": 154,
+              "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Bedroom 2",
@@ -152,7 +154,9 @@
                 "width": 10,
                 "height": 9
               },
-              "areaSqft": 130
+              "areaSqft": 130,
+               "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Living Room",
@@ -162,7 +166,9 @@
                 "width": 12,
                 "height": 9
               },
-              "areaSqft": 192
+              "areaSqft": 192,
+               "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Kitchen",
@@ -172,7 +178,9 @@
                 "width": 9,
                 "height": 9
               },
-              "areaSqft": 90
+              "areaSqft": 90,
+               "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Bathroom",
@@ -182,7 +190,9 @@
                 "width": 6,
                 "height": 9
               },
-              "areaSqft": 96
+              "areaSqft": 96,
+               "Door": { "count": 1, "width": 2.5, "height": 7 },
+              "Window": { "count": 1, "width": 3, "height": 3 }
             },
             {
               "name": "Balcony",
@@ -192,7 +202,9 @@
                 "width": 4,
                 "height": 9
               },
-              "areaSqft": 36
+              "areaSqft": 36,
+              "Door": { "count": 0, "width": 0, "height": 0 },
+              "Window": { "count": 0, "width": 0, "height": 0 }
             },
             {
               "name": "Circulation Space",
@@ -202,7 +214,9 @@
                 "width": 10,
                 "height": 9
               },
-              "areaSqft": 100
+              "areaSqft": 100,
+              "Door": { "count": 0, "width": 0, "height": 0 },
+              "Window": { "count": 0, "width": 0, "height": 0 }
             }
           ],
           "totalRoomsArea": 798

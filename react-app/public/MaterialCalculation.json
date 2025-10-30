@@ -6,29 +6,30 @@
         "RCC": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": 0.42,
               "unit": "bags",
               "formula": "volume_cuft × 0.42",
-              "qty": "{{volume_cuft * 0.42}}"
+              "qty": 0.42
+              
             },
-            "steel": {
+            "Steel": {
               "mt": 0.09,
               "unit": "kg",
               "formula": "volume_cuft × 0.09",
-              "qty": "{{volume_cuft * 0.09}}"
+              "qty": 0.09
             },
-            "sand": {
+            "Sand": {
               "mt": 0.14,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.14",
-              "qty": "{{volume_cuft * 0.14}}"
+              "qty": 0.14
             },
-            "aggregate": {
+            "Aggregate": {
               "mt": 0.28,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.28",
-              "qty": "{{volume_cuft * 0.28}}"
+              "qty": 0.28
             }
           }
         },
@@ -36,17 +37,17 @@
         "CeilingPlaster": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": "{{volume_cuft * 4.53}}"
+              "qty": 4.53
             },
-            "sand": {
+            "Sand": {
               "mt": "(0.8 × 28.3)",
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": "{{volume_cuft * 22.64}}"
+              "qty": 22.64
             }
           }
         }
@@ -58,69 +59,69 @@
         "RCC": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": 0.40,
               "unit": "bags",
               "formula": "volume_cuft × 0.40",
-              "qty": "{{volume_cuft * 0.40}}"
+              "qty": 0.40
             },
-            "steel": {
+            "Steel": {
               "mt": 0.08,
               "unit": "kg",
               "formula": "volume_cuft × 0.08",
-              "qty": "{{volume_cuft * 0.08}}"
+              "qty": 0.08
             },
-            "sand": {
+            "Sand": {
               "mt": 0.13,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.13",
-              "qty": "{{volume_cuft * 0.13}}"
+              "qty": 0.13
             },
-            "aggregate": {
+            "Aggregate": {
               "mt": 0.27,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.27",
-              "qty": "{{volume_cuft * 0.27}}"
+              "qty": 0.27
             }
           }
         },
-        "Walls": {
+        "Wall": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": "{{volume_cuft * 4.53}}"
+              "qty": 4.53
             },
-            "sand": {
+            "Sand": {
               "mt": "(0.8 × 28.3)",
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": "{{volume_cuft * 22.64}}"
+              "qty": 22.64
             },
-            "bricks": {
+            "Bricks": {
               "mt": 14.16,
               "unit": "nos",
               "formula": "volume_cuft × 14.16",
-              "qty": "{{volume_cuft * 14.16}}"
+              "qty": 14.16
             }
           }
         },
         "Ceiling Plaster": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": "{{volume_cuft * 4.53}}"
+              "qty": 4.53
             },
-            "sand": {
+            "Sand": {
               "mt": "(0.8 × 28.3)",
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": "{{volume_cuft * 22.64}}"
+              "qty": 22.64
             }
           }
         }
@@ -132,69 +133,69 @@
         "RCC": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": 0.36,
               "unit": "bags",
               "formula": "volume_cuft × 0.36",
-              "qty": "{{volume_cuft * 0.36}}"
+              "qty": 0.36
             },
-            "steel": {
+            "Steel": {
               "mt": 0.07,
               "unit": "kg",
               "formula": "volume_cuft × 0.07",
-              "qty": "{{volume_cuft * 0.07}}"
+              "qty": 0.07
             },
-            "sand": {
+            "Sand": {
               "mt": 0.12,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.12",
-              "qty": "{{volume_cuft * 0.12}}"
+              "qty": 0.12
             },
-            "aggregate": {
+            "Aggregate": {
               "mt": 0.25,
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × 0.25",
-              "qty": "{{volume_cuft * 0.25}}"
+              "qty": 0.25
             }
           }
         },
-        "Walls": {
+        "Wall": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": "{{volume_cuft * 4.53}}"
+              "qty": 4.53
             },
-            "sand": {
+            "Sand": {
               "mt": "(0.8 × 28.3)",
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": "{{volume_cuft * 22.64}}"
+              "qty": 22.64
             },
-            "bricks": {
+            "Bricks": {
               "mt": 14.16,
               "unit": "nos",
               "formula": "volume_cuft × 14.16",
-              "qty": "{{volume_cuft * 14.16}}"
+              "qty": 14.16
             }
           }
         },
         "Ceiling Plaster": {
           "volume_cuft": "{{volume_cuft}}",
           "materials": {
-            "cement": {
+            "Cement": {
               "mt": "(0.2 × 28.3 ÷ 1.25)",
               "unit": "bags",
               "formula": "volume_cuft × (0.2 × 28.3 ÷ 1.25)",
-              "qty": "{{volume_cuft * 4.53}}"
+              "qty": 4.53
             },
-            "sand": {
+            "Sand": {
               "mt": "(0.8 × 28.3)",
-              "unit": "cuft",
+              "unit": "cft",
               "formula": "volume_cuft × (0.8 × 28.3)",
-              "qty": "{{volume_cuft * 22.64}}"
+              "qty": 22.64
             }
           }
         }

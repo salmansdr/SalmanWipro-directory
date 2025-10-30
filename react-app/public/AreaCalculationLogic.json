@@ -101,7 +101,7 @@
       "description": "Same as Built-up Area",
       "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor", "MiddleFloors", "TopFloor"]
     },
     "ceiling_plaster": {
       "name": "Ceiling Plaster",
@@ -110,7 +110,7 @@
       "description": "Same as Built-up Area",
       "Category": "Ceiling plaster",
       "Material": "Cement Plaster (1:4)",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor", "MiddleFloors", "TopFloor"]
     },
     "Beams": {
       "name": "BeamVolume",
@@ -128,7 +128,7 @@
       "description": "Advance Logical Calculation based on Grid Spacing and Cross-section",
       "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor", "MiddleFloors", "TopFloor"]
     },
     "Columns": {
       "name": "ColumnVolume",
@@ -148,7 +148,7 @@
       "description": "Advance Logical Calculation based on Grid Spacing and Cross-section",
       "Category": "RCC",
       "Material": "M25 Concrete + Fe500 Steel",
-      "Applicable Floors": ["All Floors"]
+      "Applicable Floors": ["GroundFloor", "MiddleFloors", "TopFloor"]
     },
     "staircase_area": {
       "name": "StaircaseVolume",
@@ -191,7 +191,7 @@
       "description": "2% of Built-up Area",
       "Category": "Wall",
       "Material": "RCC Slab + Tile Finish",
-      "Applicable Floors": ["all floors"]
+      "Applicable Floors": ["TopFloor"]
     }
   },
   "formula_types": {

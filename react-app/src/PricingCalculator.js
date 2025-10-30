@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome } from 'react-icons/fa';
 import { generatePDFReport } from './pdfUtils';
@@ -75,11 +76,6 @@ const PricingCalculator = () => {
 
    // --- Utility Defaults ---
     // Default BHKs array for use in Step 2 and elsewhere
-    const defaultBHKs = [
-      { type: '', units: 1, area: '', rooms: '' },
-      { type: '', units: 1, area: '', rooms: '' },
-      { type: '', units: 1, area: '', rooms: '' }
-    ];
   
     // --- Step 1: Area Details State ---
     // Variables for Step 1 (Area, Project Info, User, etc.)
@@ -118,12 +114,14 @@ const PricingCalculator = () => {
   // --- Step 3: Component Calculation State ---
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
   const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
-  const [step3GridData, setStep3GridData] = useState([]);
+  const [, setStep3GridData] = useState([]);
   // Populate step3GridData with all floor/component calculation results whenever relevant inputs change
   useEffect(() => {
     if (!areaCalculationLogic) return;
     const allFloors = [];
     // Use the same floor label logic as in your UI
+    //let totalDoors = 0;
+    //let totalWindows = 0;
     for (let floorIdx = 0; floorIdx <= Number(floors); floorIdx++) {
       let floorLabel = '';
       if (floorIdx === 0) floorLabel = 'Foundation';
@@ -211,7 +209,7 @@ const PricingCalculator = () => {
     const [materialConfig, setMaterialConfig] = useState(null);
     const [materialRows, setMaterialRows] = useState([]);
     const [wastageMap, setWastageMap] = useState({});
-    const [rateMap, setRateMap] = useState({});
+    const [rateMap, ] = useState({});
 
 
     // --- Beam & Column Section State (Step 1) ---
@@ -1034,8 +1032,18 @@ useEffect(() => {
   const plotArea = (width && depth) ? (Number(width) * Number(depth)) : '';
   //let rectangleVisualization = null;
 
+  // Memoize defaultBHKs to stabilize reference
+  const defaultBHKs = React.useMemo(() => [
+    { type: '', units: 1, area: '', rooms: '' },
+    { type: '', units: 1, area: '', rooms: '' },
+    { type: '', units: 1, area: '', rooms: '' }
+  ], []);
+
   // Helper to get BHK config for a floor
-  const getFloorRows = floorIdx => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs);
+  const getFloorRows = React.useCallback(
+    (floorIdx) => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs),
+    [floorBHKConfigs, bhkRows, defaultBHKs]
+  );
 
   // Handler to update BHK config for a floor
   function handleFloorCellChange(floorIdx, idx, field, value) {
@@ -1796,30 +1804,72 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 // Removed redundant nested block and unused function parseRoomData
   // ...existing code...
     // Filter components for Step 3 grid (Floor Component)
-    let floorType = '';
-  if ((selectedDebugFloor || 0) === 0) floorType = 'Foundation';
-  else if ((selectedDebugFloor || 0) === 1) floorType = 'GroundFloor';
-  else if ((selectedDebugFloor || 0) === Number(floors)) floorType = 'TopFloor';
-  else floorType = 'MiddleFloors';
 
-    const Gridcomponents = areaCalculationLogic?.calculation_components
-      ? Object.entries(areaCalculationLogic.calculation_components)
+    // --- New Approach: Calculate all floors' components once, then filter for selected floor ---
+    //import { useMemo } from 'react';
+
+    // Helper to get floor type string
+    const getFloorType = (floorIdx, totalFloors) => {
+  if (floorIdx === 0) return 'Foundation';
+  if (floorIdx === 1) return 'Ground Floor';
+  if (floorIdx >= 2) {
+    const n = floorIdx - 1;
+    let suffix = 'th';
+    if (n % 10 === 1 && n % 100 !== 11) suffix = 'st';
+    else if (n % 10 === 2 && n % 100 !== 12) suffix = 'nd';
+    else if (n % 10 === 3 && n % 100 !== 13) suffix = 'rd';
+    return `${n}${suffix} Floor`;
+  }
+  return 'Unknown';
+    };
+
+    // Calculate all floors' components ONCE and memoize
+    const allFloorsComponents = useMemo(() => {
+  if (!areaCalculationLogic?.calculation_components) return [];
+  const nAboveGround = Number(floors) || 1;
+  // Always generate Foundation, Ground, and N above-ground floors
+  const totalFloors = nAboveGround + 1;
+  const floorLabels = Array.from({ length: totalFloors + 1 }, (_, floorIdx) => getFloorType(floorIdx, totalFloors));
+  // For each floor index (0 = Foundation, 1 = Ground, ... N = Top)
+  return floorLabels.map((floorType, floorIdx) => {
+        // Normalize a string for robust floor matching
+        const normalize = s => String(s).toLowerCase().replace(/\s|\./g, '');
+        // For each component, check if it applies to this floor
+        const comps = Object.entries(areaCalculationLogic.calculation_components)
           .filter(([_, comp]) => {
-            const floors = comp["Applicable Floors"];
-            if (!floors) return true;
-            // Do NOT apply 'all floors' components to Foundation
-            if (floorType === 'Foundation') {
-              return floors.map(f => f.toLowerCase()).includes('foundation');
+            const applicableFloors = comp["Applicable Floors"];
+            if (!applicableFloors) return true;
+            const normFloorType = normalize(floorType);
+            const normApplicable = applicableFloors.map(f => normalize(f));
+            // Foundation
+            if (normFloorType === 'foundation') {
+              return normApplicable.includes('foundation');
             }
-            return floors.map(f => f.toLowerCase()).includes(floorType.toLowerCase()) ||
-                   floors.map(f => f.toLowerCase()).includes("all floors");
+            // Ground Floor
+            if (normFloorType === 'groundfloor') {
+              return normApplicable.includes('groundfloor');
+            }
+            // Top Floor
+            if (normApplicable.includes('topfloor')) {
+              if (floorIdx === totalFloors) return true;
+            }
+            // Middle Floors
+            if (normApplicable.includes('middlefloors')) {
+              if (floorIdx > 1 && floorIdx < totalFloors) return true;
+            }
+            // All Floors
+            if (normApplicable.includes('allfloors')) return true;
+            // Direct match
+            if (normApplicable.includes(normFloorType)) return true;
+            return false;
           })
           .map(([key, comp]) => {
+
             // Prepare variables for formula evaluation
             const vars = {
               width: Number(width) || 0,
               depth: Number(depth) || 0,
-              floors: Number(floors) || 1,
+              floors: totalFloors,
               carpetPercent: Number(carpetPercent) || 0,
               buildupPercent: Number(buildupPercent) || 0,
               lift: lift ? 1 : 0,
@@ -1830,7 +1880,6 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               buildup_area: (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
             };
             let area = '-';
-            // Use updated percentage from editablePercentages if present
             let percentage = comp.percentage ? comp.percentage * 100 : '-';
             if (editablePercentages[key] !== undefined) {
               percentage = editablePercentages[key];
@@ -1843,31 +1892,24 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
             // Custom logic for Internal Walls
             if (key === 'internal_walls') {
-              // Get config from JSON
               const config = comp;
               const height = config.height || 10;
               const sharedWallReduction = config.shared_wall_reduction || 0.2;
-              // Get BHK rows for selected floor
-              
-              //selectedDebugFloor=selectedDebugFloor-1;
-              const bhkRowsForDebug = typeof getFloorRows === 'function' ? getFloorRows(selectedDebugFloor-1 || 0) : [];
-              //let totalWallArea = 0;
+              const bhkRowsForDebug = typeof getFloorRows === 'function' ? getFloorRows(floorIdx - 1 || 0) : [];
               let totalDoors = 0;
               let totalWindows = 0;
               let bhkSections = [];
               let finalWallArea = 0;
               let totalWallArea = 0;
               bhkRowsForDebug.forEach((row, idx) => {
-                // Always get the latest units from the parent grid
                 let latestUnits = 1;
-                if (Array.isArray(getFloorRows(selectedDebugFloor-1 || 0))) {
-                  const parentRow = getFloorRows(selectedDebugFloor-1 || 0)[idx];
+                if (Array.isArray(getFloorRows(floorIdx - 1 || 0))) {
+                  const parentRow = getFloorRows(floorIdx - 1 || 0)[idx];
                   latestUnits = Number(parentRow?.units) || 1;
                 }
                 const bhkHeader = `${idx + 1}.${row.type} (Units: ${latestUnits})`;
                 let roomDetailsArr = [];
-                // Get room details from modal state if available
-                const roomDataKey = `${selectedDebugFloor - 1 || 0}-${idx}`;
+                const roomDataKey = `${floorIdx - 1 || 0}-${idx}`;
                 const currentRoomDetails = bhkRoomDetails && bhkRoomDetails[roomDataKey];
                 if (!currentRoomDetails) {
                   return;
@@ -1890,7 +1932,6 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                   });
                 }
                 roomDetailsArr.push(`Total Rooms Area: ${roomWallArea} sqft`);
-                // Calculate door/window area and count live from count × width × height
                 if (currentRoomDetails['Door']) {
                   Object.keys(currentRoomDetails['Door']).forEach(roomKey => {
                     const door = currentRoomDetails['Door'][roomKey] || { count: 0, width: 0, height: 0 };
@@ -1911,23 +1952,14 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                     windows += windowcount;
                   });
                 }
-                // Calculate shared wall reduction area based on total room wall area (before reduction)
                 const sharedWallReductionArea = roomWallArea * sharedWallReduction;
-                // Apply shared wall reduction
-                //roomWallArea = roomWallArea - sharedWallReductionArea;
-                // Deduct doors/windows
-                const doorDeduction = doorArea*latestUnits;
-                const windowDeduction = windowArea*latestUnits;
-                totalDoors = doors * (latestUnits || 1);
-                totalWindows = windows * (latestUnits || 1);
-                finalWallArea= Math.max(0, roomWallArea - (sharedWallReductionArea+doorDeduction + windowDeduction));
-                totalWallArea += finalWallArea ;
-                //const totalRoomsAreaDisplay=totalWallArea;
-                // Add summary for this BHK
-                
-                
+                const doorDeduction = doorArea * latestUnits;
+                const windowDeduction = windowArea * latestUnits;
+                totalDoors += doors * (latestUnits || 1);
+                totalWindows += windows * (latestUnits || 1);
+                finalWallArea = Math.max(0, roomWallArea - (sharedWallReductionArea + doorDeduction + windowDeduction));
+                totalWallArea += finalWallArea;
                 let TotalDeduction = doorDeduction + windowDeduction + sharedWallReductionArea;
-
                 roomDetailsArr.push(`Total Deduction: ${TotalDeduction.toFixed(0)} sqft`);
                 const calcBreakdownArr = [];
                 calcBreakdownArr.push(`Shared Wall Reduction: ${sharedWallReduction * 100}% × Room Area = ${sharedWallReductionArea} sqft`);
@@ -1945,28 +1977,61 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 percentage,
                 thickness,
                 logic,
-                logicDetails:  bhkSections.join(' | ')
+                logicDetails: bhkSections.join(' | '),
+          isEditable: comp.percentage !== undefined,
+          isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+          component: key,
+          // Calculate volume_cuft for all scenarios
+          volume_cuft: (() => {
+            const numArea = Number(area);
+            const numThickness = Number(thickness);
+            if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+              if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                return numArea * numThickness; // ft^2 * ft * 12 = cuft
+              } else {
+                return numArea; // Only area is relevant (tiles, paint, etc.)
+              }
+            }
+            return 0;
+          })(),
+          FloorName: floorType
+
               };
             }
-            //Custom Logic for External Walls
+            // Custom Logic for External Walls
             if (key === 'external_walls') {
-              // Get config from JSON
               const config = comp;
               const height = config.height || 10;
-              // Use build-up area logic from JSON
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const A_bu = 0.85 * L_sb * W_sb;
               const layout_ratio = L_sb / W_sb;
               const W_bu = Math.sqrt(A_bu / layout_ratio);
               const L_bu = layout_ratio * W_bu;
-              // Formula: 2×(L_bu+W_bu)×Height per floor
               area = 2 * (L_bu + W_bu) * height * vars.floors;
               logic = `2×(BA-Length: ${W_bu.toFixed(2)}+BA-Width: ${L_bu.toFixed(2)})×Floor Height: ${height}×${vars.floors} = ${area.toFixed(0)} sqft`;
-              return { key, ...comp, area, percentage, thickness, logic };
+              return { key, ...comp, area, percentage, thickness, logic, 
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+          // Calculate volume_cuft for all scenarios
+          volume_cuft: (() => {
+            const numArea = Number(area);
+            const numThickness = Number(thickness);
+            if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+              if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                return numArea * numThickness; // ft^2 * ft * 12 = cuft
+              } else {
+                return numArea; // Only area is relevant (tiles, paint, etc.)
+              }
             }
+            return 0;
+          })(),
+          FloorName: floorType
+         };
+
+           }
             if (key === 'Beams') {
-              // Extract parameters from JSON or use defaults
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const A_bu = 0.85 * L_sb * W_sb;
@@ -1982,9 +2047,32 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const totalBeamsCount = rowsOfColumns * (columnsPerRow - 1) + columnsPerRow * (rowsOfColumns - 1);
               area = totalBeamsCount * crossSection * gridSpacing;
               logic = `Grid: ${totalBeamsCount} beams, ${gridSpacing}ft spacing, cross-section ${crossSection} sqft`;
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+                FloorName: floorType
+              };
             }
-            // Custom logic for Columns
-            else if (key === 'Columns') {
+            if (key === 'Columns') {
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const A_bu = 0.85 * L_sb * W_sb;
@@ -2000,10 +2088,32 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const crossSection = columnWidth * columnDepth;
               area = columnsCount * crossSection;
               logic = `Grid: ${columnsCount} columns, ${columnsPerRow}x${rowsOfColumns} grid, cross-section ${crossSection} sqft`;
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+                FloorName: floorType
+              };
             }
-            // Custom logic for Foundation components
-            else if (key === 'ExcavationVolume') {
-              // 12% of Super Built-up Area, thickness 10ft
+            if (key === 'ExcavationVolume') {
               let usedPercentage = comp.percentage;
               if (editablePercentages[key] !== undefined) {
                 usedPercentage = editablePercentages[key] / 100;
@@ -2014,10 +2124,32 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               }
               area = vars.super_buildup_area * (usedPercentage || 0);
               logic = `Excavation: ${percentage}% × Super Built-up Area (${vars.super_buildup_area}) = ${area.toFixed(0)} sqft, Thickness: ${usedThickness}ft`;
-              return { key, ...comp, area, percentage, thickness: usedThickness, logic, isEditable: comp.percentage !== undefined };
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness: usedThickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: usedThickness !== undefined && usedThickness !== null && Number(usedThickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(usedThickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && usedThickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+                FloorName: floorType
+              };
             }
-            else if (key === 'BasementSlab') {
-              // 12% of Super Built-up Area, thickness 0.75ft
+            if (key === 'BasementSlab') {
               let usedPercentage = comp.percentage;
               if (editablePercentages[key] !== undefined) {
                 usedPercentage = editablePercentages[key] / 100;
@@ -2028,19 +2160,56 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               }
               area = vars.super_buildup_area * (usedPercentage || 0);
               logic = `Basement Slab: ${percentage}% × Super Built-up Area (${vars.super_buildup_area}) = ${area.toFixed(0)} sqft, Thickness: ${usedThickness}ft`;
-              return { key, ...comp, area, percentage, thickness: usedThickness, logic, isEditable: comp.percentage !== undefined };
+              return { key, ...comp, area, percentage, thickness: usedThickness, logic, isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+                FloorName: floorType
+              };
             }
-            else if (key === 'BasementWallVolume') {
-              // wallPerimeter * wallHeight * wallThickness
+            if (key === 'BasementWallVolume') {
               const wallHeight = comp.wallHeight || 10;
               const wallThickness = comp.thickness || 0.75;
               const perimeter = 2 * (vars.width + vars.depth);
-              area = perimeter * wallHeight ;
-              logic = `Basement Wall: 2×(${vars.width}+${vars.depth})×${wallHeight}×${wallThickness} = ${(area*wallThickness).toFixed(0)} cuft`;
-              return { key, ...comp, area, percentage, thickness, logic };
+              area = perimeter * wallHeight;
+              logic = `Basement Wall: 2×(${vars.width}+${vars.depth})×${wallHeight}×${wallThickness} = ${(area * wallThickness).toFixed(0)} cuft`;
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+          FloorName: floorType
+              };
             }
-            else if (key === 'BasementBeam') {
-              // Grid-based calculation
+            if (key === 'BasementBeam') {
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const gridSpacing = Number(comp["Grid spacing"]) || 15;
@@ -2052,10 +2221,32 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const totalBeamsCount = rowsOfColumns * (columnsPerRow - 1) + columnsPerRow * (rowsOfColumns - 1);
               area = totalBeamsCount * crossSection * gridSpacing;
               logic = `Basement Beams: ${totalBeamsCount} beams, ${gridSpacing}ft spacing, cross-section ${crossSection} sqft`;
-              return { key, ...comp, area, percentage, thickness, logic };
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+          FloorName: floorType
+              };
             }
-            else if (key === 'Basementcolumns') {
-              // Grid-based calculation
+            if (key === 'Basementcolumns') {
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const gridSpacing = Number(comp["Grid spacing"]) || 15;
@@ -2067,19 +2258,39 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const crossSection = columnWidth * columnDepth;
               area = columnsCount * crossSection;
               logic = `Basement Columns: ${columnsCount} columns, ${columnsPerRow}x${rowsOfColumns} grid, cross-section ${crossSection} sqft`;
-              return { key, ...comp, area, percentage, thickness, logic };
+              return {
+                key,
+                ...comp,
+                area,
+                percentage,
+                thickness,
+                logic,
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness;
+                    } else {
+                      return numArea;
+                    }
+                  }
+                  return 0;
+                })(),
+          FloorName: floorType
+              };
             }
+
             // Dynamic formula evaluation for other components
-            else if (comp.formula) {
+            if (comp.formula) {
               try {
                 let usedPercentage = comp.percentage;
                 if (editablePercentages[key] !== undefined) {
                   usedPercentage = editablePercentages[key] / 100;
                 }
-                // let usedThickness = comp.thickness;
-                // if (editableThickness[key] !== undefined) {
-                //   usedThickness = editableThickness[key];
-                // }
                 if (comp.formula === 'percentage_of_carpet_area') {
                   area = vars.carpetArea * (usedPercentage || 0);
                 } else if (comp.formula === 'percentage_of_buildup') {
@@ -2112,10 +2323,33 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               logic,
               isEditable: comp.percentage !== undefined,
               isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
-              component: key
+              component: key,
+              volume_cuft: (() => {
+                const numArea = Number(area);
+                const numThickness = Number(thickness);
+                if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                  if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                    return numArea * numThickness;
+                  } else {
+                    return numArea;
+                  }
+                }
+                return 0;
+              })(),
+          FloorName: floorType
             };
-          })
-      : [];
+          });
+        return comps;
+      });
+      // allFloorsComponents[floorIdx] gives the components for that floor
+  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows]);
+
+  // Debug: Log allFloorsComponents after calculation
+  //console.log('allFloorsComponents:', allFloorsComponents);
+
+    // For the selected floor, just filter from allFloorsComponents
+    const selectedFloorIdx = Number(selectedDebugFloor || 0);
+    const Gridcomponents = allFloorsComponents[selectedFloorIdx] || [];
 
 
 //Step 5 code
@@ -2131,47 +2365,74 @@ useEffect(() => {
     });
 }, []);
 
+
+
+// Helper to map floor label to MaterialCalculation.json floor name
+const getMaterialFloorName = (floorLabel) => {
+  if (floorLabel === 'Foundation') return 'Foundation';
+  if (floorLabel === 'Ground Floor') return 'GroundFloor';
+  // For 1st Floor and above
+  return 'Other Floor';
+};
+
 useEffect(() => {
-  if (!materialConfig) return; // Wait for config to load
-  // Dynamically group and sum by actual category values in step3GridData
-  const volumeSummary = {};
-  step3GridData.forEach(row => {
-    const cat = row.category || 'Uncategorized';
-    if (!volumeSummary[cat]) volumeSummary[cat] = 0;
-    volumeSummary[cat] += Number(row.volume_cuft || 0);
+  if (!materialConfig) return;
+  const allRows = allFloorsComponents.flat();
+
+  // 1. Aggregate total volume by floor and category
+  const volumeMap = {};
+  allRows.forEach(row => {
+    const floorLabel = row.FloorName || row.floor || '';
+    const cat = row.Category || row.category || '';
+    const key = `${floorLabel}||${cat}`;
+    if (!volumeMap[key]) {
+      volumeMap[key] = { floor: floorLabel, category: cat, volume: 0 };
+    }
+    volumeMap[key].volume += Number(row.volume_cuft) || 0;
   });
 
-  // For each category, get material info from materialConfig
+  // 2. For each unique floor/category, generate material rows
   const rows = [];
-  Object.entries(volumeSummary).forEach(([cat, vol]) => {
-    let materials = {};
-    for (const floor of materialConfig.floors) {
-      if (floor.components && floor.components[cat]) {
-        materials = floor.components[cat].materials;
-        break;
+  Object.values(volumeMap).forEach(({ floor, category, volume }) => {
+    const floorName = getMaterialFloorName(floor);
+    const floorConfig = materialConfig.floors.find(f => f.name === floorName);
+    if (!floorConfig || !floorConfig.components) return;
+    // Robust case-insensitive lookup for categoryConfig
+    let categoryConfig = null;
+    // Try exact match first
+    if (Object.prototype.hasOwnProperty.call(floorConfig.components, category)) {
+      categoryConfig = floorConfig.components[category];
+    } else {
+      // Try case-insensitive match (any case)
+      const foundKey = Object.keys(floorConfig.components).find(
+        k => k.localeCompare(category, undefined, { sensitivity: 'accent' }) === 0
+      );
+      if (foundKey) {
+        categoryConfig = floorConfig.components[foundKey];
       }
     }
-    Object.entries(materials).forEach(([mat, info]) => {
+    if (!categoryConfig || !categoryConfig.materials) return;
+    
+    Object.entries(categoryConfig.materials).forEach(([mat, info]) => {
       let qty = 0;
       if (typeof info.qty === 'string') {
-        // Remove curly braces if present (e.g., '{{volume_cuft * 0.42}}' -> 'volume_cuft * 0.42')
         const expr = info.qty.replace(/^{+|}+$/g, '');
-        if (!isNaN(vol)) {
-          qty = typeof evaluate === 'function'
-            ? evaluate(expr.replace(/volume_cuft/g, vol), { volume_cuft: vol })
-            : 0;
-        }
+        qty = typeof evaluate === 'function'
+          ? evaluate(expr.replace(/volume_cuft/g, volume), { volume_cuft: volume })
+          : 0;
       } else {
-        qty = info.qty * vol;
+        qty = info.qty * volume;
       }
-      const wastage = wastageMap[`${cat}_${mat}`] ?? 5;
-      const rate = rateMap[`${cat}_${mat}`] ?? '';
+      const key = `${category}_${mat}_${floor || ''}`;
+      const wastage = wastageMap[key] !== undefined ? wastageMap[key] : 5;
+      const rate = rateMap[`${category}_${mat}`] ?? '';
       const totalQty = qty * (1 + wastage / 100);
       const totalValue = rate ? totalQty * rate : '';
       rows.push({
+        floor,
+        category,
         material: mat,
-        category: cat,
-        volume: vol,
+        volume,
         unit: info.unit,
         qty: info.qty,
         wastage,
@@ -2182,13 +2443,25 @@ useEffect(() => {
     });
   });
   setMaterialRows(rows);
-}, [materialConfig, step3GridData, wastageMap, rateMap]);
+}, [materialConfig, allFloorsComponents, wastageMap, rateMap]);
 
 const handleWastageChange = (key, value) => {
   setWastageMap(prev => ({ ...prev, [key]: Number(value) }));
 };
+
+// Update rate and totalValue directly in materialRows for DB persistence
 const handleRateChange = (key, value) => {
-  setRateMap(prev => ({ ...prev, [key]: Number(value) }));
+  setMaterialRows(prevRows =>
+    prevRows.map(row => {
+      const rowKey = `${row.category}_${row.material}_${row.floor || ''}`;
+      if (rowKey === key) {
+        const rate = Number(value);
+        const totalValue = rate ? row.totalQty * rate : '';
+        return { ...row, rate, totalValue };
+      }
+      return row;
+    })
+  );
 };
 
 
@@ -2214,25 +2487,7 @@ const handleRateChange = (key, value) => {
                 Error: {configError}
               </div>
               <div style={{ fontSize: '0.8rem', color: '#718096', marginBottom: '1rem' }}>
-                <strong>Common Solutions:</strong><br/>
-                1. Make sure the React development server is running (npm start)<br/>
-                2. Check that AreaCalculationLogic.json exists in the public folder<br/>
-                3. Try refreshing the page<br/>
-                4. Restart the development server
               </div>
-              <button 
-                onClick={() => window.location.reload()} 
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#4299e1',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Retry Loading
-              </button>
             </>
           ) : (
             <>
@@ -2246,8 +2501,6 @@ const handleRateChange = (key, value) => {
           )}
         </div>
       )}
-      
-      {/* Header with Back Button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Button 
           variant="outline-secondary" 
@@ -3307,43 +3560,47 @@ const handleRateChange = (key, value) => {
     <table className="table table-bordered">
       <thead>
         <tr>
-          <th>Material</th>
+          <th>Floor</th>
           <th>Category</th>
+          <th>Material</th>
           <th>Volume (cuft)</th>
-          <th>Qty/Unit</th>
+          <th>Qty/Cuft</th>
           <th>Wastage (%)</th>
           <th>Total Qty</th>
+          <th>Unit</th>
           <th>Rate</th>
           <th>Total Value</th>
         </tr>
       </thead>
       <tbody>
         {materialRows.map((row, idx) => {
-          const key = `${row.category}_${row.material}`;
+          const key = `${row.category}_${row.material}_${row.floor || ''}`;
           return (
             <tr key={key}>
-              <td>{row.material}</td>
+              <td>{row.floor}</td>
               <td>{row.category}</td>
-              <td>{row.volume}</td>
+              <td>{row.material}</td>
+              <td>{row.volume.toFixed(0)}</td>
               <td>{row.qty}</td>
               <td>
                 <input
                   type="number"
-                  value={row.wastage}
+                  value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
                   onChange={e => handleWastageChange(key, e.target.value)}
                   style={{ width: 60 }}
                 />
               </td>
-              <td>{row.totalQty.toFixed(2)}</td>
+              <td>{row.totalQty.toFixed(0)}</td>
+              <td>{row.unit}</td>
               <td>
                 <input
                   type="number"
-                  value={row.rate}
+                  value={row.rate ?? ''}
                   onChange={e => handleRateChange(key, e.target.value)}
                   style={{ width: 80 }}
                 />
               </td>
-              <td>{row.totalValue ? row.totalValue.toFixed(2) : ''}</td>
+              <td>{row.totalValue ? row.totalValue.toFixed(0) : ''}</td>
             </tr>
           );
         })}
