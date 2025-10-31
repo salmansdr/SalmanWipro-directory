@@ -78,6 +78,13 @@ const PricingCalculator = () => {
   const [materialFilter, setMaterialFilter] = useState('');
   // Show/hide material filter dropdown
   const [showMaterialFilter, setShowMaterialFilter] = useState(false);
+  // Group by state for Step 5 grid
+  const [groupBy, setGroupBy] = useState('Floor');
+
+  // Handler for group by dropdown
+  const handleGroupByChange = (e) => {
+    setGroupBy(e.target.value);
+  };
 
    // --- Utility Defaults ---
     // Default BHKs array for use in Step 2 and elsewhere
@@ -3588,21 +3595,57 @@ const handleRateChange = (key, value) => {
 {step === 5 && (
   <div>
     <h4>Step 5: Material Requirement for Civil Work</h4>
-    {/* Group materialRows by floor */}
+    {/* Group By Dropdown */}
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+      <label htmlFor="groupByDropdown" style={{ marginRight: 8, fontWeight: 500 }}>Group by:</label>
+      <select
+        id="groupByDropdown"
+        value={groupBy}
+        onChange={handleGroupByChange}
+        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14 }}
+      >
+        <option value="Floor">Floor</option>
+        <option value="Category">Category</option>
+        <option value="Material">Material</option>
+      </select>
+    </div>
+    {/* ...existing code for filter and table... */}
     {(() => {
       // Get unique material names
       const allMaterials = Array.from(new Set(materialRows.map(row => row.material)));
-      // Grouped by floor, but filter rows by material if filter is set
-      const groupedByFloor = materialRows.reduce((acc, row) => {
+
+      // Dynamic grouping logic
+      const getGroupKey = (row) => {
+        if (groupBy === 'Floor') return row.floor;
+        if (groupBy === 'Category') return row.category;
+        if (groupBy === 'Material') return row.material;
+        return row.floor;
+      };
+      // Group rows by selected groupBy
+      const grouped = materialRows.reduce((acc, row) => {
         if (materialFilter && row.material !== materialFilter) return acc;
-        if (!acc[row.floor]) acc[row.floor] = [];
-        acc[row.floor].push(row);
+        const key = getGroupKey(row) || 'Other';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(row);
         return acc;
       }, {});
+
+      // Render group header label
+      const getGroupHeader = (groupKey) => {
+        if (groupBy === 'Floor') return groupKey;
+        if (groupBy === 'Category') return `Category: ${groupKey}`;
+        if (groupBy === 'Material') return `Material: ${groupKey}`;
+        return groupKey;
+      };
+
       return (
         <table className="table table-bordered">
           <thead style={{ background: '#eaf4fb' }}>
             <tr>
+              {/* Show Floor column if grouping by Category or Material */}
+              {groupBy !== 'Floor' && (
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Floor</th>
+              )}
               <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Category</th>
               <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -3653,15 +3696,19 @@ const handleRateChange = (key, value) => {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(groupedByFloor).map(([floor, rows]) => (
-              <React.Fragment key={floor}>
+            {Object.entries(grouped).map(([groupKey, rows]) => (
+              <React.Fragment key={groupKey}>
                 <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
-                  <td colSpan={9}>{floor}</td>
+                  <td colSpan={groupBy !== 'Floor' ? 10 : 9}>{getGroupHeader(groupKey)}</td>
                 </tr>
                 {rows.map((row, idx) => {
                   const key = `${row.category}_${row.material}_${row.floor || ''}`;
                   return (
                     <tr key={key}>
+                      {/* Show Floor value if grouping by Category or Material */}
+                      {groupBy !== 'Floor' && (
+                        <td>{row.floor}</td>
+                      )}
                       <td>{row.category}</td>
                       <td>{row.material}</td>
                       <td>{row.volume.toFixed(0)}</td>
@@ -3688,9 +3735,9 @@ const handleRateChange = (key, value) => {
                     </tr>
                   );
                 })}
-                {/* Subtotal row for this floor */}
+                {/* Subtotal row for this group */}
                 <tr style={{ background: '#f9f9f9', fontWeight: 'bold' }}>
-                  <td colSpan={8} style={{ textAlign: 'right' }}>Subtotal</td>
+                  <td colSpan={groupBy !== 'Floor' ? 9 : 8} style={{ textAlign: 'right' }}>Subtotal</td>
                   <td style={{ textAlign: 'right' }}>
                     ₹{rows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue.toFixed(0)) : 0), 0).toLocaleString('en-IN')}
                   </td>
