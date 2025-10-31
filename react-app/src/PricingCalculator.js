@@ -1,7 +1,7 @@
 import React, { useState, useEffect,useCallback } from 'react';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome, FaFilter } from 'react-icons/fa';
 import { generatePDFReport } from './pdfUtils';
 import { evaluate } from 'mathjs';
 import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
@@ -73,6 +73,11 @@ const sampleCostData = [
 
 
 const PricingCalculator = () => {
+  // ...existing hooks...
+  // Material filter state for Step 5 grid
+  const [materialFilter, setMaterialFilter] = useState('');
+  // Show/hide material filter dropdown
+  const [showMaterialFilter, setShowMaterialFilter] = useState(false);
 
    // --- Utility Defaults ---
     // Default BHKs array for use in Step 2 and elsewhere
@@ -3585,24 +3590,66 @@ const handleRateChange = (key, value) => {
     <h4>Step 5: Material Requirement for Civil Work</h4>
     {/* Group materialRows by floor */}
     {(() => {
+      // Get unique material names
+      const allMaterials = Array.from(new Set(materialRows.map(row => row.material)));
+      // Grouped by floor, but filter rows by material if filter is set
       const groupedByFloor = materialRows.reduce((acc, row) => {
+        if (materialFilter && row.material !== materialFilter) return acc;
         if (!acc[row.floor]) acc[row.floor] = [];
         acc[row.floor].push(row);
         return acc;
       }, {});
       return (
         <table className="table table-bordered">
-          <thead>
+          <thead style={{ background: '#eaf4fb' }}>
             <tr>
-              <th>Category</th>
-              <th>Material</th>
-              <th>Volume (cuft)</th>
-              <th>Qty/Cuft</th>
-              <th>Wastage (%)</th>
-              <th>Total Qty</th>
-              <th>Unit</th>
-              <th>Rate</th>
-              <th>Total Value</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Category</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Material
+                  <span
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 4 }}
+                    onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
+                  >
+                    <FaFilter />
+                  </span>
+                </span>
+                {showMaterialFilter && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      background: '#fff',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                      zIndex: 10,
+                      minWidth: 120,
+                      padding: 4,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <select
+                      value={materialFilter}
+                      onChange={e => { setMaterialFilter(e.target.value); setShowMaterialFilter(false); }}
+                      style={{ width: '100%', fontSize: '0.95em' }}
+                    >
+                      <option value="">All</option>
+                      {allMaterials.map(mat => (
+                        <option key={mat} value={mat}>{mat}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Volume<br/>(cuft)</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Qty/Cuft</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Wastage<br/>(%)</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Total Qty</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Unit</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Rate</th>
+              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Total Value</th>
             </tr>
           </thead>
           <tbody>
