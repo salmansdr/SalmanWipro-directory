@@ -1,7 +1,7 @@
 import React, { useState, useEffect,useCallback } from 'react';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome, FaFilter } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFileExcel, FaFilePdf, FaHome, FaFilter, FaTimesCircle } from 'react-icons/fa';
 import { generatePDFReport } from './pdfUtils';
 import { evaluate } from 'mathjs';
 import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
@@ -3651,11 +3651,40 @@ const handleRateChange = (key, value) => {
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative', whiteSpace: 'nowrap' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     Material
-                    <span
-                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 4 }}
-                      onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
-                    >
-                      <FaFilter />
+                    <span style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
+                      <span
+                        style={{
+                          cursor: 'pointer',
+                          color: materialFilter ? '#d81b60' : '#1976d2',
+                          transition: 'color 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        title={materialFilter ? `Filtered: ${materialFilter}` : 'Filter'}
+                        onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
+                      >
+                        <FaFilter />
+                      </span>
+                      {materialFilter && (
+                        <span
+                          style={{
+                            cursor: 'pointer',
+                            color: '#888',
+                            marginLeft: 2,
+                            fontSize: '1.1em',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                          title="Clear filter"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setMaterialFilter('');
+                          }}
+                        >
+                          {/* You may need to import FaTimesCircle from 'react-icons/fa' at the top if not already */}
+                          <FaTimesCircle />
+                        </span>
+                      )}
                     </span>
                   </span>
                   {showMaterialFilter && (
@@ -3693,7 +3722,7 @@ const handleRateChange = (key, value) => {
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Qty</th>
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Unit</th>
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Rate</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Value</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Value (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -3732,7 +3761,7 @@ const handleRateChange = (key, value) => {
                             style={{ width: 60, minWidth: 48, maxWidth: 72, textAlign: 'right', padding: '2px 4px' }}
                           />
                         </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalValue ? `₹${row.totalValue.toFixed(0)}` : ''}</td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalValue ? row.totalValue.toFixed(0) : ''}</td>
                       </tr>
                     );
                   })}
@@ -3746,6 +3775,24 @@ const handleRateChange = (key, value) => {
                 </React.Fragment>
               ))}
             </tbody>
+            {/* Grand Total row at the bottom */}
+            <tfoot>
+              <tr style={{ background: '#e3f2fd', fontWeight: 800, borderTop: '3px solid #1976d2', color: '#0d47a1' }}>
+                {/* Grand Total label with colspan, value right-aligned */}
+                <td colSpan={groupBy !== 'Floor' ?  (10 - 1) : (9 - 1)} style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05em', borderTop: '3px solid #1976d2' }}>
+                  Grand Total
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05em', borderTop: '3px solid #1976d2' }}>
+                  {
+                    (() => {
+                      const visibleRows = materialRows.filter(row => !materialFilter || row.material === materialFilter);
+                      const grandTotal = visibleRows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue) : 0), 0);
+                      return `₹${Math.round(grandTotal.toFixed()).toLocaleString('en-IN')}`;
+                    })()
+                  }
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       );
