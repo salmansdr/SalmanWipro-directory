@@ -1,3 +1,55 @@
+/* Responsive Step 5 Material Table */
+.step5-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+
+.step5-material-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  min-width: 0;
+}
+
+.step5-material-table th, .step5-material-table td {
+  padding: 6px 8px;
+  font-size: 1em;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.step5-material-table input[type="number"] {
+  width: 100%;
+  max-width: 70px;
+  min-width: 40px;
+  box-sizing: border-box;
+}
+
+/* Only force min-width and scroll on small screens */
+@media (max-width: 900px) {
+  .step5-table-responsive {
+    overflow-x: auto;
+  }
+  .step5-material-table {
+    min-width: 900px;
+  }
+}
+
+/* Only force min-width on small screens */
+@media (max-width: 900px) {
+  .step5-material-table {
+    min-width: 900px;
+  }
+}
+
+/* Allow cell content to wrap except for headers */
+.step5-material-table th {
+  white-space: nowrap;
+}
+.step5-material-table td {
+  white-space: normal;
+}
 .table thead th {
   background: #e3f2fd !important;
   color: #1976d2 !important;

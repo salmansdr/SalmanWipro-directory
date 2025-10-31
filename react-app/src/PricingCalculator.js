@@ -3639,113 +3639,115 @@ const handleRateChange = (key, value) => {
       };
 
       return (
-        <table className="table table-bordered">
-          <thead style={{ background: '#eaf4fb' }}>
-            <tr>
-              {/* Show Floor column if grouping by Category or Material */}
-              {groupBy !== 'Floor' && (
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Floor</th>
-              )}
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Category</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  Material
-                  <span
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 4 }}
-                    onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
-                  >
-                    <FaFilter />
-                  </span>
-                </span>
-                {showMaterialFilter && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                      background: '#fff',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                      zIndex: 10,
-                      minWidth: 120,
-                      padding: 4,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <select
-                      value={materialFilter}
-                      onChange={e => { setMaterialFilter(e.target.value); setShowMaterialFilter(false); }}
-                      style={{ width: '100%', fontSize: '0.95em' }}
-                    >
-                      <option value="">All</option>
-                      {allMaterials.map(mat => (
-                        <option key={mat} value={mat}>{mat}</option>
-                      ))}
-                    </select>
-                  </div>
+  <div className="step5-table-responsive">
+          <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em' }}>
+            <thead style={{ background: '#eaf4fb' }}>
+              <tr>
+                {/* Show Floor column if grouping by Category or Material */}
+                {groupBy !== 'Floor' && (
+                  <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Floor</th>
                 )}
-              </th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Volume<br/>(cuft)</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Qty/Cuft</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Wastage<br/>(%)</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Total Qty</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Unit</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Rate</th>
-              <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2' }}>Total Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(grouped).map(([groupKey, rows]) => (
-              <React.Fragment key={groupKey}>
-                <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
-                  <td colSpan={groupBy !== 'Floor' ? 10 : 9}>{getGroupHeader(groupKey)}</td>
-                </tr>
-                {rows.map((row, idx) => {
-                  const key = `${row.category}_${row.material}_${row.floor || ''}`;
-                  return (
-                    <tr key={key}>
-                      {/* Show Floor value if grouping by Category or Material */}
-                      {groupBy !== 'Floor' && (
-                        <td>{row.floor}</td>
-                      )}
-                      <td>{row.category}</td>
-                      <td>{row.material}</td>
-                      <td>{row.volume.toFixed(0)}</td>
-                      <td>{row.qty}</td>
-                      <td>
-                        <input
-                          type="number"
-                          value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
-                          onChange={e => handleWastageChange(key, e.target.value)}
-                          style={{ width: 60 }}
-                        />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>{row.totalQty.toFixed(0)}</td>
-                      <td>{row.unit}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <input
-                          type="number"
-                          value={row.rate ?? ''}
-                          onChange={e => handleRateChange(key, e.target.value)}
-                          style={{ width: 80, textAlign: 'right' }}
-                        />
-                      </td>
-                      <td style={{ textAlign: 'right' }}>{row.totalValue ? `₹${row.totalValue.toFixed(0)}` : ''}</td>
-                    </tr>
-                  );
-                })}
-                {/* Subtotal row for this group */}
-                <tr style={{ background: '#f9f9f9', fontWeight: 'bold' }}>
-                  <td colSpan={groupBy !== 'Floor' ? 9 : 8} style={{ textAlign: 'right' }}>Subtotal</td>
-                  <td style={{ textAlign: 'right' }}>
-                    ₹{rows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue.toFixed(0)) : 0), 0).toLocaleString('en-IN')}
-                  </td>
-                </tr>
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Category</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Material
+                    <span
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 4 }}
+                      onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
+                    >
+                      <FaFilter />
+                    </span>
+                  </span>
+                  {showMaterialFilter && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        background: '#fff',
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                        zIndex: 10,
+                        minWidth: 120,
+                        padding: 4,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <select
+                        value={materialFilter}
+                        onChange={e => { setMaterialFilter(e.target.value); setShowMaterialFilter(false); }}
+                        style={{ width: '100%', fontSize: '0.95em' }}
+                      >
+                        <option value="">All</option>
+                        {allMaterials.map(mat => (
+                          <option key={mat} value={mat}>{mat}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Volume<br/>(cuft)</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Qty/Cuft</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Wastage<br/>(%)</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Qty</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Unit</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Rate</th>
+                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(grouped).map(([groupKey, rows]) => (
+                <React.Fragment key={groupKey}>
+                  <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
+                    <td colSpan={groupBy !== 'Floor' ? 10 : 9}>{getGroupHeader(groupKey)}</td>
+                  </tr>
+                  {rows.map((row, idx) => {
+                    const key = `${row.category}_${row.material}_${row.floor || ''}`;
+                    return (
+                      <tr key={key}>
+                        {/* Show Floor value if grouping by Category or Material */}
+                        {groupBy !== 'Floor' && (
+                          <td style={{ whiteSpace: 'nowrap' }}>{row.floor}</td>
+                        )}
+                        <td style={{ whiteSpace: 'nowrap' }}>{row.category}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{row.material}</td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.volume.toFixed(0)}</td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.qty}</td>
+                        <td>
+                          <input
+                            type="number"
+                            value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
+                            onChange={e => handleWastageChange(key, e.target.value)}
+                            style={{ width: 60, minWidth: 50 }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalQty.toFixed(0)}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{row.unit}</td>
+                        <td style={{ textAlign: 'right', minWidth: 56, maxWidth: 72, width: 68 }}>
+                          <input
+                            type="number"
+                            value={row.rate ?? ''}
+                            onChange={e => handleRateChange(key, e.target.value)}
+                            style={{ width: 60, minWidth: 48, maxWidth: 72, textAlign: 'right', padding: '2px 4px' }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalValue ? `₹${row.totalValue.toFixed(0)}` : ''}</td>
+                      </tr>
+                    );
+                  })}
+                  {/* Subtotal row for this group */}
+                  <tr style={{ background: '#f9f9f9', fontWeight: 'bold' }}>
+                    <td colSpan={groupBy !== 'Floor' ? 9 : 8} style={{ textAlign: 'right' }}>Subtotal</td>
+                    <td style={{ textAlign: 'right' }}>
+                      ₹{rows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue.toFixed(0)) : 0), 0).toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     })()}
   </div>
