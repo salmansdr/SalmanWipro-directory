@@ -3583,55 +3583,77 @@ const handleRateChange = (key, value) => {
 {step === 5 && (
   <div>
     <h4>Step 5: Material Requirement for Civil Work</h4>
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Floor</th>
-          <th>Category</th>
-          <th>Material</th>
-          <th>Volume (cuft)</th>
-          <th>Qty/Cuft</th>
-          <th>Wastage (%)</th>
-          <th>Total Qty</th>
-          <th>Unit</th>
-          <th>Rate</th>
-          <th>Total Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        {materialRows.map((row, idx) => {
-          const key = `${row.category}_${row.material}_${row.floor || ''}`;
-          return (
-            <tr key={key}>
-              <td>{row.floor}</td>
-              <td>{row.category}</td>
-              <td>{row.material}</td>
-              <td>{row.volume.toFixed(0)}</td>
-              <td>{row.qty}</td>
-              <td>
-                <input
-                  type="number"
-                  value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
-                  onChange={e => handleWastageChange(key, e.target.value)}
-                  style={{ width: 60 }}
-                />
-              </td>
-              <td>{row.totalQty.toFixed(0)}</td>
-              <td>{row.unit}</td>
-              <td>
-                <input
-                  type="number"
-                  value={row.rate ?? ''}
-                  onChange={e => handleRateChange(key, e.target.value)}
-                  style={{ width: 80 }}
-                />
-              </td>
-              <td>{row.totalValue ? row.totalValue.toFixed(0) : ''}</td>
+    {/* Group materialRows by floor */}
+    {(() => {
+      const groupedByFloor = materialRows.reduce((acc, row) => {
+        if (!acc[row.floor]) acc[row.floor] = [];
+        acc[row.floor].push(row);
+        return acc;
+      }, {});
+      return (
+        <table className="table table-bordered">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Material</th>
+              <th>Volume (cuft)</th>
+              <th>Qty/Cuft</th>
+              <th>Wastage (%)</th>
+              <th>Total Qty</th>
+              <th>Unit</th>
+              <th>Rate</th>
+              <th>Total Value</th>
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {Object.entries(groupedByFloor).map(([floor, rows]) => (
+              <React.Fragment key={floor}>
+                <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
+                  <td colSpan={9}>{floor}</td>
+                </tr>
+                {rows.map((row, idx) => {
+                  const key = `${row.category}_${row.material}_${row.floor || ''}`;
+                  return (
+                    <tr key={key}>
+                      <td>{row.category}</td>
+                      <td>{row.material}</td>
+                      <td>{row.volume.toFixed(0)}</td>
+                      <td>{row.qty}</td>
+                      <td>
+                        <input
+                          type="number"
+                          value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
+                          onChange={e => handleWastageChange(key, e.target.value)}
+                          style={{ width: 60 }}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{row.totalQty.toFixed(0)}</td>
+                      <td>{row.unit}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <input
+                          type="number"
+                          value={row.rate ?? ''}
+                          onChange={e => handleRateChange(key, e.target.value)}
+                          style={{ width: 80, textAlign: 'right' }}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{row.totalValue ? `₹${row.totalValue.toFixed(0)}` : ''}</td>
+                    </tr>
+                  );
+                })}
+                {/* Subtotal row for this floor */}
+                <tr style={{ background: '#f9f9f9', fontWeight: 'bold' }}>
+                  <td colSpan={8} style={{ textAlign: 'right' }}>Subtotal</td>
+                  <td style={{ textAlign: 'right' }}>
+                    ₹{rows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue.toFixed(0)) : 0), 0).toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      );
+    })()}
   </div>
 )}
       </div>
