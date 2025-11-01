@@ -1,0 +1,22 @@
+{
+  "Earthwork": {
+    "Productivity_cuft_per_day": 55,
+    "Rate": 550
+  },
+  "Backfilling": {
+    "Productivity_cuft_per_day": 50,
+    "Rate": 550
+  },
+  "RCC": {
+    "Productivity_cuft_per_day": 30,
+    "Rate": 650
+  },
+  "Ceiling Plaster": {
+    "Productivity_sqft_per_day": 100,
+    "Rate": 600
+  },
+  "Wall": {
+    "Productivity_cuft_per_day": 40,
+    "Rate": 600
+  }
+}
