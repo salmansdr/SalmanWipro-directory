@@ -5,13 +5,21 @@
   "calculation_components": {
    
      "ExcavationVolume": {
-      "name": "Excavation",
+      "name": "ExcavationVolume",
       "formula": "percentage_of_super_buildup*thickness",
       "percentage": 0.12,
       "thickness": 10.0,
       "description": "12% of Super Built-up Area",
       "Category": "Earthwork",
       "Material": "involves soil removal",
+      "Applicable Floors": ["Foundation"]
+    },
+    "BackfillVolume": {
+      "name": "Backfilling Soil",
+      "formula": "ExcavationVolume - RCCVolume",
+      "description": "ExcavationVolume - RCCVolume",
+      "Category": "Backfilling",
+      "Material": "involves soil refilling and compaction",
       "Applicable Floors": ["Foundation"]
     },
     "BasementSlab": {
