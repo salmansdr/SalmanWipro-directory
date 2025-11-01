@@ -51,7 +51,7 @@ function App() {
   const [expanded, setExpanded] = useState(false);
   // Hardcoded credentials (should be replaced with secure backend in production)
   const HARDCODED_USERNAME = 'salmansdr';
-  const HARDCODED_PASSWORD = 'Faresi@123';
+  const HARDCODED_PASSWORD = 'Arman@123';
   const AUTH_KEY = 'isAuthenticated';
   const AUTH_USER_KEY = 'authUser';
   const AUTH_PASS_KEY = 'authPass';
