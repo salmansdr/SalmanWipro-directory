@@ -465,7 +465,8 @@ const TestApiPage = () => {
       // Generate image 
       setGenerationStatus('Generating image...');
       const directImageUrl = `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=nanobanana`;
-      
+      //stable-diffusion)
+      //const directImageUrl = `https://image.pollinations.ai/prompt/${encodedCleanPrompt}?model=anything-v4`;
       console.log('Direct Image URL:', directImageUrl);
       
       // Check if cancelled before making request

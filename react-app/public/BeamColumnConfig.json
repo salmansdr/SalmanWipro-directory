@@ -17,7 +17,7 @@
     }
   },
   {
-    "floor": "Ground",
+    "floor": "Ground Floor",
     "floorHeight": 12,
     "beam": {
       "gridSpacing": 12,
@@ -34,7 +34,7 @@
     }
   },
   {
-    "floor": "Others",
+    "floor": "Other Floors",
     "floorHeight": 10.5,
     "beam": {
       "gridSpacing": 12,

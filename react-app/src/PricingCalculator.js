@@ -23,6 +23,8 @@ const cities = [
 
 const PricingCalculator = () => {
   // ...existing hooks...
+  // --- Beam & Column Section State (Step 1) ---
+  const [beamColumnConfig, setBeamColumnConfig] = useState([]);
   // Material filter state for Step 5 grid
   const [materialFilter, setMaterialFilter] = useState('');
   // Show/hide material filter dropdown
@@ -78,6 +80,38 @@ const [step5Tab, setStep5Tab] = useState('Material');
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
   const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
   const [, setStep3GridData] = useState([]);
+
+  const handleBeamColumnConfigChange = (floor, section, field, value) => {
+    setBeamColumnConfig(prevConfig =>
+      prevConfig.map(config => {
+        if (config.floor !== floor) return config;
+        if (section === 'beam') {
+          return {
+            ...config,
+            beam: {
+              ...config.beam,
+              [field]: value
+            }
+          };
+        } else if (section === 'column') {
+          return {
+            ...config,
+            column: {
+              ...config.column,
+              [field]: value
+            }
+          };
+        } else if (section === 'floor' && field === 'floorHeight') {
+          return {
+            ...config,
+            floorHeight: value
+          };
+        }
+        return config;
+      })
+    );
+  };
+
   // Populate step3GridData with all floor/component calculation results whenever relevant inputs change
   useEffect(() => {
     if (!areaCalculationLogic) return;
@@ -85,7 +119,7 @@ const [step5Tab, setStep5Tab] = useState('Material');
     // Use the same floor label logic as in your UI
     //let totalDoors = 0;
     //let totalWindows = 0;
-    for (let floorIdx = 0; floorIdx <= Number(floors); floorIdx++) {
+    for (let floorIdx = 0; floorIdx <= Number(floors)+1; floorIdx++) {
       let floorLabel = '';
       if (floorIdx === 0) floorLabel = 'Foundation';
       else if (floorIdx === 1) floorLabel = 'Ground Floor';
@@ -93,6 +127,16 @@ const [step5Tab, setStep5Tab] = useState('Material');
       else if (floorIdx === 3) floorLabel = '2nd Floor';
       else if (floorIdx === 4) floorLabel = '3rd Floor';
       else floorLabel = `${floorIdx - 1}th Floor`;
+
+      // Step 1: Lookup beam/column config for this floor, fallback to 'Other Floors' for upper floors
+     
+
+      
+      let floorBeamColumnConfig = beamColumnConfig.find(item => item.floor === floorLabel);
+      if (!floorBeamColumnConfig && floorIdx >= 2) {
+        floorBeamColumnConfig = beamColumnConfig.find(item => item.floor === 'Other Floors');
+      }
+      console.log('Step 3: Floor', floorLabel, 'Beam/Column Config:', floorBeamColumnConfig);
 
       const components = areaCalculationLogic?.calculation_components
         ? Object.entries(areaCalculationLogic.calculation_components)
@@ -107,6 +151,7 @@ const [step5Tab, setStep5Tab] = useState('Material');
                      floorsArr.map(f => f.toLowerCase()).includes("all floors");
             })
             .map(([key, comp]) => {
+              // Use floorBeamColumnConfig for beam/column calculations if available
               const vars = {
                 width: Number(width) || 0,
                 depth: Number(depth) || 0,
@@ -119,6 +164,21 @@ const [step5Tab, setStep5Tab] = useState('Material');
                 super_buildup_area: (Number(width) * Number(depth)) || 0,
                 ground_floor_sba: (Number(width) * Number(depth)) || 0,
                 buildup_area: (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
+                // Add beam/column config values if available
+                ...(floorBeamColumnConfig && floorBeamColumnConfig.beam ? {
+                  beamGridSpacing: floorBeamColumnConfig.beam.gridSpacing,
+                  beamWidth: floorBeamColumnConfig.beam.width,
+                  beamDepth: floorBeamColumnConfig.beam.depth
+                } : {}),
+                ...(floorBeamColumnConfig && floorBeamColumnConfig.column ? {
+                  columnGridSpacing: floorBeamColumnConfig.column.gridSpacing,
+                  columnWidth: floorBeamColumnConfig.column.width,
+                  columnDepth: floorBeamColumnConfig.column.depth,
+                  columnHeight: floorBeamColumnConfig.column.height
+                } : {}),
+                ...(floorBeamColumnConfig && floorBeamColumnConfig.floorHeight !== undefined ? {
+                  floorHeight: floorBeamColumnConfig.floorHeight
+                } : {})
               };
               let area = '-';
               if (comp.formula) {
@@ -129,19 +189,25 @@ const [step5Tab, setStep5Tab] = useState('Material');
                   area = '-';
                 }
               }
+              // If this is a beam/column component and config is missing, set area to '-'
+              if ((/beam|column/i.test(key)) && !floorBeamColumnConfig) {
+                area = '-';
+              }
               return {
                 floor: floorLabel,
                 component: key,
                 category: comp.Category || '',
                 volume_cuft: area,
-                ...comp
+                ...comp,
+                // Inject the config used for this floor/component for future use/debugging
+                floorBeamColumnConfig: floorBeamColumnConfig ? { ...floorBeamColumnConfig } : null
               };
             })
         : [];
       allFloors.push(...components);
     }
     setStep3GridData(allFloors);
-  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift]);
+  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift, beamColumnConfig]);
   // Variables for Step 3 (Calculation logic, debug, etc.)
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
   const [configError, setConfigError] = useState(null);
@@ -174,17 +240,15 @@ const [step5Tab, setStep5Tab] = useState('Material');
     const [rateMap, ] = useState({});
 
 
-    // --- Beam & Column Section State (Step 1) ---
-    const [bcFloor, setBCFloor] = useState('Foundation'); // Dropdown: Foundation, Ground, Others
-    const [bcFloorHeight, setBCFloorHeight] = useState(10); // Floor height input
-    const [bcBeamGridSpacing, setBCBeamGridSpacing] = useState(12); // Beam grid spacing
-    const [bcColumnGridSpacing, setBCColumnGridSpacing] = useState(12); // Column grid spacing
-    const [bcBeamWidth, setBCBeamWidth] = useState(1);
-    const [bcBeamDepth, setBCBeamDepth] = useState(1);
-    const [bcColumnWidth, setBCColumnWidth] = useState(1);
-    const [bcColumnDepth, setBCColumnDepth] = useState(1);
-    const [bcColumnHeight, setBCColumnHeight] = useState(10);
-    const [beamColumnConfig, setBeamColumnConfig] = useState([]);
+  const [bcFloor, setBCFloor] = useState('Foundation'); // Dropdown: Foundation, Ground, Others
+  const [bcFloorHeight, setBCFloorHeight] = useState(10); // Floor height input
+  const [bcBeamGridSpacing, setBCBeamGridSpacing] = useState(12); // Beam grid spacing
+  const [bcColumnGridSpacing, setBCColumnGridSpacing] = useState(12); // Column grid spacing
+  const [bcBeamWidth, setBCBeamWidth] = useState(1);
+  const [bcBeamDepth, setBCBeamDepth] = useState(1);
+  const [bcColumnWidth, setBCColumnWidth] = useState(1);
+  const [bcColumnDepth, setBCColumnDepth] = useState(1);
+  const [bcColumnHeight, setBCColumnHeight] = useState(10);
 
 
 
@@ -636,7 +700,7 @@ useEffect(() => {
   fetch(process.env.PUBLIC_URL + '/BeamColumnConfig.json')
     .then(res => res.json())
     .then(data => setBeamColumnConfig(data));
-}, []);
+}, [setBeamColumnConfig]);
 
 // --- Update form fields when floor changes ---
 useEffect(() => {
@@ -651,7 +715,18 @@ useEffect(() => {
     setBCColumnDepth(config.column.depth);
     setBCColumnHeight(config.column.height);
   }
-}, [bcFloor, beamColumnConfig]);
+}, [
+  bcFloor,
+  beamColumnConfig,
+  setBCFloorHeight,
+  setBCBeamGridSpacing,
+  setBCColumnGridSpacing,
+  setBCBeamWidth,
+  setBCBeamDepth,
+  setBCColumnWidth,
+  setBCColumnDepth,
+  setBCColumnHeight
+]);
 
   // Load from FloorDetails.json if reference number is provided but no projectData
   useEffect(() => {
@@ -1496,53 +1571,83 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
   const floorLabels = Array.from({ length: totalFloors + 1 }, (_, floorIdx) => getFloorType(floorIdx, totalFloors));
   // For each floor index (0 = Foundation, 1 = Ground, ... N = Top)
   return floorLabels.map((floorType, floorIdx) => {
-        // Normalize a string for robust floor matching
-        const normalize = s => String(s).toLowerCase().replace(/\s|\./g, '');
-        // For each component, check if it applies to this floor
-        const comps = Object.entries(areaCalculationLogic.calculation_components)
-          .filter(([_, comp]) => {
-            const applicableFloors = comp["Applicable Floors"];
-            if (!applicableFloors) return true;
-            const normFloorType = normalize(floorType);
-            const normApplicable = applicableFloors.map(f => normalize(f));
-            // Foundation
-            if (normFloorType === 'foundation') {
-              return normApplicable.includes('foundation');
-            }
-            // Ground Floor
-            if (normFloorType === 'groundfloor') {
-              return normApplicable.includes('groundfloor');
-            }
-            // Top Floor
-            if (normApplicable.includes('topfloor')) {
-              if (floorIdx === totalFloors) return true;
-            }
-            // Middle Floors
-            if (normApplicable.includes('middlefloors')) {
-              if (floorIdx > 1 && floorIdx < totalFloors) return true;
-            }
-            // All Floors
-            if (normApplicable.includes('allfloors')) return true;
-            // Direct match
-            if (normApplicable.includes(normFloorType)) return true;
-            return false;
-          })
-          .map(([key, comp]) => {
-
-            // Prepare variables for formula evaluation
-            const vars = {
-              width: Number(width) || 0,
-              depth: Number(depth) || 0,
-              floors: totalFloors,
-              carpetPercent: Number(carpetPercent) || 0,
-              buildupPercent: Number(buildupPercent) || 0,
-              lift: lift ? 1 : 0,
-              sba: (Number(width) * Number(depth)) || 0,
-              carpetArea: (Number(width) * Number(depth) * (Number(carpetPercent)/100)) || 0,
-              super_buildup_area: (Number(width) * Number(depth)) || 0,
-              ground_floor_sba: (Number(width) * Number(depth)) || 0,
-              buildup_area: (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
-            };
+    // Normalize a string for robust floor matching
+    const normalize = s => String(s).toLowerCase().replace(/\s|\./g, '');
+    // Lookup beam/column config for this floor, fallback to 'Other Floors' for upper floors
+    let floorBeamColumnConfig = beamColumnConfig && beamColumnConfig.find(item => item.floor === floorType);
+    if (!floorBeamColumnConfig && floorIdx >= 2 && beamColumnConfig) {
+      floorBeamColumnConfig = beamColumnConfig.find(item => item.floor === 'Other Floors');
+    }
+    // Always inject floorHeight into vars, fallback to 10 if not present
+    const injectedFloorHeight = (floorBeamColumnConfig && typeof floorBeamColumnConfig.floorHeight !== 'undefined')
+      ? Number(floorBeamColumnConfig.floorHeight)
+      : 10;
+    // For each component, check if it applies to this floor
+    const comps = Object.entries(areaCalculationLogic.calculation_components)
+      .filter(([_, comp]) => {
+        const applicableFloors = comp["Applicable Floors"];
+        if (!applicableFloors) return true;
+        const normFloorType = normalize(floorType);
+        const normApplicable = applicableFloors.map(f => normalize(f));
+        // Foundation
+        if (normFloorType === 'foundation') {
+          return normApplicable.includes('foundation');
+        }
+        // Ground Floor
+        if (normFloorType === 'groundfloor') {
+          return normApplicable.includes('groundfloor');
+        }
+        // Top Floor
+        if (normApplicable.includes('topfloor')) {
+          if (floorIdx === totalFloors) return true;
+        }
+        // Middle Floors
+        if (normApplicable.includes('middlefloors')) {
+          if (floorIdx > 1 && floorIdx < totalFloors) return true;
+        }
+        // All Floors
+        if (normApplicable.includes('allfloors')) return true;
+        // Direct match
+        if (normApplicable.includes(normFloorType)) return true;
+        return false;
+      })
+      .map(([key, comp]) => {
+        // Prepare variables for formula evaluation
+        const vars = {
+          width: Number(width) || 0,
+          depth: Number(depth) || 0,
+          floors: totalFloors,
+          carpetPercent: Number(carpetPercent) || 0,
+          buildupPercent: Number(buildupPercent) || 0,
+          lift: lift ? 1 : 0,
+          sba: (Number(width) * Number(depth)) || 0,
+          carpetArea: (Number(width) * Number(depth) * (Number(carpetPercent)/100)) || 0,
+          super_buildup_area: (Number(width) * Number(depth)) || 0,
+          ground_floor_sba: (Number(width) * Number(depth)) || 0,
+          buildup_area: (Number(width) * Number(depth) * (Number(buildupPercent) / 100)) || 0,
+          // Add beam/column config values if available
+          ...(floorBeamColumnConfig && floorBeamColumnConfig.beam ? {
+            beamGridSpacing: floorBeamColumnConfig.beam.gridSpacing,
+            beamWidth: floorBeamColumnConfig.beam.width,
+            beamDepth: floorBeamColumnConfig.beam.depth
+          } : {}),
+          ...(floorBeamColumnConfig && floorBeamColumnConfig.column ? {
+            columnGridSpacing: floorBeamColumnConfig.column.gridSpacing,
+            columnWidth: floorBeamColumnConfig.column.width,
+            columnDepth: floorBeamColumnConfig.column.depth,
+            columnHeight: floorBeamColumnConfig.column.height
+          } : {}),
+          floorHeight: injectedFloorHeight
+        };
+        // ...existing code for area, percentage, thickness, logic, etc...
+        // At the end, expose config values in the returned object for UI/debug
+       
+        // Compose the original return object (copied from below), but add config-driven values
+        // (We will patch each return statement for each component type below)
+        // For each return { ... } below, add:
+        // ...(floorBeamColumnConfig && floorBeamColumnConfig.beam ? { beamGridSpacing: floorBeamColumnConfig.beam.gridSpacing, beamWidth: floorBeamColumnConfig.beam.width, beamDepth: floorBeamColumnConfig.beam.depth } : {}),
+        // ...(floorBeamColumnConfig && floorBeamColumnConfig.column ? { columnGridSpacing: floorBeamColumnConfig.column.gridSpacing, columnWidth: floorBeamColumnConfig.column.width, columnDepth: floorBeamColumnConfig.column.depth, columnHeight: floorBeamColumnConfig.column.height } : {})
+        // We'll patch each return below.
             let area = '-';
             let percentage = comp.percentage ? comp.percentage * 100 : '-';
             if (editablePercentages[key] !== undefined) {
@@ -1557,7 +1662,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             // Custom logic for Internal Walls
             if (key === 'internal_walls') {
               const config = comp;
-              const height = config.height || 10;
+              // Prefer floorHeight from vars (from Step 1 config), fallback to config.height or 10
+              const height = (typeof vars.floorHeight !== 'undefined' ? vars.floorHeight : (config.height || 10));
               const sharedWallReduction = config.shared_wall_reduction || 0.2;
               const bhkRowsForDebug = typeof getFloorRows === 'function' ? getFloorRows(floorIdx - 1 || 0) : [];
               let totalDoors = 0;
@@ -1642,30 +1748,40 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
                 thickness,
                 logic,
                 logicDetails: bhkSections.join(' | '),
-          isEditable: comp.percentage !== undefined,
-          isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
-          component: key,
-          // Calculate volume_cuft for all scenarios
-          volume_cuft: (() => {
-            const numArea = Number(area);
-            const numThickness = Number(thickness);
-            if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
-              if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
-                return numArea * numThickness; // ft^2 * ft * 12 = cuft
-              } else {
-                return numArea; // Only area is relevant (tiles, paint, etc.)
-              }
-            }
-            return 0;
-          })(),
-          FloorName: floorType
-
+                isEditable: comp.percentage !== undefined,
+                isThicknessEditable: thickness !== undefined && thickness !== null && Number(thickness) !== 0,
+                component: key,
+                // Calculate volume_cuft for all scenarios
+                volume_cuft: (() => {
+                  const numArea = Number(area);
+                  const numThickness = Number(thickness);
+                  if (!isNaN(numArea) && numArea !== 0 && area !== '-') {
+                    if (!isNaN(numThickness) && numThickness !== 0 && thickness !== '-') {
+                      return numArea * numThickness; // ft^2 * ft * 12 = cuft
+                    } else {
+                      return numArea; // Only area is relevant (tiles, paint, etc.)
+                    }
+                  }
+                  return 0;
+                })(),
+                FloorName: floorType,
+                ...(floorBeamColumnConfig && floorBeamColumnConfig.beam ? {
+                  beamGridSpacing: floorBeamColumnConfig.beam.gridSpacing,
+                  beamWidth: floorBeamColumnConfig.beam.width,
+                  beamDepth: floorBeamColumnConfig.beam.depth
+                } : {}),
+                ...(floorBeamColumnConfig && floorBeamColumnConfig.column ? {
+                  columnGridSpacing: floorBeamColumnConfig.column.gridSpacing,
+                  columnWidth: floorBeamColumnConfig.column.width,
+                  columnDepth: floorBeamColumnConfig.column.depth,
+                  columnHeight: floorBeamColumnConfig.column.height
+                } : {})
               };
             }
             // Custom Logic for External Walls
             if (key === 'external_walls') {
               const config = comp;
-              const height = config.height || 10;
+              const height = (typeof vars.floorHeight !== 'undefined' ? vars.floorHeight : (config.height || 10));
               const L_sb = vars.width;
               const W_sb = vars.depth;
               const A_bu = 0.85 * L_sb * W_sb;
@@ -1702,9 +1818,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const layout_ratio = L_sb / W_sb;
               const W_bu = Math.sqrt(A_bu / layout_ratio);
               const L_bu = layout_ratio * W_bu;
-              const gridSpacing = Number(comp["Grid spacing"]) || 15;
-              const columnWidth = Number(comp["Column width"]) || 1;
-              const columnDepth = Number(comp["Column Depth"]) || 1.5;
+              const gridSpacing = vars.beamGridSpacing || 15;
+            const columnWidth = vars.beamWidth || 1;
+            const columnDepth = vars.beamDepth || 1.5;
               const columnsPerRow = Math.floor(L_bu / gridSpacing) + 1;
               const rowsOfColumns = Math.floor(W_bu / gridSpacing) + 1;
               const crossSection = columnWidth * columnDepth;
@@ -1743,9 +1859,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               const layout_ratio = L_sb / W_sb;
               const W_bu = Math.sqrt(A_bu / layout_ratio);
               const L_bu = layout_ratio * W_bu;
-              const gridSpacing = Number(comp["Grid spacing"]) || 15;
-              const columnWidth = Number(comp["Column width"]) || 1.5;
-              const columnDepth = Number(comp["Column Depth"]) || 1.5;
+              const gridSpacing = vars.beamGridSpacing || 15;
+            const columnWidth = vars.beamWidth || 1;
+            const columnDepth = vars.beamDepth || 1.5;
               const columnsPerRow = Math.floor(L_bu / gridSpacing) + 1;
               const rowsOfColumns = Math.floor(W_bu / gridSpacing) + 1;
               const columnsCount = columnsPerRow * rowsOfColumns;
@@ -1843,7 +1959,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               };
             }
             if (key === 'BasementWallVolume') {
-              const wallHeight = comp.wallHeight || 10;
+              //const wallHeight = comp.wallHeight || 10;
+              const wallHeight = (typeof vars.floorHeight !== 'undefined' ? vars.floorHeight : (comp.wallHeight || 10));
               const wallThickness = comp.thickness || 0.75;
               const perimeter = 2 * (vars.width + vars.depth);
               area = perimeter * wallHeight;
@@ -1876,9 +1993,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             if (key === 'BasementBeam') {
               const L_sb = vars.width;
               const W_sb = vars.depth;
-              const gridSpacing = Number(comp["Grid spacing"]) || 15;
-              const columnWidth = Number(comp["Column width"]) || 1;
-              const columnDepth = Number(comp["Column Depth"]) || 1.5;
+              const gridSpacing = vars.beamGridSpacing || 15;
+            const columnWidth = vars.beamWidth || 1;
+            const columnDepth = vars.beamDepth || 1.5;
               const columnsPerRow = Math.floor(L_sb / gridSpacing) + 1;
               const rowsOfColumns = Math.floor(W_sb / gridSpacing) + 1;
               const crossSection = columnWidth * columnDepth;
@@ -1913,9 +2030,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             if (key === 'Basementcolumns') {
               const L_sb = vars.width;
               const W_sb = vars.depth;
-              const gridSpacing = Number(comp["Grid spacing"]) || 15;
-              const columnWidth = Number(comp["Column width"]) || 1.5;
-              const columnDepth = Number(comp["Column Depth"]) || 1.5;
+             const gridSpacing = vars.beamGridSpacing || 15;
+            const columnWidth = vars.beamWidth || 1;
+            const columnDepth = vars.beamDepth || 1.5;
               const columnsPerRow = Math.floor(L_sb / gridSpacing) + 1;
               const rowsOfColumns = Math.floor(W_sb / gridSpacing) + 1;
               const columnsCount = columnsPerRow * rowsOfColumns;
@@ -2006,7 +2123,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
         return comps;
       });
       // allFloorsComponents[floorIdx] gives the components for that floor
-  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows]);
+  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows, beamColumnConfig]);
 
   // Debug: Log allFloorsComponents after calculation
   //console.log('allFloorsComponents:', allFloorsComponents);
@@ -2536,18 +2653,22 @@ const handleRateChange = (key, value) => {
           <Form.Label>Floor</Form.Label>
           <Form.Select value={bcFloor} onChange={e => setBCFloor(e.target.value)}>
             <option value="Foundation">Foundation</option>
-            <option value="Ground">Ground</option>
-            <option value="Others">Others</option>
+            <option value="Ground Floor">Ground Floor</option>
+            <option value="Other Floors">Other Floors</option>
           </Form.Select>
         </Col>
         <Col xs={6}>
           <Form.Label>Floor Height (ft)</Form.Label>
-          <Form.Control
-            type="number"
-            min={1}
-            value={bcFloorHeight}
-            onChange={e => setBCFloorHeight(Number(e.target.value))}
-          />
+              <Form.Control
+                type="number"
+                min={1}
+                value={bcFloorHeight}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCFloorHeight(val);
+                  handleBeamColumnConfigChange(bcFloor, 'floor', 'floorHeight', val);
+                }}
+              />
         </Col>
       </Row>
       <table className="table table-bordered" style={{ marginTop: 12 }}>
@@ -2566,7 +2687,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={1}
                 value={bcBeamGridSpacing}
-                onChange={e => setBCBeamGridSpacing(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCBeamGridSpacing(val);
+                  handleBeamColumnConfigChange(bcFloor, 'beam', 'gridSpacing', val);
+                }}
               />
             </td>
             <td>
@@ -2574,7 +2699,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={1}
                 value={bcColumnGridSpacing}
-                onChange={e => setBCColumnGridSpacing(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCColumnGridSpacing(val);
+                  handleBeamColumnConfigChange(bcFloor, 'column', 'gridSpacing', val);
+                }}
               />
             </td>
           </tr>
@@ -2585,7 +2714,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={0.1}
                 value={bcBeamWidth}
-                onChange={e => setBCBeamWidth(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCBeamWidth(val);
+                  handleBeamColumnConfigChange(bcFloor, 'beam', 'width', val);
+                }}
               />
             </td>
             <td>
@@ -2593,7 +2726,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={0.1}
                 value={bcColumnWidth}
-                onChange={e => setBCColumnWidth(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCColumnWidth(val);
+                  handleBeamColumnConfigChange(bcFloor, 'column', 'width', val);
+                }}
               />
             </td>
           </tr>
@@ -2604,7 +2741,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={0.1}
                 value={bcBeamDepth}
-                onChange={e => setBCBeamDepth(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCBeamDepth(val);
+                  handleBeamColumnConfigChange(bcFloor, 'beam', 'depth', val);
+                }}
               />
             </td>
             <td>
@@ -2612,7 +2753,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={0.1}
                 value={bcColumnDepth}
-                onChange={e => setBCColumnDepth(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCColumnDepth(val);
+                  handleBeamColumnConfigChange(bcFloor, 'column', 'depth', val);
+                }}
               />
             </td>
           </tr>
@@ -2624,7 +2769,11 @@ const handleRateChange = (key, value) => {
                 type="number"
                 min={1}
                 value={bcColumnHeight}
-                onChange={e => setBCColumnHeight(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setBCColumnHeight(val);
+                  handleBeamColumnConfigChange(bcFloor, 'column', 'height', val);
+                }}
               />
             </td>
           </tr>
