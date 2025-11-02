@@ -24,6 +24,16 @@
     "Rate": 600,
     "Applicable unit": "cuft"
   },
+  "Electrical Work": {
+    "Productivity_cuft_per_day": 40,
+    "Rate": 300,
+    "Applicable unit": "sqft"
+  },
+  "Plumbing": {
+    "Productivity_cuft_per_day": 40,
+    "Rate": 350,
+    "Applicable unit": "sqft"
+  },
   "Flooring": {
     "Productivity_cuft_per_day": 40,
     "Rate": 600,
