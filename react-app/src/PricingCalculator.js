@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FaHome, FaFilter, FaTimesCircle } from 'react-icons/fa';
 
 import { evaluate } from 'mathjs';
-import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
+import { Button, Form, Row, Col, Modal, Accordion } from 'react-bootstrap';
 import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
 
@@ -750,6 +750,12 @@ useEffect(() => {
     .then((data) => setLabourWorkData(data));
 }, []);
 
+const [finishingMaterialData, setFinishingMaterialData] = useState(null);
+useEffect(() => {
+  fetch(process.env.PUBLIC_URL + '/FinsishingMaterialCalculation.json')
+    .then(res => res.json())
+    .then(json => setFinishingMaterialData(json));
+}, []);
 // Dynamically generate activityMap from labourWorkData
 const activityMap = React.useMemo(() => {
   if (!labourWorkData || typeof labourWorkData !== 'object') return [];
@@ -2520,10 +2526,10 @@ const handleRateChange = (key, value) => {
               }}
             >
               {
-                s === 1 ? 'Project & Area Details' :
-                s === 2 ? 'Floor & BHK Layout' :
-                s === 3 ? 'Component Calculation' :
-                s === 4 ? 'Pricing & Cost Summary' : ''
+                s === 1 ? 'Project Details' :
+                s === 2 ? 'BHK Layout' :
+                s === 3 ? 'Component Calc' :
+                s === 4 ? 'Pricing Summary' : ''
               }
             </span>
           </span>
@@ -3470,78 +3476,146 @@ const handleRateChange = (key, value) => {
       <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Pricing Details</h5>
     </div>
     {/* Apartment Summary Card - Compact, just below Pricing Details heading */}
-    <div style={{
-      maxWidth: 1100,
-      margin: '0 auto 8px auto',
-      background: 'linear-gradient(90deg, #fafdff 80%, #e3f2fd 100%)',
-      border: '1px solid #e0e7ef',
-      borderRadius: 14,
-      boxShadow: '0 2px 12px #e3eafc',
-      padding: '4px 0 2px 0',
-      fontSize: '0.72em',
-      display: 'flex',
-      flexWrap: 'nowrap',
-      alignItems: 'stretch',
-      justifyContent: 'center',
-      gap: 0,
-      minHeight: 36,
-    }}>
-      {(() => {
-        // Use already calculated totals from top-level
-        const builtupArea = Number(width) * Number(depth) * (buildupPercent / 100);
-        const perimeter = (Number(width) && Number(depth)) ? 2 * (Number(width) + Number(depth)) : 0;
-        // Calculate Tiles Area and Painting Area using getTotalVolume
-        const tilesArea = typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0;
-        const paintingArea = typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0;
-        // Format in 3 columns per row, compact
-        const summaryItems = [
-          { label: 'Built-up Area', value: builtupArea ? Math.round(builtupArea).toLocaleString('en-IN') + ' sqft' : '-' },
-          { label: 'Perimeter', value: perimeter ? Math.round(perimeter).toLocaleString('en-IN') + ' ft' : '-' },
-          { label: 'Tiles Area', value: tilesArea ? Math.round(tilesArea).toLocaleString('en-IN') + ' sqft' : '-' },
-          { label: 'Painting Area', value: paintingArea ? Math.round(paintingArea).toLocaleString('en-IN') + ' sqft' : '-' },
-          { label: 'Bedrooms', value: totalBedrooms },
-          { label: 'Bathrooms', value: totalBathrooms },
-          { label: 'Kitchens', value: totalKitchens },
-          { label: 'Doors', value: totalDoors },
-          { label: 'Windows', value: totalWindows }
-        ];
-        return summaryItems.map((item, idx) => (
-          <div key={item.label} style={{
-            flex: '1 1 9%',
-            minWidth: 80,
-            padding: '2px 0 0 0',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            borderRight: (idx !== summaryItems.length - 1) ? '1px solid #e3eafc' : 'none',
-            margin: 0,
-            justifyContent: 'center',
-            position: 'relative',
-          }}>
-            <span style={{
-              color: '#1976d2',
-              fontWeight: 600,
-              fontSize: '0.82em',
-              marginBottom: 0,
-              letterSpacing: 0.05,
-              textShadow: '0 1px 0 #fafdff',
-              textAlign: 'center',
-              lineHeight: 1.02,
-              textTransform: idx < 3 ? 'none' : 'uppercase',
-            }}>{item.label}</span>
-            <span style={{
-              fontWeight: 700,
-              fontSize: '1.04em',
-              color: idx < 3 ? '#222' : '#1565c0',
-              letterSpacing: 0.13,
-              marginBottom: idx < 3 ? 0 : 1,
-              textAlign: 'center',
-              lineHeight: 1.1,
-            }}>{item.value}</span>
+    <Accordion defaultActiveKey="0" style={{ marginBottom: 8 }}>
+      <Accordion.Item eventKey="0">
+        <Accordion.Header style={{
+          background: 'linear-gradient(90deg, #e3f2fd 80%, #fafdff 100%)',
+          minHeight: 0,
+          padding: '2px 8px',
+          borderRadius: '12px 12px 0 0',
+          alignItems: 'center',
+          fontSize: '0.98em',
+          fontWeight: 500,
+          color: '#174a7c',
+          letterSpacing: 0.1,
+          border: 'none',
+        }}>
+          <span style={{
+            fontSize: '0.98em',
+            fontWeight: 500,
+            color: '#174a7c',
+            letterSpacing: 0.1,
+            marginLeft: 2,
+            marginRight: 6,
+            lineHeight: .5,
+            padding: 0,
+            display: 'inline-block',
+            verticalAlign: 'middle',
+          }}>Apartment Summary</span>
+        </Accordion.Header>
+        <Accordion.Body style={{ padding: 0 }}>
+          <div
+            className="apartment-summary-card-responsive"
+            style={{
+              maxWidth: 1100,
+              margin: '0 auto 8px auto',
+              background: 'linear-gradient(90deg, #fafdff 80%, #e3f2fd 100%)',
+              border: '1px solid #e0e7ef',
+              borderRadius: 14,
+              boxShadow: '0 2px 12px #e3eafc',
+              padding: '4px 0 2px 0',
+              fontSize: '0.72em',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'stretch',
+              justifyContent: 'center',
+              gap: 0,
+              minHeight: 36,
+            }}
+          >
+            {(() => {
+              // Use already calculated totals from top-level
+              const builtupArea = Number(width) * Number(depth) * (buildupPercent / 100);
+              const perimeter = (Number(width) && Number(depth)) ? 2 * (Number(width) + Number(depth)) : 0;
+              // Calculate Tiles Area and Painting Area using getTotalVolume
+              const tilesArea = typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0;
+              const paintingArea = typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0;
+              // Format in 3 columns per row, compact
+              const summaryItems = [
+                { label: 'Built-up Area', value: builtupArea ? Math.round(builtupArea).toLocaleString('en-IN') + ' sqft' : '-' },
+                { label: 'Perimeter', value: perimeter ? Math.round(perimeter).toLocaleString('en-IN') + ' ft' : '-' },
+                { label: 'Tiles Area', value: tilesArea ? Math.round(tilesArea).toLocaleString('en-IN') + ' sqft' : '-' },
+                { label: 'Painting Area', value: paintingArea ? Math.round(paintingArea).toLocaleString('en-IN') + ' sqft' : '-' },
+                { label: 'Bedrooms', value: totalBedrooms },
+                { label: 'Bathrooms', value: totalBathrooms },
+                { label: 'Kitchens', value: totalKitchens },
+                { label: 'Doors', value: totalDoors },
+                { label: 'Windows', value: totalWindows }
+              ];
+              return summaryItems.map((item, idx) => (
+                <div key={item.label} style={{
+                  flex: '1 1 80px',
+                  minWidth: 60,
+                  padding: '1px 0 0 0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  borderRight: (idx !== summaryItems.length - 1) ? '1px solid #e3eafc' : 'none',
+                  margin: 0,
+                  justifyContent: 'center',
+                  position: 'relative',
+                  boxSizing: 'border-box',
+                }}>
+                  <span style={{
+                    color: '#1976d2',
+                    fontWeight: 600,
+                    fontSize: '0.82em',
+                    marginBottom: 0,
+                    letterSpacing: 0.05,
+                    textShadow: '0 1px 0 #fafdff',
+                    textAlign: 'center',
+                    lineHeight: 1.02,
+                    textTransform: idx < 3 ? 'none' : 'uppercase',
+                    wordBreak: 'break-word',
+                  }}>{item.label}</span>
+                  <span style={{
+                    fontWeight: 700,
+                    fontSize: '1.04em',
+                    color: idx < 3 ? '#222' : '#1565c0',
+                    letterSpacing: 0.13,
+                    marginBottom: idx < 3 ? 0 : 1,
+                    textAlign: 'center',
+                    lineHeight: 1.1,
+                    wordBreak: 'break-word',
+                  }}>{item.value}</span>
+                </div>
+              ));
+            })()}
+            {/* Responsive styles for mobile/tablet */}
+            <style>{`
+              @media (max-width: 900px) {
+                .apartment-summary-card-responsive {
+                  font-size: 0.85em !important;
+                  padding: 2px 0 2px 0 !important;
+                }
+                .apartment-summary-card-responsive > div {
+                  min-width: 120px !important;
+                  flex: 1 1 45% !important;
+                  margin-bottom: 2px !important;
+                }
+              }
+              @media (max-width: 600px) {
+                .apartment-summary-card-responsive {
+                  font-size: 0.98em !important;
+                  flex-direction: column !important;
+                  padding: 2px 0 2px 0 !important;
+                }
+                .apartment-summary-card-responsive > div {
+                  min-width: 90px !important;
+                  flex: 1 1 100% !important;
+                  border-right: none !important;
+                  border-bottom: 1px solid #e3eafc !important;
+                  margin-bottom: 2px !important;
+                }
+                .apartment-summary-card-responsive > div:last-child {
+                  border-bottom: none !important;
+                }
+              }
+            `}</style>
           </div>
-        ));
-      })()}
-    </div>
+        </Accordion.Body>
+      </Accordion.Item>
+    </Accordion>
     <div style={{
       display: 'flex',
       borderBottom: '2px solid #e3e3e3',
@@ -3596,7 +3670,7 @@ const handleRateChange = (key, value) => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <label htmlFor="groupByDropdown" style={{ fontWeight: 500, marginRight: 4, whiteSpace: 'nowrap' }}>Group by:</label>
+  <label htmlFor="groupByDropdown" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Group by:</label>
         <select
           id="groupByDropdown"
           value={groupBy}
@@ -3609,8 +3683,8 @@ const handleRateChange = (key, value) => {
         </select>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>Unit:</span>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 500 }}>
+  <span style={{ fontWeight: 400, whiteSpace: 'nowrap' }}>Unit:</span>
+  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 400 }}>
           <input
             type="radio"
             name="volumeUnit"
@@ -3621,7 +3695,7 @@ const handleRateChange = (key, value) => {
           />
           Cuft
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 500 }}>
+  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 400 }}>
           <input
             type="radio"
             name="volumeUnit"
@@ -3634,7 +3708,7 @@ const handleRateChange = (key, value) => {
         </label>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
-        <label htmlFor="step5TextFilter" style={{ fontWeight: 500, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
+  <label htmlFor="step5TextFilter" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
         <input
           id="step5TextFilter"
           type="text"
@@ -3851,8 +3925,8 @@ const handleRateChange = (key, value) => {
     )}
     {step5Tab === 'Man Power' && (
       <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0 }}>
-        <h5 style={{ fontWeight: 600, color: '#1976d2', marginBottom: 12, fontSize: '1.15em', paddingLeft: 4, paddingTop: 12 }}>Labour Cost Calculation</h5>
-        <table className="step5-material-table" style={{ width: '100%', fontSize: '1.01rem', background: '#fff', borderCollapse: 'collapse', borderSpacing: 0 }}>
+        
+        <table className="step5-material-table" style={{ width: '100%', fontSize: '0.89em', background: '#fff', borderCollapse: 'collapse', borderSpacing: 0, boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
           <thead>
             <tr style={{ background: '#e3f2fd' }}>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Activity</th>
@@ -4078,11 +4152,12 @@ const handleRateChange = (key, value) => {
       open_area_sqft: 0, // TODO: derive if available
       landscape_area_sqft: 0, // TODO: derive if available
       window_frame_area_sqft: 0, // TODO: derive if available
-  door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-  Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-  window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-  Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0
+      door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+      Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+      window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
+      Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0
     }}
+    data={finishingMaterialData}
   />
 
 </div>

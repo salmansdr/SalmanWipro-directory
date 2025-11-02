@@ -26,20 +26,25 @@ function groupFinishingMaterialData(json) {
 
 
 
-const FinishingMaterialGrid = ({ summaryContext }) => {
-  const [data, setData] = useState(null);
-    const [baseQtys, setBaseQtys] = useState({});
-    const [wastages, setWastages] = useState({});
-    const [rates, setRates] = useState({});
-    const [categoryFilter, setCategoryFilter] = useState('All');
-    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
+  const [data, setData] = useState(propData || null);
+  const [baseQtys, setBaseQtys] = useState({});
+  const [wastages, setWastages] = useState({});
+  const [rates, setRates] = useState({});
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   useEffect(() => {
+    if (propData) {
+      setData(propData);
+      return;
+    }
     fetch(process.env.PUBLIC_URL + '/FinsishingMaterialCalculation.json')
       .then(res => res.json())
       .then(json => setData(json))
       .catch(() => setData(null));
-  }, []);
+  }, [propData]);
 
   if (!data) return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading finishing material data...</div>;
 
