@@ -5,6 +5,7 @@ import { FaHome, FaFilter, FaTimesCircle } from 'react-icons/fa';
 
 import { evaluate } from 'mathjs';
 import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
+import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
 
 // Room columns for grid (make available globally)
@@ -729,27 +730,73 @@ useEffect(() => {
     .then((data) => setLabourWorkData(data));
 }, []);
 
-const activityMap = [
-  { key: "Earthwork", label: "Excavation" },
-  { key: "Backfilling", label: "Backfilling" },
-  { key: "RCC", label: "RCC Work" },
-  { key: "Ceiling Plaster", label: "Ceiling Plaster" },
-  { key: "Wall", label: "Wall Foundation" }
-];
+// Dynamically generate activityMap from labourWorkData
+const activityMap = React.useMemo(() => {
+  if (!labourWorkData || typeof labourWorkData !== 'object') return [];
+  return Object.entries(labourWorkData).map(([key, value]) => {
+    // Try to use a label property if present, else fallback to key
+    let label = value && value.label ? value.label : key;
+    // For backward compatibility, map known keys to pretty labels
+    if (key === 'Earthwork') label = 'Excavation';
+    if (key === 'Backfilling') label = 'Backfilling';
+    if (key === 'RCC') label = 'RCC Work';
+    if (key === 'Ceiling Plaster') label = 'Ceiling Plaster';
+    if (key === 'Wall') label = 'Wall Foundation';
+    return { key, label };
+  });
+}, [labourWorkData]);
 
-const getTotalVolume = (key) => {
-  // Get the category value from the first component (if exists)
+// Get total quantity for a category, by unit ("cuft" or "sqft")
+const getTotalVolume = (key, unit = 'cuft') => {
   const flatComponents = allFloorsComponents.flat();
   if (!flatComponents.length) return 0;
-
- // const targetCategory = flatComponents[0].Category;
+  // Special handling for Flooring and Painting from 1st floor onwards (skip Foundation and Ground Floor)
+  if (key.toLowerCase() === 'flooring') {
+    // Use Slabvolume from 1st floor onwards
+    return flatComponents
+      .filter((comp, idx) =>
+        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
+        (comp.component?.toLowerCase() === 'slab_area' || comp.Category?.toLowerCase() === 'slabvolume')
+      )
+      .reduce((sum, comp) => {
+        if (unit === 'sqft') {
+          return sum + (Number(comp.area) || Number(comp.Area) || 0);
+        } else {
+          return sum + (Number(comp.volume_cuft) || 0);
+        }
+      }, 0);
+  }
+  if (key.toLowerCase() === 'painting') {
+    // Use Wall area or volume from 1st floor onwards
+    return flatComponents
+      .filter((comp, idx) =>
+        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
+        (comp.component?.toLowerCase().includes('wall') || comp.Category?.toLowerCase().includes('wall'))
+      )
+      .reduce((sum, comp) => {
+        if (unit === 'sqft') {
+          return sum + (Number(comp.area) || Number(comp.Area) || 0);
+        } else {
+          return sum + (Number(comp.volume_cuft) || 0);
+        }
+      }, 0);
+  }
+  // Default logic
   return flatComponents
     .filter((comp) =>
       typeof comp.Category === 'string' &&
       typeof key === 'string' &&
       comp.Category.toLowerCase() === key.toLowerCase()
     )
-    .reduce((sum, comp) => sum + (Number(comp.volume_cuft) || 0), 0);
+    .reduce((sum, comp) => {
+      if (unit === 'sqft') {
+        // Use area if present, else fallback to 0
+        return sum + (Number(comp.area) || Number(comp.Area) || 0);
+      } else {
+        // Default: use volume_cuft
+        return sum + (Number(comp.volume_cuft) || 0);
+      }
+    }, 0);
 };
 
 // --- Update form fields when floor changes ---
@@ -2184,7 +2231,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     if (allFloorsComponents && allFloorsComponents.length > 0) {
  if (selectedFloorIdx === 0) {
         // Find Backfilling Soil, Excavation, and RCC components for this floor
-        const backfillIdx = Gridcomponents.findIndex(c => c.component === 'BackfillVolume');
+        const backfillIdx = Gridcomponents.findIndex(c => c.component === 'Backfilling');
         const excavation = Gridcomponents.find(c => c.component === 'ExcavationVolume');
         // RCC = sum of SlabVolume, WallVolume, BeamVolume, ColumnVolume
         const slab = Gridcomponents.find(c => c.component === 'BasementSlab');
@@ -2400,7 +2447,7 @@ const handleRateChange = (key, value) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
           </svg>
-          Back to Projects
+          Back
         </Button>
         <h2 className="text-center text-primary mb-0" style={{ fontWeight: 700, letterSpacing: '1px', flex: 1, textAlign: 'center' }}>
           Project Estimation Calculator
@@ -2424,11 +2471,35 @@ const handleRateChange = (key, value) => {
       {/* Step Indicator */}
       <div className="wizard-indicator">
         {[1,2,3,4].map(s => (
-          <span
-            key={s}
-            className={`wizard-circle${step === s ? ' active' : ''}`}
-            onClick={() => handleCircleClick(s)}
-          >{s}</span>
+          <span key={s} style={{ position: 'relative', display: 'inline-block' }}>
+            <span
+              className={`wizard-circle${step === s ? ' active' : ''}`}
+              onClick={() => handleCircleClick(s)}
+            >{s}</span>
+            <span
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '120%',
+                transform: 'translateX(-50%)',
+                fontSize: '0.68em',
+                color: '#b0b0b0',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+                minWidth: 0,
+                textAlign: 'center',
+                lineHeight: 1.1,
+                zIndex: 2
+              }}
+            >
+              {
+                s === 1 ? 'Project & Area Details' :
+                s === 2 ? 'Floor & BHK Layout' :
+                s === 3 ? 'Component Calculation' :
+                s === 4 ? 'Pricing & Cost Summary' : ''
+              }
+            </span>
+          </span>
         ))}
       </div>
       {/* Step Content */}
@@ -3664,9 +3735,10 @@ const handleRateChange = (key, value) => {
           <thead>
             <tr style={{ background: '#e3f2fd' }}>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Activity</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Productivity<br/>(cuft/day)</th>
+              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Productivity<br/>(cuft or Sq ft/day)</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Labour Rate<br/>(₹/day)</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Volume<br/>(cuft)</th>
+              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Volume /<br/>Area</th>
+              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Unit</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>No of People</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Duration</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Cost<br/>(₹)</th>
@@ -3680,7 +3752,8 @@ const handleRateChange = (key, value) => {
                 labour.Productivity_sqft_per_day ||
                 "";
               const rate = labour.Rate || "";
-              const totalVolume = getTotalVolume(key, label);
+              const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
+              const totalVolume = getTotalVolume(key, unit);
               // Editable number of people per activity
               const people = (labour.NoOfPeople !== undefined && labour.NoOfPeople !== null && labour.NoOfPeople !== "") ? Number(labour.NoOfPeople) : 1;
               // Labour Days is duration (total workdays divided by people)
@@ -3691,7 +3764,25 @@ const handleRateChange = (key, value) => {
 
               return (
                 <tr key={label}>
-                  <td style={{ padding: '8px 8px', fontWeight: 400, textAlign: 'left', border: '1px solid #e0e7ef', background: '#fff' }}>{label}</td>
+                  <td style={{ padding: '8px 8px', fontWeight: 400, textAlign: 'left', border: '1px solid #e0e7ef', background: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {label === 'Wall Foundation' ? (
+                      <>
+                        <span
+                          title="Wall Foundation = Brickwork, Internal Plastering, External Plastering."
+                         
+                          
+                        >
+                          {label}
+                        </span>
+                        <FaInfoCircle
+                          title="Wall Foundation = Brickwork, Internal Plastering, External Plastering."
+                          style={{ color: '#1976d2', marginLeft: 4, fontSize: '1em', verticalAlign: 'middle', cursor: 'pointer' }}
+                          tabIndex={0}
+                          aria-label="Wall Foundation: Brickwork, Internal Plastering, External Plastering."
+                        />
+                      </>
+                    ) : label}
+                  </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
                     <input
                       type="number"
@@ -3737,6 +3828,10 @@ const handleRateChange = (key, value) => {
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
                     {totalVolume ? Math.round(totalVolume).toLocaleString('en-IN') : "-"}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
+                    {/* Show unit from JSON's 'Applicable unit' property, fallback to '-' if not present */}
+                    {labour['Applicable unit'] ? labour['Applicable unit'] : '-'}
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
                     <input
