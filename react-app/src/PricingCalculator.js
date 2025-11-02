@@ -8,6 +8,8 @@ import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
 import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
 
+import FinishingMaterialGrid from './FinishingMaterialGrid';
+
 // Room columns for grid (make available globally)
 export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "Store"];
 // Default grid rows (make available globally)
@@ -119,6 +121,27 @@ const [step, setStep] = useState(1);
       })
     );
   };
+
+// --- Totals for summary and FinishingMaterialGrid ---
+let totalBedrooms = 0, totalBathrooms = 0, totalKitchens = 0, totalDoors = 0, totalWindows = 0, totalRooms = 0;
+if (typeof floorBHKConfigs !== 'undefined' && typeof bhkRoomDetails !== 'undefined') {
+  Object.entries(floorBHKConfigs).forEach(([floorIdx, units]) => {
+    units.forEach((unit, unitIdx) => {
+      const key = `${floorIdx}-${unitIdx}`;
+      const details = bhkRoomDetails[key] || {};
+      // Count bedrooms, bathrooms, kitchens
+      Object.entries(details['Count'] || {}).forEach(([roomName, count]) => {
+        if (/bed\s*room/i.test(roomName)) totalBedrooms += Number(count) || 0;
+        if (/bath/i.test(roomName)) totalBathrooms += Number(count) || 0;
+        if (/kitchen/i.test(roomName)) totalKitchens += Number(count) || 0;
+        totalRooms += Number(count) || 0; // Sum all room types
+      });
+      // Count doors and windows
+      Object.values(details['Door'] || {}).forEach(val => { totalDoors += Number(val.count) || 0; });
+      Object.values(details['Window'] || {}).forEach(val => { totalWindows += Number(val.count) || 0; });
+    });
+  });
+}
 
   // Populate step3GridData with all floor/component calculation results whenever relevant inputs change
   useEffect(() => {
@@ -610,10 +633,7 @@ const filteredMaterialRows = useMemo(() => {
   
   
 
-  // Debug: Log carpetAreaOptions whenever it changes
-useEffect(() => {
-  console.log('carpetAreaOptions:', carpetAreaOptions);
-}, [carpetAreaOptions]);
+
 
   // Populate form data when in edit/view mode, or set auto-generated ref for new mode
   useEffect(() => {
@@ -749,7 +769,14 @@ const activityMap = React.useMemo(() => {
 // Get total quantity for a category, by unit ("cuft" or "sqft")
 const getTotalVolume = (key, unit = 'cuft') => {
   const flatComponents = allFloorsComponents.flat();
+  const Barea = (Number(width) * Number(depth) * (buildupPercent / 100));
+
   if (!flatComponents.length) return 0;
+  if (key.toLowerCase() === 'electrical work' || key.toLowerCase() === 'plumbing') {
+    // Always return Barea (built-up area) for Electrical Work and Plumbing, regardless of unit
+    return Barea;
+  }
+
   // Special handling for Flooring and Painting from 1st floor onwards (skip Foundation and Ground Floor)
   if (key.toLowerCase() === 'flooring') {
     // Use Slabvolume from 1st floor onwards
@@ -2449,7 +2476,7 @@ const handleRateChange = (key, value) => {
           </svg>
           Back
         </Button>
-        <h2 className="text-center text-primary mb-0" style={{ fontWeight: 700, letterSpacing: '1px', flex: 1, textAlign: 'center' }}>
+        <h2 className="text-center text-primary mb-0" style={{ fontWeight: 500, letterSpacing: '1px', flex: 1, textAlign: 'center', fontSize: '1.25rem' }}>
           Project Estimation Calculator
         </h2>
         <div style={{ width: '120px' }}></div> {/* Spacer for balanced layout */}
@@ -2793,7 +2820,7 @@ const handleRateChange = (key, value) => {
     <h4 style={{ textAlign: 'center',color: '#1976d2', fontWeight: 600, marginBottom: 24 }}>
       Beam &amp; Column Definition
     </h4>
-    <Form>
+   
       <Row className="align-items-center mb-3">
         <Col xs={6}>
           <Form.Label>Floor</Form.Label>
@@ -2934,7 +2961,7 @@ const handleRateChange = (key, value) => {
           </tr>
         </tbody>
       </table>
-    </Form>
+    
   </div>
 </div>
               
@@ -3440,56 +3467,149 @@ const handleRateChange = (key, value) => {
   <div>
     
     <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
-              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Pricing Details</h5>
-            </div>
-    <div style={{ display: 'flex', borderBottom: '2px solid #e3e3e3', marginBottom: 18 }}>
-    {['Civil Material', 'Others Material', 'Man Power', 'Cost Summary'].map(tab => (
-      <div
-        key={tab}
-        onClick={() => setStep5Tab(tab)}
-        style={{
-          padding: '10px 28px',
-          cursor: 'pointer',
-          fontWeight: 600,
-          color: step5Tab === tab ? '#1976d2' : '#888',
-          borderBottom: step5Tab === tab ? '3px solid #1976d2' : '3px solid transparent',
-          background: step5Tab === tab ? '#f5faff' : 'transparent',
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          marginRight: 8,
-          transition: 'all 0.18s',
-          fontSize: '1.08em',
-          letterSpacing: '0.5px',
-          minWidth: 100,
-          textAlign: 'center',
-        }}
-      >
-        {tab}
-      </div>
-    ))}
-  </div>
+      <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Pricing Details</h5>
+    </div>
+    {/* Apartment Summary Card - Compact, just below Pricing Details heading */}
+    <div style={{
+      maxWidth: 1100,
+      margin: '0 auto 8px auto',
+      background: 'linear-gradient(90deg, #fafdff 80%, #e3f2fd 100%)',
+      border: '1px solid #e0e7ef',
+      borderRadius: 14,
+      boxShadow: '0 2px 12px #e3eafc',
+      padding: '4px 0 2px 0',
+      fontSize: '0.72em',
+      display: 'flex',
+      flexWrap: 'nowrap',
+      alignItems: 'stretch',
+      justifyContent: 'center',
+      gap: 0,
+      minHeight: 36,
+    }}>
+      {(() => {
+        // Use already calculated totals from top-level
+        const builtupArea = Number(width) * Number(depth) * (buildupPercent / 100);
+        const perimeter = (Number(width) && Number(depth)) ? 2 * (Number(width) + Number(depth)) : 0;
+        // Calculate Tiles Area and Painting Area using getTotalVolume
+        const tilesArea = typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0;
+        const paintingArea = typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0;
+        // Format in 3 columns per row, compact
+        const summaryItems = [
+          { label: 'Built-up Area', value: builtupArea ? Math.round(builtupArea).toLocaleString('en-IN') + ' sqft' : '-' },
+          { label: 'Perimeter', value: perimeter ? Math.round(perimeter).toLocaleString('en-IN') + ' ft' : '-' },
+          { label: 'Tiles Area', value: tilesArea ? Math.round(tilesArea).toLocaleString('en-IN') + ' sqft' : '-' },
+          { label: 'Painting Area', value: paintingArea ? Math.round(paintingArea).toLocaleString('en-IN') + ' sqft' : '-' },
+          { label: 'Bedrooms', value: totalBedrooms },
+          { label: 'Bathrooms', value: totalBathrooms },
+          { label: 'Kitchens', value: totalKitchens },
+          { label: 'Doors', value: totalDoors },
+          { label: 'Windows', value: totalWindows }
+        ];
+        return summaryItems.map((item, idx) => (
+          <div key={item.label} style={{
+            flex: '1 1 9%',
+            minWidth: 80,
+            padding: '2px 0 0 0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderRight: (idx !== summaryItems.length - 1) ? '1px solid #e3eafc' : 'none',
+            margin: 0,
+            justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <span style={{
+              color: '#1976d2',
+              fontWeight: 600,
+              fontSize: '0.82em',
+              marginBottom: 0,
+              letterSpacing: 0.05,
+              textShadow: '0 1px 0 #fafdff',
+              textAlign: 'center',
+              lineHeight: 1.02,
+              textTransform: idx < 3 ? 'none' : 'uppercase',
+            }}>{item.label}</span>
+            <span style={{
+              fontWeight: 700,
+              fontSize: '1.04em',
+              color: idx < 3 ? '#222' : '#1565c0',
+              letterSpacing: 0.13,
+              marginBottom: idx < 3 ? 0 : 1,
+              textAlign: 'center',
+              lineHeight: 1.1,
+            }}>{item.value}</span>
+          </div>
+        ));
+      })()}
+    </div>
+    <div style={{
+      display: 'flex',
+      borderBottom: '2px solid #e3e3e3',
+      marginBottom: 18,
+      overflowX: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      scrollbarWidth: 'thin',
+      scrollbarColor: '#b3e5fc #fafdff',
+      msOverflowStyle: 'auto',
+    }}>
+      {['Civil Material', 'Finishing Material', 'Man Power', 'Cost Summary'].map(tab => (
+        <div
+          key={tab}
+          onClick={() => setStep5Tab(tab)}
+          style={{
+            flex: '0 0 auto',
+            padding: '10px 28px',
+            cursor: 'pointer',
+            fontWeight: 600,
+            color: step5Tab === tab ? '#1976d2' : '#888',
+            borderBottom: step5Tab === tab ? '3px solid #1976d2' : '3px solid transparent',
+            background: step5Tab === tab ? '#f5faff' : 'transparent',
+            borderTopLeftRadius: 8,
+            borderTopRightRadius: 8,
+            marginRight: 8,
+            transition: 'all 0.18s',
+            fontSize: '1.08em',
+            letterSpacing: '0.5px',
+            minWidth: 120,
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            boxSizing: 'border-box',
+          }}
+        >
+          {tab}
+        </div>
+      ))}
+    </div>
 
  {/* Tab Content */}
   <div style={{ minHeight: 200 }}>
     {step5Tab === 'Civil Material' && (
       <div>
         {/* Group By Dropdown */}
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-      <label htmlFor="groupByDropdown" style={{ marginRight: 8, fontWeight: 500 }}>Group by:</label>
-      <select
-        id="groupByDropdown"
-        value={groupBy}
-        onChange={handleGroupByChange}
-        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14 }}
-      >
-        <option value="Floor">Floor</option>
-        <option value="Category">Category</option>
-        <option value="Material">Material</option>
-      </select>
-
-      {/* Volume Unit Radio Toggle */}
-      <div style={{ marginLeft: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontWeight: 500, marginRight: 8 }}>Unit:</span>
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '12px 24px',
+        marginBottom: 12,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label htmlFor="groupByDropdown" style={{ fontWeight: 500, marginRight: 4, whiteSpace: 'nowrap' }}>Group by:</label>
+        <select
+          id="groupByDropdown"
+          value={groupBy}
+          onChange={handleGroupByChange}
+          style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14, minWidth: 90 }}
+        >
+          <option value="Floor">Floor</option>
+          <option value="Category">Category</option>
+          <option value="Material">Material</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>Unit:</span>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 500 }}>
           <input
             type="radio"
@@ -3513,16 +3633,17 @@ const handleRateChange = (key, value) => {
           Cumt
         </label>
       </div>
-
-      <label htmlFor="step5TextFilter" style={{ marginLeft: 32, marginRight: 8, fontWeight: 500 }}>Filter:</label>
-      <input
-        id="step5TextFilter"
-        type="text"
-        value={step5TextFilter}
-        onChange={e => setStep5TextFilter(e.target.value)}
-        placeholder="Type to filter..."
-        style={{ minWidth: 180, padding: '7px 12px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+        <label htmlFor="step5TextFilter" style={{ fontWeight: 500, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
+        <input
+          id="step5TextFilter"
+          type="text"
+          value={step5TextFilter}
+          onChange={e => setStep5TextFilter(e.target.value)}
+          placeholder="Type to filter..."
+          style={{ minWidth: 120, width: '100%', padding: '7px 12px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
+        />
+      </div>
     </div>
     {/* ...existing code for filter and table... */}
     {(() => {
@@ -3740,7 +3861,7 @@ const handleRateChange = (key, value) => {
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Volume /<br/>Area</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Unit</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>No of People</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Duration</th>
+              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Duration<br/>(days)</th>
               <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Cost<br/>(₹)</th>
             </tr>
           </thead>
@@ -3865,7 +3986,7 @@ const handleRateChange = (key, value) => {
           </tbody>
           <tfoot>
             <tr style={{ background: '#e3f2fd', fontWeight: 800, borderTop: '3px solid #1976d2', color: '#0d47a1' }}>
-              <td colSpan={7} style={{
+              <td colSpan={6} style={{
                 textAlign: 'right',
                 fontWeight: 800,
                 fontSize: '1.12em',
@@ -3875,7 +3996,48 @@ const handleRateChange = (key, value) => {
                 padding: '10px 8px',
                 letterSpacing: 0.2
               }}>
-                Grand Total {' '}
+                Grand Total
+              </td>
+              <td style={{
+                textAlign: 'right',
+                fontWeight: 800,
+                fontSize: '1.12em',
+                borderTop: '3px solid #1976d2',
+                background: '#e3f2fd',
+                color: '#0d47a1',
+                padding: '10px 8px',
+                letterSpacing: 0.2
+              }}>
+                {/* Sum of durations (labourDays) */}
+                {
+                  (() => {
+                    const totalDuration = activityMap.reduce((sum, { key, label }) => {
+                      const labour = labourWorkData[key] || labourWorkData[label] || {};
+                      const productivity =
+                        labour.Productivity_cuft_per_day ||
+                        labour.Productivity_sqft_per_day ||
+                        0;
+                      const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
+                      const totalVolume = getTotalVolume(key, unit);
+                      const people = (labour.NoOfPeople !== undefined && labour.NoOfPeople !== null && labour.NoOfPeople !== "") ? Number(labour.NoOfPeople) : 1;
+                      const baseLabourDays = productivity && totalVolume ? totalVolume / productivity : 0;
+                      const labourDays = people > 0 ? baseLabourDays / people : 0;
+                      return sum + labourDays;
+                    }, 0);
+                    return totalDuration ? Math.round(totalDuration).toLocaleString('en-IN') : "-";
+                  })()
+                }
+              </td>
+              <td style={{
+                textAlign: 'right',
+                fontWeight: 800,
+                fontSize: '1.12em',
+                borderTop: '3px solid #1976d2',
+                background: '#e3f2fd',
+                color: '#0d47a1',
+                padding: '10px 8px',
+                letterSpacing: 0.2
+              }}>
                 {
                   (() => {
                     const total = activityMap.reduce((sum, { key, label }) => {
@@ -3885,7 +4047,8 @@ const handleRateChange = (key, value) => {
                         labour.Productivity_sqft_per_day ||
                         0;
                       const rate = labour.Rate || 0;
-                      const totalVolume = getTotalVolume(key, label);
+                      const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
+                      const totalVolume = getTotalVolume(key, unit);
                       // Use baseLabourDays (not divided by people)
                       const baseLabourDays = productivity && totalVolume ? totalVolume / productivity : 0;
                       return sum + Math.round(baseLabourDays * rate);
@@ -3899,11 +4062,33 @@ const handleRateChange = (key, value) => {
         </table>
       </div>
     )}
-    {step5Tab === 'Other' && (
-      <div style={{ padding: 32, textAlign: 'center', color: '#888', fontSize: '1.1em' }}>
-        <b>Other</b> tab content goes here.
-      </div>
-    )}
+   {step5Tab === 'Finishing Material' && (
+    <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0 }}>
+  <FinishingMaterialGrid
+    summaryContext={{
+      built_up_area_sqft: Number(width) * Number(depth) * (buildupPercent / 100),
+      perimeter_ft: (Number(width) && Number(depth)) ? 2 * (Number(width) + Number(depth)) : 0,
+      tile_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0,
+      painting_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
+      room_count: typeof totalRooms !== 'undefined' ? totalRooms : 0,
+      toilet_count: typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0,
+      kitchen_count: typeof totalKitchens !== 'undefined' ? totalKitchens : 0,
+      wet_points_count: (typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0) + (typeof totalKitchens !== 'undefined' ? totalKitchens : 0),
+      plastering_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
+      open_area_sqft: 0, // TODO: derive if available
+      landscape_area_sqft: 0, // TODO: derive if available
+      window_frame_area_sqft: 0, // TODO: derive if available
+  door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+  Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+  window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
+  Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0
+    }}
+  />
+
+</div>
+
+
+)}
   </div>
 
 
