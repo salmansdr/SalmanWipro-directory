@@ -1,22 +1,37 @@
 {
   "Earthwork": {
     "Productivity_cuft_per_day": 55,
-    "Rate": 550
+    "Rate": 550,
+    "Applicable unit": "cuft"
   },
   "Backfilling": {
     "Productivity_cuft_per_day": 50,
-    "Rate": 550
+    "Rate": 550,
+    "Applicable unit": "cuft"
   },
   "RCC": {
     "Productivity_cuft_per_day": 30,
-    "Rate": 650
+    "Rate": 650,
+    "Applicable unit": "cuft"
   },
   "Ceiling Plaster": {
     "Productivity_sqft_per_day": 100,
-    "Rate": 600
+    "Rate": 600,
+    "Applicable unit": "sqft"
   },
   "Wall": {
     "Productivity_cuft_per_day": 40,
-    "Rate": 600
+    "Rate": 600,
+    "Applicable unit": "cuft"
+  },
+  "Flooring": {
+    "Productivity_cuft_per_day": 40,
+    "Rate": 600,
+    "Applicable unit": "sqft"
+  },
+  "Painting": {
+    "Productivity_cuft_per_day": 40,
+    "Rate": 600,
+    "Applicable unit": "sqft"
   }
 }
