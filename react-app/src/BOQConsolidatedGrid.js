@@ -9,7 +9,8 @@ import React, { useState } from 'react';
 
 
 const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
-  // Category filter state
+  // Text filter and category dropdown state
+  const [textFilter, setTextFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   // State for rate and brand per row (keyed by category+material)
@@ -80,8 +81,6 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
 
   return (
     <div>
-      {/* DEBUG: Show number of data rows for troubleshooting */}
-      <div style={{ color: '#d81b60', fontWeight: 600, marginBottom: 8, fontSize: 16 }}>DEBUG: Data rows: {Array.isArray(data) ? data.length : 0}</div>
       <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0, maxHeight: 600, overflowY: 'auto' }}>
       {/* Standardized filter textbox */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px 0' }}>
@@ -89,8 +88,8 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
         <input
           id="boqFilterText"
           type="text"
-          value={categoryFilter === 'All' ? '' : categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value || 'All')}
+          value={textFilter}
+          onChange={e => setTextFilter(e.target.value)}
           placeholder="Type to filter..."
           style={{ width: 140, minWidth: 0, padding: '6px 10px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
         />
@@ -179,9 +178,20 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
           {Object.entries(grouped)
             .filter(([category]) => categoryFilter === 'All' || category === categoryFilter)
             .map(([category, items]) => {
+              // Apply text filter to items
+              const filteredItems = textFilter.trim() === ''
+                ? items
+                : items.filter(item => {
+                    const filter = textFilter.trim().toLowerCase();
+                    return (
+                      (item.category && item.category.toLowerCase().includes(filter)) ||
+                      (item.material && item.material.toLowerCase().includes(filter))
+                    );
+                  });
+              if (filteredItems.length === 0) return null;
               // Calculate subtotal for this category
               let subTotal = 0;
-              const rows = items.map((item, idx) => {
+              const rows = filteredItems.map((item, idx) => {
                 const rowKey = `${category}__${item.material}`;
                 let brand = rowState[rowKey]?.brand;
                 let rate = rowState[rowKey]?.rate;

@@ -3858,8 +3858,8 @@ const boqItems = useMemo(() => {
       };
 
     return (
-  <div className="step5-table-responsive" style={{ maxHeight: 420, overflow: 'auto', position: 'relative' }}>
-      <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em', minWidth: 900 }}>
+  <div className="step5-table-responsive" style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'visible', position: 'relative' }}>
+    <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em', width: '100%' }}>
             <thead style={{ background: '#eaf4fb', position: 'sticky', top: 0, zIndex: 2 }}>
               <tr style={{ position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2 }}>
                 {/* Show Floor column if grouping by Category or Material */}
