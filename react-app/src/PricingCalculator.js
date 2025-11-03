@@ -758,7 +758,7 @@ useEffect(() => {
 
 //Step 5: Load Labour Work Data from JSON
 useEffect(() => {
-  fetch(process.env.PUBLIC_URL + "/LabourWork.json")
+  fetch(process.env.PUBLIC_URL + "/LabourWork.Json")
     .then((res) => res.json())
     .then((data) => setLabourWorkData(data));
 }, []);
