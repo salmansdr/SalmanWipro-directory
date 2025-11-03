@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { evaluate } from 'mathjs';
 
 // Utility to evaluate formulas with context
@@ -30,24 +30,12 @@ function groupFinishingMaterialData(json) {
 
 
 
-const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
-  const [data, setData] = useState(propData || null);
+const FinishingMaterialGrid = ({ summaryContext, data, onDataChange }) => {
   const [baseQtys, setBaseQtys] = useState({});
   const [wastages, setWastages] = useState({});
   // Removed rates and setRates as Rate/Unit and Cost columns are not used
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-
-  useEffect(() => {
-    if (propData) {
-      setData(propData);
-      return;
-    }
-    fetch(process.env.PUBLIC_URL + '/FinsishingMaterialCalculation.json')
-      .then(res => res.json())
-      .then(json => setData(json))
-      .catch(() => setData(null));
-  }, [propData]);
 
   if (!data) return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading finishing material data...</div>;
 
@@ -142,6 +130,29 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                 const wastage = wastages[key] !== undefined ? parseFloat(wastages[key]) : (item.wastage_percent || 0);
                 const totalQty = baseQty * (1 + (wastage || 0) / 100);
                 // Removed rate and cost as Rate/Unit and Cost columns are not used
+                // Handler to update parent data directly
+                const handleBaseQtyChange = (e) => {
+                  const value = e.target.value;
+                  setBaseQtys(prev => ({ ...prev, [key]: value }));
+                  if (onDataChange) {
+                    const newData = { ...data };
+                    newData[category] = newData[category].map(mat =>
+                      mat.material === item.material ? { ...mat, quantity_formula: value } : mat
+                    );
+                    onDataChange(newData);
+                  }
+                };
+                const handleWastageChange = (e) => {
+                  const value = e.target.value;
+                  setWastages(prev => ({ ...prev, [key]: value }));
+                  if (onDataChange) {
+                    const newData = { ...data };
+                    newData[category] = newData[category].map(mat =>
+                      mat.material === item.material ? { ...mat, wastage_percent: value } : mat
+                    );
+                    onDataChange(newData);
+                  }
+                };
                 return (
                   <tr key={item.material}>
                     <td style={{ border: '1px solid #d0d7e1', padding: '7px 6px' }}>{category}</td>
@@ -154,7 +165,7 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                         min="0"
                         step="0.01"
                         style={{ width: 80, textAlign: 'right', border: '1px solid #ccc', borderRadius: 4, padding: '2px 6px', fontSize: '0.95em' }}
-                        onChange={e => setBaseQtys(prev => ({ ...prev, [key]: e.target.value }))}
+                        onChange={handleBaseQtyChange}
                       />
                     </td>
                     <td style={{ textAlign: 'right', border: '1px solid #d0d7e1', padding: '7px 6px' }}>
@@ -164,7 +175,7 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                         min="0"
                         step="0.01"
                         style={{ width: 60, textAlign: 'right', border: '1px solid #ccc', borderRadius: 4, padding: '2px 6px', fontSize: '0.95em' }}
-                        onChange={e => setWastages(prev => ({ ...prev, [key]: e.target.value }))}
+                        onChange={handleWastageChange}
                       />
                     </td>
                     <td style={{ textAlign: 'right',  border: '1px solid #d0d7e1', padding: '7px 6px' }}>{totalQty ? totalQty.toFixed(0).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>

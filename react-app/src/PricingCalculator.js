@@ -9,7 +9,7 @@ import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
 
 import FinishingMaterialGrid from './FinishingMaterialGrid';
-
+import BOQConsolidatedGrid from './BOQConsolidatedGrid';
 // Room columns for grid (make available globally)
 export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "Store"];
 // Default grid rows (make available globally)
@@ -270,7 +270,7 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
   const [rateMap, ] = useState({});
 
   // Step 5: Track current volume unit (cuft or cumt)
-  const [volumeUnit, setVolumeUnit] = useState('cuft'); // 'cuft' or 'cumt'
+  const [volumeUnit] = useState('cuft'); // 'cuft' or 'cumt'
 
 
   const [bcFloor, setBCFloor] = useState('Foundation'); // Dropdown: Foundation, Ground, Others
@@ -333,6 +333,18 @@ const filteredMaterialRows = useMemo(() => {
     });
   };
 
+  // Memoize defaultBHKs to stabilize reference
+  const defaultBHKs = React.useMemo(() => [
+    { type: '', units: 1, area: '', rooms: '' },
+    { type: '', units: 1, area: '', rooms: '' },
+    { type: '', units: 1, area: '', rooms: '' }
+  ], []);
+
+  // Helper to get BHK config for a floor
+  const getFloorRows = React.useCallback(
+    (floorIdx) => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs),
+    [floorBHKConfigs, bhkRows, defaultBHKs]
+  );
   function handleSaveBHKConfig() {
     // Get current timestamp for modified date
     const currentDate = new Date().toLocaleDateString('en-IN');
@@ -360,6 +372,7 @@ const filteredMaterialRows = useMemo(() => {
         floors: Number(floors),
         liftIncluded: lift
       },
+      
       
       // Floor configuration with embedded room details
       floorConfiguration: Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
@@ -632,7 +645,7 @@ const filteredMaterialRows = useMemo(() => {
   //const location = useLocation();
   
   
-
+ 
 
 
   // Populate form data when in edit/view mode, or set auto-generated ref for new mode
@@ -772,70 +785,7 @@ const activityMap = React.useMemo(() => {
   });
 }, [labourWorkData]);
 
-// Get total quantity for a category, by unit ("cuft" or "sqft")
-const getTotalVolume = (key, unit = 'cuft') => {
-  const flatComponents = allFloorsComponents.flat();
-  const Barea = (Number(width) * Number(depth) * (buildupPercent / 100));
 
-  if (!flatComponents.length) return 0;
-  if (key.toLowerCase() === 'electrical work' || key.toLowerCase() === 'plumbing') {
-    // Always return Barea (built-up area) for Electrical Work and Plumbing, regardless of unit
-    return Barea;
-  }
-
-  // Special handling for Flooring and Painting from 1st floor onwards (skip Foundation and Ground Floor)
-  if (key.toLowerCase() === 'flooring') {
-    // Use Slabvolume from 1st floor onwards
-    return flatComponents
-      .filter((comp, idx) =>
-        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
-        (comp.component?.toLowerCase() === 'slab_area' || comp.Category?.toLowerCase() === 'slabvolume')
-      )
-      .reduce((sum, comp) => {
-        if (unit === 'sqft') {
-          return sum + (Number(comp.area) || Number(comp.Area) || 0);
-        } else {
-          return sum + (Number(comp.volume_cuft) || 0);
-        }
-      }, 0);
-  }
-  if (key.toLowerCase() === 'painting') {
-    // Use Wall and Ceiling Plaster area or volume from 1st floor onwards
-    return flatComponents
-      .filter((comp, idx) =>
-        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
-        (
-          comp.component?.toLowerCase().includes('wall') ||
-          comp.Category?.toLowerCase().includes('wall') ||
-          comp.component?.toLowerCase().includes('ceiling plaster') ||
-          comp.Category?.toLowerCase().includes('ceiling plaster')
-        )
-      )
-      .reduce((sum, comp) => {
-        if (unit === 'sqft') {
-          return sum + (Number(comp.area) || Number(comp.Area) || 0);
-        } else {
-          return sum + (Number(comp.volume_cuft) || 0);
-        }
-      }, 0);
-  }
-  // Default logic
-  return flatComponents
-    .filter((comp) =>
-      typeof comp.Category === 'string' &&
-      typeof key === 'string' &&
-      comp.Category.toLowerCase() === key.toLowerCase()
-    )
-    .reduce((sum, comp) => {
-      if (unit === 'sqft') {
-        // Use area if present, else fallback to 0
-        return sum + (Number(comp.area) || Number(comp.Area) || 0);
-      } else {
-        // Default: use volume_cuft
-        return sum + (Number(comp.volume_cuft) || 0);
-      }
-    }, 0);
-};
 
 // --- Update form fields when floor changes ---
 useEffect(() => {
@@ -1204,18 +1154,7 @@ useEffect(() => {
   //const plotArea = (width && depth) ? (Number(width) * Number(depth)) : '';
   //let rectangleVisualization = null;
 
-  // Memoize defaultBHKs to stabilize reference
-  const defaultBHKs = React.useMemo(() => [
-    { type: '', units: 1, area: '', rooms: '' },
-    { type: '', units: 1, area: '', rooms: '' },
-    { type: '', units: 1, area: '', rooms: '' }
-  ], []);
-
-  // Helper to get BHK config for a floor
-  const getFloorRows = React.useCallback(
-    (floorIdx) => floorBHKConfigs[floorIdx] || (floorIdx === 0 ? bhkRows : defaultBHKs),
-    [floorBHKConfigs, bhkRows, defaultBHKs]
-  );
+  
 
   // Handler to update BHK config for a floor
   function handleFloorCellChange(floorIdx, idx, field, value) {
@@ -1697,7 +1636,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
   return 'Unknown';
     };
 
-    // Calculate all floors' components ONCE and memoize
+   // Calculate all floors' components ONCE and memoize
     const allFloorsComponents = useMemo(() => {
   if (!areaCalculationLogic?.calculation_components) return [];
   const nAboveGround = Number(floors) || 1;
@@ -2260,6 +2199,70 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
       // allFloorsComponents[floorIdx] gives the components for that floor
   }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows, beamColumnConfig]);
 
+  // Get total quantity for a category, by unit ("cuft" or "sqft")
+const getTotalVolume = React.useCallback((key, unit = 'cuft') => {
+  const flatComponents = allFloorsComponents.flat();
+  const Barea = (Number(width) * Number(depth) * (buildupPercent / 100));
+
+  if (!flatComponents.length) return 0;
+  if (key.toLowerCase() === 'electrical work' || key.toLowerCase() === 'plumbing') {
+    // Always return Barea (built-up area) for Electrical Work and Plumbing, regardless of unit
+    return Barea;
+  }
+
+  // Special handling for Flooring and Painting from 1st floor onwards (skip Foundation and Ground Floor)
+  if (key.toLowerCase() === 'flooring') {
+    // Use Slabvolume from 1st floor onwards
+    return flatComponents
+      .filter((comp, idx) =>
+        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
+        (comp.component?.toLowerCase() === 'slab_area' || comp.Category?.toLowerCase() === 'slabvolume')
+      )
+      .reduce((sum, comp) => {
+        if (unit === 'sqft') {
+          return sum + (Number(comp.area) || Number(comp.Area) || 0);
+        } else {
+          return sum + (Number(comp.volume_cuft) || 0);
+        }
+      }, 0);
+  }
+  if (key.toLowerCase() === 'painting') {
+    // Use Wall and Ceiling Plaster area or volume from 1st floor onwards
+    return flatComponents
+      .filter((comp, idx) =>
+        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
+        (
+          comp.component?.toLowerCase().includes('wall') ||
+          comp.Category?.toLowerCase().includes('wall') ||
+          comp.component?.toLowerCase().includes('ceiling plaster') ||
+          comp.Category?.toLowerCase().includes('ceiling plaster')
+        )
+      )
+      .reduce((sum, comp) => {
+        if (unit === 'sqft') {
+          return sum + (Number(comp.area) || Number(comp.Area) || 0);
+        } else {
+          return sum + (Number(comp.volume_cuft) || 0);
+        }
+      }, 0);
+  }
+  // Default logic
+  return flatComponents
+    .filter((comp) =>
+      typeof comp.Category === 'string' &&
+      typeof key === 'string' &&
+      comp.Category.toLowerCase() === key.toLowerCase()
+    )
+    .reduce((sum, comp) => {
+      if (unit === 'sqft') {
+        // Use area if present, else fallback to 0
+        return sum + (Number(comp.area) || Number(comp.Area) || 0);
+      } else {
+        // Default: use volume_cuft
+        return sum + (Number(comp.volume_cuft) || 0);
+      }
+    }, 0);
+}, [allFloorsComponents, width, depth, buildupPercent]);
   // Debug: Log allFloorsComponents after calculation
   //console.log('allFloorsComponents:', allFloorsComponents);
 
@@ -2306,6 +2309,51 @@ useEffect(() => {
 
 // 1. Load MaterialRate.json at runtime
 const [materialRateConfig, setMaterialRateConfig] = useState(null);
+
+
+// Helper: Plural to singular (basic, extend as needed)
+function pluralToSingular(unit) {
+  if (!unit) return unit;
+  const irregulars = {
+    feet: 'foot',
+    men: 'man',
+    children: 'child',
+    geese: 'goose',
+    mice: 'mouse',
+    teeth: 'tooth',
+    // Add more irregulars as needed
+  };
+  const lower = unit.trim().toLowerCase();
+  if (irregulars[lower]) return irregulars[lower];
+  if (lower.endsWith('ies')) return lower.slice(0, -3) + 'y';
+  if (lower.endsWith('ves')) return lower.slice(0, -3) + 'f';
+  if (lower.endsWith('es') && !lower.endsWith('ses') && !lower.endsWith('xes')) return lower.slice(0, -2);
+  if (lower.endsWith('s') && lower.length > 3) return lower.slice(0, -1);
+  return lower;
+}
+
+// Build a map: { 'cement__bag': [ { brand_name, rate_per_unit }, ... ], ... }
+const brandRateMap = useMemo(() => {
+  if (!materialRateConfig) return {};
+  const map = {};
+  // Loop all top-level arrays in MaterialRate.json (e.g., Core Materials, Painting, etc.)
+  Object.values(materialRateConfig).forEach(section => {
+    if (Array.isArray(section)) {
+      section.forEach(item => {
+        if (item.material && item.unit && Array.isArray(item.brands)) {
+          const materialNorm = `${item.material}`.trim().toLowerCase();
+          const unitNorm = pluralToSingular(`${item.unit}`.trim().toLowerCase());
+          const key = materialNorm + '__' + unitNorm;
+          map[key] = {
+            brands: item.brands,
+            default_brand: item.default_brand || null
+          };
+        }
+      });
+    }
+  });
+  return map;
+}, [materialRateConfig]);
 
 
 
@@ -2417,19 +2465,100 @@ const handleWastageChange = (key, value) => {
 };
 
 // Update rate and totalValue directly in materialRows for DB persistence
-const handleRateChange = (key, value) => {
-  setMaterialRows(prevRows =>
-    prevRows.map(row => {
-      const rowKey = `${row.category}_${row.material}_${row.floor || ''}`;
-      if (rowKey === key) {
-  const rateNum = Number(value);
-  const totalValue = rateNum ? row.totalQty * rateNum : '';
-  return { ...row, rate: rateNum, totalValue };
-      }
-      return row;
-    })
-  );
-};
+
+
+
+// 1. Prepare the consolidated BOQ items array
+const boqItems = useMemo(() => {
+  // Group all civil material items by material name and unit, summing totalQty
+  const civilSums = {};
+  (materialRows || []).forEach(row => {
+    if (!row.material || !row.unit) return;
+  // Normalize for robust brand/rate lookup, including plural-to-singular for unit
+  const materialNorm = `${row.material}`.trim().toLowerCase();
+  const unitNorm = pluralToSingular(`${row.unit}`.trim().toLowerCase());
+  const key = `${materialNorm}__${unitNorm}`;
+    if (!civilSums[key]) {
+      civilSums[key] = {
+        material: row.material, // original for display
+        materialNorm,
+        unit: row.unit, // original for display
+        unitNorm,
+        totalQty: 0,
+        category: 'Civil Works'
+      };
+    }
+    civilSums[key].totalQty += Number(row.totalQty) || 0;
+  });
+  const civilItems = Object.values(civilSums);
+
+  // Finishing Material Items (unchanged, but you can also sum if needed)
+  // --- Compute totalQty for each finishing item using formula evaluation and wastage ---
+  // Import or define evaluateFinishingFormula and summaryContext as in FinishingMaterialGrid
+  function evaluateFinishingFormula(formula, context, item = {}) {
+    try {
+      const expr = formula.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
+        if (Object.prototype.hasOwnProperty.call(context, match)) {
+          return context[match];
+        }
+        if (Object.prototype.hasOwnProperty.call(item, match)) {
+          return item[match];
+        }
+        return 0;
+      });
+      return evaluate(expr);
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Build summaryContext as in FinishingMaterialGrid usage
+  const summaryContext = {
+    built_up_area_sqft: Number(width) * Number(depth) * (buildupPercent / 100),
+    perimeter_ft: (Number(width) && Number(depth)) ? 2 * (Number(width) + Number(depth)) : 0,
+    tile_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0,
+    painting_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
+    room_count: typeof totalRooms !== 'undefined' ? totalRooms : 0,
+    toilet_count: typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0,
+    kitchen_count: typeof totalKitchens !== 'undefined' ? totalKitchens : 0,
+    wet_points_count: (typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0) + (typeof totalKitchens !== 'undefined' ? totalKitchens : 0),
+    plastering_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
+    open_area_sqft: 0,
+    landscape_area_sqft: 0,
+    window_frame_area_sqft: 0,
+    door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+    Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
+    window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
+    Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
+    floor_count: Number(floors)
+  };
+
+  const finishingItems = [];
+  if (finishingMaterialData) {
+    Object.entries(finishingMaterialData).forEach(([category, items]) => {
+      items.forEach(item => {
+        // Compute baseQty using formula
+        const baseQty = item.quantity_formula ? evaluateFinishingFormula(item.quantity_formula, summaryContext, item) : 0;
+        const wastage = item.wastage_percent || 0;
+        const totalQty = baseQty * (1 + wastage / 100);
+        // Add normalized fields for brand/rate lookup
+        const materialNorm = `${item.material}`.trim().toLowerCase();
+        const unitNorm = pluralToSingular(`${item.unit}`.trim().toLowerCase());
+        finishingItems.push({
+          material: item.material,
+          materialNorm,
+          totalQty,
+          unit: item.unit,
+          unitNorm,
+          category
+        });
+      });
+    });
+  }
+
+  return [...civilItems, ...finishingItems];
+}, [materialRows, finishingMaterialData, buildupPercent, depth, floors, getTotalVolume, totalBathrooms, totalDoors, totalKitchens, totalRooms, totalWindows, width]);
+
 
 
   // Move all rendering code inside the PricingCalculator function
@@ -3687,31 +3816,6 @@ const handleRateChange = (key, value) => {
           <option value="Material">Material</option>
         </select>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-  <span style={{ fontWeight: 400, whiteSpace: 'nowrap' }}>Unit:</span>
-  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 400 }}>
-          <input
-            type="radio"
-            name="volumeUnit"
-            value="cuft"
-            checked={volumeUnit === 'cuft'}
-            onChange={() => setVolumeUnit('cuft')}
-            style={{ accentColor: '#1976d2', marginRight: 4 }}
-          />
-          Cuft
-        </label>
-  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 400 }}>
-          <input
-            type="radio"
-            name="volumeUnit"
-            value="cumt"
-            checked={volumeUnit === 'cumt'}
-            onChange={() => setVolumeUnit('cumt')}
-            style={{ accentColor: '#1976d2', marginRight: 4 }}
-          />
-          Cumt
-        </label>
-      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
   <label htmlFor="step5TextFilter" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
         <input
@@ -3753,11 +3857,11 @@ const handleRateChange = (key, value) => {
         return groupKey;
       };
 
-      return (
-  <div className="step5-table-responsive">
-          <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em' }}>
-            <thead style={{ background: '#eaf4fb' }}>
-              <tr>
+    return (
+  <div className="step5-table-responsive" style={{ maxHeight: 420, overflow: 'auto', position: 'relative' }}>
+      <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em', minWidth: 900 }}>
+            <thead style={{ background: '#eaf4fb', position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr style={{ position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2 }}>
                 {/* Show Floor column if grouping by Category or Material */}
                 {groupBy !== 'Floor' && (
                   <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Floor</th>
@@ -3840,8 +3944,7 @@ const handleRateChange = (key, value) => {
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Wastage<br/>(%)</th>
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Qty</th>
                 <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Unit</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Rate</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Value (₹)</th>
+                {/* Removed Rate and Total Value columns */}
               </tr>
             </thead>
             <tbody>
@@ -3881,46 +3984,17 @@ const handleRateChange = (key, value) => {
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalQty.toFixed(0)}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{row.unit}</td>
-                        <td style={{ textAlign: 'right', minWidth: 56, maxWidth: 72, width: 68 }}>
-                          <input
-                            type="number"
-                            value={row.rate ?? ''}
-                            onChange={e => handleRateChange(key, e.target.value)}
-                            style={{ width: 60, minWidth: 48, maxWidth: 72, textAlign: 'right', padding: '2px 4px' }}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalValue ? row.totalValue.toFixed(0) : ''}</td>
+                        {/* Removed Rate and Total Value columns */}
                       </tr>
                     );
                   })}
                   {/* Subtotal row for this group */}
-                  <tr style={{ background: '#f9f9f9', fontWeight: 'bold' }}>
-                    <td colSpan={groupBy !== 'Floor' ? 9 : 8} style={{ textAlign: 'right' }}>Subtotal</td>
-                    <td style={{ textAlign: 'right' }}>
-                      ₹{rows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue.toFixed(0)) : 0), 0).toLocaleString('en-IN')}
-                    </td>
-                  </tr>
+                  {/* Removed Subtotal Total Value cell */}
                 </React.Fragment>
               ))}
             </tbody>
             {/* Grand Total row at the bottom */}
-            <tfoot>
-              <tr style={{ background: '#e3f2fd', fontWeight: 800, borderTop: '3px solid #1976d2', color: '#0d47a1' }}>
-                {/* Grand Total label with colspan, value right-aligned */}
-                <td colSpan={groupBy !== 'Floor' ?  (10 - 1) : (9 - 1)} style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05em', borderTop: '3px solid #1976d2' }}>
-                  Grand Total
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05em', borderTop: '3px solid #1976d2' }}>
-                  {
-                    (() => {
-                      const visibleRows = filteredMaterialRows.filter(row => !materialFilter || row.material === materialFilter);
-                      const grandTotal = visibleRows.reduce((sum, row) => sum + (row.totalValue ? Number(row.totalValue) : 0), 0);
-                      return `₹${Math.round(grandTotal.toFixed()).toLocaleString('en-IN')}`;
-                    })()
-                  }
-                </td>
-              </tr>
-            </tfoot>
+            {/* Removed Grand Total row for Total Value */}
           </table>
         </div>
       );
@@ -4164,12 +4238,22 @@ const handleRateChange = (key, value) => {
       floor_count: Number(floors)
     }}
     data={finishingMaterialData}
+    onDataChange={setFinishingMaterialData}
   />
 
 </div>
 
 
 )}
+
+{step5Tab === 'Cost Summary' && (
+  <div>
+    
+  <BOQConsolidatedGrid data={boqItems} brandRateMap={brandRateMap} />
+  </div>
+)}
+
+
   </div>
 
 

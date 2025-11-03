@@ -107,7 +107,7 @@
             },
             "Bricks": {
               "mt": 14.16,
-              "unit": "pc",
+              "unit": "pcs",
               "formula": "volume_cuft × 14.16",
               "qty": 14.16
             }
@@ -182,7 +182,7 @@
             },
             "Bricks": {
               "mt": 14.16,
-              "unit": "pc",
+              "unit": "pcs",
               "formula": "volume_cuft × 14.16",
               "qty": 14.16
             }
