@@ -79,7 +79,10 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
   const categoryOptions = Object.keys(grouped);
 
   return (
-    <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0, maxHeight: 600, overflowY: 'auto' }}>
+    <div>
+      {/* DEBUG: Show number of data rows for troubleshooting */}
+      <div style={{ color: '#d81b60', fontWeight: 600, marginBottom: 8, fontSize: 16 }}>DEBUG: Data rows: {Array.isArray(data) ? data.length : 0}</div>
+      <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0, maxHeight: 600, overflowY: 'auto' }}>
       {/* Standardized filter textbox */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px 0' }}>
         <label htmlFor="boqFilterText" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
@@ -260,6 +263,7 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   );
 };
