@@ -125,12 +125,13 @@
   ],
   "Flooring": [
     {
-      "material": "Vitrified Tiles",
-      "unit": "sqft",
-      "quantity_formula": "built_up_area_sqft * 1.05",
-      "wastage_percent": 5,
-      "description": "Includes 5% wastage"
-    },
+  "material": "Vitrified Tiles",
+  "unit": "box",
+  "coverage_per_box_sqft": 16,
+  "quantity_formula": "(built_up_area_sqft * 1.05) / coverage_per_box_sqft",
+  "wastage_percent": 5,
+  "description": "Includes 5% wastage; each box covers approx. 16 sqft"
+},
     {
       "material": "Tile Adhesive",
       "unit": "kg",
@@ -191,26 +192,13 @@
     }
   ],
   "External Works": [
-    {
-      "material": "Paver Blocks",
-      "unit": "sqft",
-      "quantity_formula": "open_area_sqft * 1.05",
-      "wastage_percent": 5,
-      "description": "Includes 5% wastage"
-    },
+    
     {
       "material": "MS Gate",
-      "unit": "sqft",
+      "unit": "pcs",
       "quantity_formula": "as_per_drawing",
       "wastage_percent": 0,
       "description": "Typically 40–60 sqft"
-    },
-    {
-      "material": "Landscaping Soil",
-      "unit": "cft",
-      "quantity_formula": "landscape_area_sqft * 0.5",
-      "wastage_percent": 0,
-      "description": "Avg. 6 inch soil depth"
     }
   ]
 }

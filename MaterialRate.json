@@ -1,25 +1,373 @@
 {
   "location": "Kolkata",
-  "rate_structure": {
-    "Cement": {
+  
+  "Core Materials": [
+    {
+      "material": "Cement",
       "unit": "bag",
-      "rate": 365
+      "unit_size_kg": 50,
+      "default_brand": "UltraTech",
+      "brands": [
+        { "brand_name": "UltraTech", "rate_per_unit": 370 },
+        { "brand_name": "ACC", "rate_per_unit": 360 },
+        { "brand_name": "Dalmia", "rate_per_unit": 365 }
+      ]
     },
-    "Steel": {
+    {
+      "material": "Sand",
+      "unit": "cft",
+      "default_brand": "River Sand",
+      "brands": [
+        { "brand_name": "River Sand", "rate_per_unit": 45 },
+        { "brand_name": "M-Sand (Zone II)", "rate_per_unit": 42 },
+        { "brand_name": "Washed Sand", "rate_per_unit": 48 }
+      ]
+    },
+    {
+      "material": "Steel",
       "unit": "kg",
-      "rate": 60
+      "default_brand": "TATA Tiscon",
+      "brands": [
+        { "brand_name": "TATA Tiscon", "rate_per_unit": 68 },
+        { "brand_name": "JSW Neosteel", "rate_per_unit": 66 },
+        { "brand_name": "SAIL", "rate_per_unit": 65 }
+      ]
     },
-    "Sand": {
+    {
+      "material": "Bricks",
+      "unit": "pcs",
+      "default_brand": "Local",
+      "brands": [
+        { "brand_name": "Local", "rate_per_unit": 10 }
+      ]
+    },
+    {
+      "material": "Aggregate",
       "unit": "cft",
-      "rate": 23
-    },
-    "Aggregate": {
-      "unit": "cft",
-      "rate": 67
-    },
-    "Bricks": {
-      "unit": "piece",
-      "rate": 9
+      "default_brand": "20mm Blue Metal",
+      "brands": [
+        { "brand_name": "20mm Blue Metal", "rate_per_unit": 42 },
+        { "brand_name": "12mm Crushed Stone", "rate_per_unit": 40 },
+        { "brand_name": "40mm Jelly", "rate_per_unit": 38 }
+      ]
     }
+  ],
+  "Painting": [
+    {
+      "material": "Primer",
+      "unit": "litre",
+      "default_brand": "Asian Paints Decoprime",
+      "brands": [
+        { "brand_name": "Asian Paints Decoprime", "rate_per_unit": 3969 },
+        { "brand_name": "Dulux Promise", "rate_per_unit": 190 },
+        { "brand_name": "Samsolite Dream Lite", "rate_per_unit": 3299 }
+      ]
+    },
+    {
+      "material": "Putty",
+      "unit": "kg",
+      "default_brand": "Birla White",
+      "brands": [
+        { "brand_name": "Birla White", "rate_per_unit": 25 },
+        { "brand_name": "JK Wall Putty", "rate_per_unit": 28 },
+        { "brand_name": "Asian Paints TruCare", "rate_per_unit": 30 }
+      ]
+    },
+    {
+      "material": "Emulsion Paint",
+      "unit": "litre",
+      "default_brand": "Dulux SuperClean",
+      "brands": [
+        { "brand_name": "Dulux SuperClean", "rate_per_unit": 520 },
+        { "brand_name": "Indigo Matt Finish", "rate_per_unit": 750 },
+        { "brand_name": "Asian Paints Ace", "rate_per_unit": 498 }
+      ]
+    }
+  ],
+  "Flooring": [
+    {
+      "material": "Vitrified Tiles",
+      "unit": "box",
+      "default_brand": "Kajaria",
+      "brands": [
+       { "brand_name": "Kajaria", "rate_per_unit": 1040 },
+    { "brand_name": "Somany", "rate_per_unit": 992 },
+    { "brand_name": "Johnson", "rate_per_unit": 1088 }
+      ]
+    },
+    {
+      "material": "Tile Adhesive",
+      "unit": "kg",
+      "default_brand": "Roff",
+      "brands": [
+        { "brand_name": "Roff", "rate_per_unit": 22 },
+        { "brand_name": "MYK Laticrete", "rate_per_unit": 24 },
+        { "brand_name": "Weber", "rate_per_unit": 26 }
+      ]
+    },
+    {
+      "material": "Grout",
+      "unit": "kg",
+      "default_brand": "Roff Rainbow Tile Grout",
+      "brands": [
+        { "brand_name": "Roff Rainbow Tile Grout", "rate_per_unit": 18 },
+        { "brand_name": "MYK Laticrete", "rate_per_unit": 20 },
+        { "brand_name": "Webercolor", "rate_per_unit": 22 }
+      ]
+    }
+  ],
+  "Plumbing": [
+    {
+      "material": "CPVC/UPVC Pipes",
+      "unit": "ft",
+      "default_brand": "Ashirvad",
+      "brands": [
+        { "brand_name": "Ashirvad", "rate_per_unit": 18 },
+        { "brand_name": "Supreme", "rate_per_unit": 20 },
+        { "brand_name": "Finolex", "rate_per_unit": 19 }
+      ]
+    },
+    {
+      "material": "Fittings (elbows, tees)",
+      "unit": "pcs",
+      "default_brand": "Ashirvad",
+      "brands": [
+        { "brand_name": "Ashirvad", "rate_per_unit": 22 },
+        { "brand_name": "Supreme", "rate_per_unit": 24 },
+        { "brand_name": "Finolex", "rate_per_unit": 23 }
+      ]
+    },
+    {
+      "material": "WC (Western Commode)",
+      "unit": "pcs",
+      "default_brand": "Cera",
+      "brands": [
+        { "brand_name": "Cera", "rate_per_unit": 2800 },
+        { "brand_name": "Hindware", "rate_per_unit": 2900 },
+        { "brand_name": "Parryware", "rate_per_unit": 2750 }
+      ]
+    },
+    {
+      "material": "Wash Basin",
+      "unit": "pcs",
+      "default_brand": "Cera",
+      "brands": [
+        { "brand_name": "Cera", "rate_per_unit": 950 },
+        { "brand_name": "Hindware", "rate_per_unit": 980 },
+        { "brand_name": "Parryware", "rate_per_unit": 920 }
+      ]
+    },
+    {
+      "material": "Shower Mixer",
+      "unit": "pcs",
+      "default_brand": "Jaquar",
+      "brands": [
+        { "brand_name": "Jaquar", "rate_per_unit": 1450 },
+        { "brand_name": "Cera", "rate_per_unit": 1400 },
+        { "brand_name": "Hindware", "rate_per_unit": 1380 }
+      ]
+    },
+    {
+      "material": "Health Faucet",
+      "unit": "pcs",
+      "default_brand": "Jaquar",
+      "brands": [
+        { "brand_name": "Jaquar", "rate_per_unit": 350 },
+        { "brand_name": "Cera", "rate_per_unit": 330 },
+        { "brand_name": "Hindware", "rate_per_unit": 340 }
+      ]
+    },
+    {
+      "material": "Kitchen Sink",
+      "unit": "pcs",
+      "default_brand": "Nirali",
+      "brands": [
+        { "brand_name": "Nirali", "rate_per_unit": 1650 },
+        { "brand_name": "Carysil", "rate_per_unit": 1750 },
+        { "brand_name": "Hindware", "rate_per_unit": 1600 }
+      ]
+    },
+    {
+      "material": "Bottle Trap",
+      "unit": "pcs",
+      "default_brand": "Jaquar",
+      "brands": [
+        { "brand_name": "Jaquar", "rate_per_unit": 180 },
+        { "brand_name": "Cera", "rate_per_unit": 170 },
+        { "brand_name": "Hindware", "rate_per_unit": 160 }
+      ]
+    },
+    {
+      "material": "Overhead Tank",
+      "unit": "pcs",
+      "default_brand": "Sintex",
+      "brands": [
+        { "brand_name": "Sintex", "rate_per_unit": 4800 },
+        { "brand_name": "Plasto", "rate_per_unit": 4600 },
+        { "brand_name": "Supreme", "rate_per_unit": 4700 }
+      ]
+    },
+    {
+      "material": "Pump (Submersible or Jet)",
+      "unit": "pcs",
+      "default_brand": "Crompton",
+      "brands": [
+        { "brand_name": "Crompton", "rate_per_unit": 6500 },
+        { "brand_name": "Kirloskar", "rate_per_unit": 6700 },
+        { "brand_name": "Texmo", "rate_per_unit": 6600 }
+      ]
+    }
+    ,
+    {
+    "material": "Gully Trap",
+    "unit": "pcs",
+    "default_brand": "Supreme",
+    "quantity_formula": "Gully_trap_count",
+    "wastage_percent": 0,
+    "description": "Used at junction of waste pipes and open drains",
+    "brands": [
+      { "brand_name": "Supreme", "rate_per_unit": 480 },
+      { "brand_name": "Finolex", "rate_per_unit": 460 },
+      { "brand_name": "Prince", "rate_per_unit": 470 }
+    ]
+  },
+  {
+    "material": "Inspection Chamber",
+    "unit": "pcs",
+    "default_brand": "Supreme",
+    "quantity_formula": "Inspection_chamber_count",
+    "wastage_percent": 0,
+    "description": "Used for access and maintenance of underground drainage",
+    "brands": [
+      { "brand_name": "Supreme", "rate_per_unit": 1850 },
+      { "brand_name": "Finolex", "rate_per_unit": 1800 },
+      { "brand_name": "Prince", "rate_per_unit": 1750 }
+    ]
   }
+
+  ]
+,
+  "Electrical": [
+  {
+    "material": "Wiring (Copper)",
+    "unit": "ft",
+    "default_brand": "Polycab",
+    "brands": [
+      { "brand_name": "Polycab", "rate_per_unit": 22 },
+      { "brand_name": "Finolex", "rate_per_unit": 21 },
+      { "brand_name": "RR Kabel", "rate_per_unit": 23 }
+    ]
+  },
+  {
+    "material": "Conduits (PVC)",
+    "unit": "ft",
+    "default_brand": "Precision",
+    "brands": [
+      { "brand_name": "Precision", "rate_per_unit": 8 },
+      { "brand_name": "AKG", "rate_per_unit": 9 },
+      { "brand_name": "BEC", "rate_per_unit": 7 }
+    ]
+  },
+  {
+    "material": "Switches & Sockets",
+    "unit": "pcs",
+    "default_brand": "Anchor",
+    "brands": [
+      { "brand_name": "Anchor", "rate_per_unit": 95 },
+      { "brand_name": "Legrand", "rate_per_unit": 110 },
+      { "brand_name": "Havells", "rate_per_unit": 105 }
+    ]
+  },
+  {
+    "material": "Distribution Boards",
+    "unit": "pcs",
+    "default_brand": "Hager",
+    "brands": [
+      { "brand_name": "Hager", "rate_per_unit": 1200 },
+      { "brand_name": "Legrand", "rate_per_unit": 1300 },
+      { "brand_name": "Schneider", "rate_per_unit": 1250 }
+    ]
+  },
+  {
+    "material": "Light Fixtures",
+    "unit": "pcs",
+    "default_brand": "Philips",
+    "brands": [
+      { "brand_name": "Philips", "rate_per_unit": 450 },
+      { "brand_name": "Syska", "rate_per_unit": 420 },
+      { "brand_name": "Havells", "rate_per_unit": 460 }
+    ]
+  }
+],
+"DOORS": [
+   {
+    "material": "Flush Doors",
+    "unit": "pcs",
+    "default_brand": "Greenply",
+    "quantity_formula": "Door_count",
+    "wastage_percent": 0,
+    "description": "1 door per room",
+    "brands": [
+      { "brand_name": "Greenply", "rate_per_unit": 1850 },
+      { "brand_name": "Century", "rate_per_unit": 1900 },
+      { "brand_name": "Kitply", "rate_per_unit": 1800 }
+    ]
+  },
+    {
+    "material": "Window",
+    "unit": "pcs",
+    "default_brand": "Fenesta",
+    "quantity_formula": "Window_count",
+    "wastage_percent": 0,
+    "description": "Standard window per room",
+    "brands": [
+      { "brand_name": "Fenesta", "rate_per_unit": 1450 },
+      { "brand_name": "Domal", "rate_per_unit": 1500 },
+      { "brand_name": "Aluplast", "rate_per_unit": 1480 }
+    ]
+  }
+  ]
+,
+"External Works": [
+  {
+    "material": "Paver Blocks",
+    "unit": "sqft",
+    "default_brand": "Ultra Pavers",
+    "quantity_formula": "paved_area_sqft * 1.07",
+    "wastage_percent": 7,
+    "description": "Used for driveways, walkways, and outdoor flooring; includes 7% wastage",
+    "brands": [
+      { "brand_name": "Ultra Pavers", "rate_per_unit": 55 },
+      { "brand_name": "Wonder Pavers", "rate_per_unit": 58 },
+      { "brand_name": "Durapave", "rate_per_unit": 60 }
+    ]
+  },
+  {
+    "material": "MS Gate",
+    "unit": "sqft",
+    "default_brand": "Custom Fabrication",
+    "quantity_formula": "gate_area_sqft",
+    "wastage_percent": 0,
+    "description": "Fabricated mild steel gate; rate includes material and welding",
+    "brands": [
+      { "brand_name": "Custom Fabrication", "rate_per_unit": 280 },
+      { "brand_name": "Local Workshop", "rate_per_unit": 300 },
+      { "brand_name": "Tata Structura", "rate_per_unit": 320 }
+    ]
+  },
+  {
+    "material": "Landscaping Soil",
+    "unit": "cft",
+    "default_brand": "Nursery Blend",
+    "quantity_formula": "landscape_area_sqft * soil_depth_in_ft",
+    "wastage_percent": 5,
+    "description": "Topsoil for garden beds and turf; includes 5% wastage",
+    "brands": [
+      { "brand_name": "Nursery Blend", "rate_per_unit": 18 },
+      { "brand_name": "Garden Gold", "rate_per_unit": 20 },
+      { "brand_name": "AgroMix", "rate_per_unit": 22 }
+    ]
+  }
+]
+
 }
