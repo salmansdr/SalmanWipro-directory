@@ -147,27 +147,31 @@
     }
   ],
   "Painting": [
-    {
-      "material": "Primer",
-      "unit": "sqft",
-      "quantity_formula": "plastering_area_sqft * 1.0",
-      "wastage_percent": 5,
-      "description": "Single coat coverage"
-    },
-    {
-      "material": "Putty",
-      "unit": "sqft",
-      "quantity_formula": "plastering_area_sqft * 1.0",
-      "wastage_percent": 5,
-      "description": "Base coat for smooth finish"
-    },
-    {
-      "material": "Emulsion Paint",
-      "unit": "sqft",
-      "quantity_formula": "plastering_area_sqft * 1.2",
-      "wastage_percent": 10,
-      "description": "Two coats + 10% wastage"
-    }
+  {
+    "material": "Primer",
+    "unit": "litre",
+    "quantity_formula": "painting_area_sqft / coverage_sqft_per_litre",
+    "wastage_percent": 5,
+    "coverage_sqft_per_litre": 150,
+    "description": "Single coat coverage; coverage rate assumed"
+  },
+  {
+    "material": "Putty",
+    "unit": "kg",
+    "quantity_formula": "painting_area_sqft / coverage_sqft_per_kg",
+    "wastage_percent": 5,
+    "coverage_sqft_per_kg": 100,
+    "description": "Base coat for smooth finish; dry putty assumed"
+  },
+  {
+    "material": "Emulsion Paint",
+    "unit": "litre",
+    "quantity_formula": "(painting_area_sqft) / coverage_sqft_per_litre",
+    "wastage_percent": 10,
+    "coverage_sqft_per_litre": 150,
+    "description": "Two coats; coverage rate assumed"
+  }
+
   ],
   "Doors": [
     {

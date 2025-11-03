@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { evaluate } from 'mathjs';
 
 // Utility to evaluate formulas with context
-function evaluateFinishingFormula(formula, context) {
+function evaluateFinishingFormula(formula, context, item = {}) {
   try {
     const expr = formula.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
       if (Object.prototype.hasOwnProperty.call(context, match)) {
         return context[match];
+      }
+      if (Object.prototype.hasOwnProperty.call(item, match)) {
+        return item[match];
       }
       return 0;
     });
@@ -31,7 +34,7 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
   const [data, setData] = useState(propData || null);
   const [baseQtys, setBaseQtys] = useState({});
   const [wastages, setWastages] = useState({});
-  const [rates, setRates] = useState({});
+  // Removed rates and setRates as Rate/Unit and Cost columns are not used
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
@@ -121,14 +124,7 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                 padding: '8px 6px', fontWeight: 600, color: '#1976d2', border: '1px solid #d0d7e1', fontSize: '0.98em',
                 position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2
               }}>Unit</th>
-              <th style={{
-                padding: '8px 6px', fontWeight: 600, color: '#1976d2', border: '1px solid #d0d7e1', fontSize: '0.98em',
-                position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2
-              }}>Rate/Unit</th>
-              <th style={{
-                padding: '8px 6px', fontWeight: 600, color: '#1976d2', border: '1px solid #d0d7e1', fontSize: '0.98em',
-                position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2
-              }}>Cost (₹)</th>
+              {/* Removed Rate/Unit and Cost columns */}
           </tr>
         </thead>
         <tbody>
@@ -141,12 +137,11 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                 </tr>
                 {items.map((item) => {
                 const key = `${category}-${item.material}`;
-                const defaultBaseQty = evaluateFinishingFormula(item.quantity_formula, summaryContext);
+                const defaultBaseQty = evaluateFinishingFormula(item.quantity_formula, summaryContext, item);
                 const baseQty = baseQtys[key] !== undefined ? parseFloat(baseQtys[key]) : defaultBaseQty;
                 const wastage = wastages[key] !== undefined ? parseFloat(wastages[key]) : (item.wastage_percent || 0);
                 const totalQty = baseQty * (1 + (wastage || 0) / 100);
-                const rate = rates[key] !== undefined ? parseFloat(rates[key]) : '';
-                const cost = totalQty && rate ? totalQty * rate : 0;
+                // Removed rate and cost as Rate/Unit and Cost columns are not used
                 return (
                   <tr key={item.material}>
                     <td style={{ border: '1px solid #d0d7e1', padding: '7px 6px' }}>{category}</td>
@@ -174,20 +169,7 @@ const FinishingMaterialGrid = ({ summaryContext, data: propData }) => {
                     </td>
                     <td style={{ textAlign: 'right',  border: '1px solid #d0d7e1', padding: '7px 6px' }}>{totalQty ? totalQty.toFixed(0).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</td>
                     <td style={{ border: '1px solid #d0d7e1', padding: '7px 6px' }}>{item.unit}</td>
-                    <td style={{ textAlign: 'right', border: '1px solid #d0d7e1', padding: '7px 6px' }}>
-                      <input
-                        type="number"
-                        value={rate}
-                        min="0"
-                        step="0.01"
-                        style={{ width: 80, textAlign: 'right', border: '1px solid #ccc', borderRadius: 4, padding: '2px 6px', fontSize: '0.95em' }}
-                        onChange={e => setRates(prev => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="Rate"
-                      />
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, border: '1px solid #d0d7e1', padding: '7px 6px', color: '#388e3c' }}>
-                      {cost ? `₹${cost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '-'}
-                    </td>
+                    {/* Removed Rate/Unit and Cost columns */}
                   </tr>
                 );
               })}

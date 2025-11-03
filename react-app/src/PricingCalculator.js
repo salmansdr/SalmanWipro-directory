@@ -800,11 +800,16 @@ const getTotalVolume = (key, unit = 'cuft') => {
       }, 0);
   }
   if (key.toLowerCase() === 'painting') {
-    // Use Wall area or volume from 1st floor onwards
+    // Use Wall and Ceiling Plaster area or volume from 1st floor onwards
     return flatComponents
       .filter((comp, idx) =>
         idx >= 2 && // skip Foundation (0) and Ground Floor (1)
-        (comp.component?.toLowerCase().includes('wall') || comp.Category?.toLowerCase().includes('wall'))
+        (
+          comp.component?.toLowerCase().includes('wall') ||
+          comp.Category?.toLowerCase().includes('wall') ||
+          comp.component?.toLowerCase().includes('ceiling plaster') ||
+          comp.Category?.toLowerCase().includes('ceiling plaster')
+        )
       )
       .reduce((sum, comp) => {
         if (unit === 'sqft') {
@@ -4155,7 +4160,8 @@ const handleRateChange = (key, value) => {
       door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
       Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
       window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-      Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0
+      Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
+      floor_count: Number(floors)
     }}
     data={finishingMaterialData}
   />
