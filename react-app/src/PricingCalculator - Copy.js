@@ -1,23 +1,15 @@
-import React, { useState, useEffect,useCallback, useRef } from 'react';
+import React, { useState, useEffect,useCallback } from 'react';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaHome, FaFilter, FaTimesCircle } from 'react-icons/fa';
 
 import { evaluate } from 'mathjs';
 import { Button, Form, Row, Col, Modal, Accordion } from 'react-bootstrap';
-import { HotTable } from '@handsontable/react';
-import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
-import Handsontable from 'handsontable';
 import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
+
 import FinishingMaterialGrid from './FinishingMaterialGrid';
 import BOQConsolidatedGrid from './BOQConsolidatedGrid';
-import BOQEstimation from './BOQEstimation';
-
-// Register Handsontable modules
-registerAllModules();
-
 // Room columns for grid (make available globally)
 export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "Store"];
 // Default grid rows (make available globally)
@@ -103,7 +95,6 @@ const [step, setStep] = useState(1);
     const [dynamicRoomColumns, setDynamicRoomColumns] = useState([]);
     const [roomDataSource, setRoomDataSource] = useState(''); // Track where room data is coming from
     const [savedRoomUnits, setSavedRoomUnits] = useState(new Set()); // Track units with database-saved rooms
-    const bhkHotTableRef = useRef(null); // Reference to Handsontable instance for BHK modal
     
   // --- Step 3: Component Calculation State ---
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
@@ -265,7 +256,6 @@ if (typeof floorBHKConfigs !== 'undefined' && typeof bhkRoomDetails !== 'undefin
   const [editablePercentages, setEditablePercentages] = useState({});
   const [editableThickness, setEditableThickness] = useState({});
   // ...existing code...
-  // eslint-disable-next-line no-unused-vars
   const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
 
   // --- Step 4: Cost Estimation State ---
@@ -276,6 +266,8 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
   // Variables used across steps or for modals, navigation, etc.
 
   const [showBHKConfigModal, setShowBHKConfigModal] = useState(false);
+  const [showInternalWallsModal, setShowInternalWallsModal] = useState(false);
+    const [internalWallsLogic, setInternalWallsLogic] = useState('');
     const [bhkConfigJson, setBhkConfigJson] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
@@ -316,6 +308,43 @@ const filteredMaterialRows = useMemo(() => {
     )
   );
 }, [materialRows, step5TextFilter]);
+
+
+  // Handler for percentage changes
+  const handlePercentageChange = (component, value) => {
+    const numValue = parseFloat(value) || 0;
+    setEditablePercentages(prev => ({
+      ...prev,
+      [component]: numValue
+    }));
+    // Also update the calculation logic so grid reflects changes
+    setAreaCalculationLogic(prev => {
+      if (!prev || !prev.calculation_components) return prev;
+      const updated = { ...prev };
+      if (updated.calculation_components[component]) {
+        updated.calculation_components[component].percentage = numValue / 100;
+      }
+      return updated;
+    });
+  };
+
+  // Handler for thickness changes
+  const handleThicknessChange = (component, value) => {
+    const numValue = parseFloat(value) || 0;
+    setEditableThickness(prev => ({
+      ...prev,
+      [component]: numValue
+    }));
+    // Also update the calculation logic so grid reflects changes
+    setAreaCalculationLogic(prev => {
+      if (!prev || !prev.calculation_components) return prev;
+      const updated = { ...prev };
+      if (updated.calculation_components[component]) {
+        updated.calculation_components[component].thickness = numValue;
+      }
+      return updated;
+    });
+  };
 
   // Memoize defaultBHKs to stabilize reference
   const defaultBHKs = React.useMemo(() => [
@@ -680,141 +709,260 @@ const filteredMaterialRows = useMemo(() => {
 
   
 
-  const handleSaveStep3 = async () => {
+  const handleSaveStep3 = () => {
     try {
-      // Get all cached data from BOQEstimation component
-      if (!window.BOQEstimation_getAllCachedData) {
-        setAlertMessage({
-          show: true,
-          type: 'warning',
-          message: 'BOQ Estimation component not ready. Please try again.'
-        });
-        setTimeout(() => {
-          setAlertMessage({ show: false, type: '', message: '' });
-        }, 3000);
-        return;
+      // Validate required data before proceeding
+      if (!allFloorsComponents || allFloorsComponents.length === 0) {
+        throw new Error('No component data available to save. Please ensure calculations are completed.');
       }
 
-      const allFloorsData = window.BOQEstimation_getAllCachedData();
-      
-      if (!allFloorsData || allFloorsData.length === 0) {
-        setAlertMessage({
-          show: true,
-          type: 'warning',
-          message: 'No data to save. Please select floors and enter quantities.'
-        });
-        setTimeout(() => {
-          setAlertMessage({ show: false, type: '', message: '' });
-        }, 3000);
-        return;
-      }
-
-      console.log('Saving BOQ data:', allFloorsData);
-
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-      
-      // Get estimationMasterId from first floor (all floors share same estimation)
-      const estimationMasterId = allFloorsData[0]?.estimationMasterId;
-      
-      if (!estimationMasterId) {
-        setAlertMessage({
-          show: true,
-          type: 'danger',
-          message: 'Missing estimation master ID. Please ensure project is properly set up.'
-        });
-        setTimeout(() => {
-          setAlertMessage({ show: false, type: '', message: '' });
-        }, 4000);
-        return;
-      }
-
-      // Check if record already exists
-      const checkResponse = await fetch(`${apiBaseUrl}/api/EstimationMaterialFloorWise/by-estimation-master/${estimationMasterId}`);
-      let existingRecordId = null;
-      
-      if (checkResponse.ok) {
-        const existingData = await checkResponse.json();
-        console.log('Existing data check:', existingData);
-        
-        // Extract _id from records array
-        if (existingData && existingData.records && existingData.records.length > 0) {
-          existingRecordId = existingData.records[0]._id;
-          console.log('Found existing record ID:', existingRecordId);
+      // Generate estimation reference number
+      const generateEstimationRef = () => {
+        try {
+          const timestamp = new Date().getTime();
+          const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+          return `EST-${timestamp}-${randomNum}`;
+        } catch (error) {
+          throw new Error('Failed to generate estimation reference number: ' + error.message);
         }
-      }
-
-      // Prepare single payload with all floors
-      const payload = {
-        estimationMasterId: estimationMasterId,
-        floors: allFloorsData.map(floorData => ({
-          floorName: floorData.floorName,
-          components: floorData.components
-        }))
       };
 
-      console.log('Payload:', payload);
+      // Get current user info (you may want to replace this with actual user authentication)
+      const getCurrentUser = () => {
+        try {
+          return localStorage.getItem('currentUser') || 'System User';
+        } catch (error) {
+          console.warn('Failed to get current user from localStorage:', error);
+          return 'System User';
+        }
+      };
 
-      let response;
-      if (existingRecordId) {
-        // UPDATE existing record
-        console.log('Updating existing record with ID:', existingRecordId);
-        response = await fetch(`${apiBaseUrl}/api/EstimationMaterialFloorWise/${existingRecordId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // CREATE new record
-        console.log('Creating new record');
-        response = await fetch(`${apiBaseUrl}/api/EstimationMaterialFloorWise`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
+      const currentDate = new Date();
+      const currentUser = getCurrentUser();
+      const estimationRef = generateEstimationRef();
+
+      // Validate basic project data
+      if (!width || !depth || !floors) {
+        throw new Error('Missing required project dimensions (width, depth, floors). Please complete project setup.');
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to save data' }));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
+      // Prepare Step 3 grid data with all floors components
+      const step3GridData = allFloorsComponents.map((floorComponents, floorIndex) => {
+        try {
+          const floorLabel = floorIndex === 0 ? 'Foundation' : 
+                            floorIndex === 1 ? 'Ground Floor' : 
+                            floorIndex === 2 ? '1st Floor' :
+                            floorIndex === 3 ? '2nd Floor' :
+                            floorIndex === 4 ? '3rd Floor' : 
+                            `${floorIndex - 1}th Floor`;
 
-      const result = await response.json();
-      console.log('Save successful:', result);
+          if (!Array.isArray(floorComponents)) {
+            throw new Error(`Invalid floor components data for floor ${floorIndex} (${floorLabel})`);
+          }
 
-      // Show success message with auto-hide
-      const action = existingRecordId ? 'updated' : 'saved';
-      setAlertMessage({
-        show: true,
-        type: 'success',
-        message: `BOQ data ${action} successfully for all ${allFloorsData.length} floors!`
+          return {
+            floorIndex: floorIndex,
+            floorLabel: floorLabel,
+            components: floorComponents.map((component, componentIndex) => {
+              try {
+                return {
+                  _id: null, // Will be assigned by MongoDB
+                  componentName: component.name || component.component || `Component_${componentIndex}`,
+                  //logic: component.logic,
+                  percentage: Number(component.percentage) || 0,
+                  area_sqft: (typeof component.area === 'number') ? component.area.toFixed(2) : (component.area || 0),
+                  thickness_ft: (typeof component.thickness === 'number') ? component.thickness.toFixed(2) : (component.thickness || 0),
+                  volume_cuft: (typeof component.volume_cuft === 'number') ? component.volume_cuft.toFixed(2) : (component.volume_cuft || 0),
+                  category: component.category || component.Category || 'Uncategorized',
+                  key: component.key || component.component || `key_${componentIndex}`,
+                  // Additional technical details
+                  logic: component.logic || 'default',
+                 // materialType: component.materialType || 'concrete',
+                  unit: component.unit || 'cuft'
+                };
+              } catch (error) {
+                console.error(`Error processing component ${componentIndex} in floor ${floorIndex}:`, error);
+                throw new Error(`Failed to process component data: ${error.message}`);
+              }
+            })
+          };
+        } catch (error) {
+          throw new Error(`Failed to process floor ${floorIndex} data: ${error.message}`);
+        }
       });
 
-      // Auto-hide after 3 seconds
-      setTimeout(() => {
-        setAlertMessage({ show: false, type: '', message: '' });
-      }, 3000);
-
-      // Refresh data from database
-      if (window.BOQEstimation_refreshData) {
-        window.BOQEstimation_refreshData();
+      // Calculate summary with error handling
+      let totalVolume = 0;
+      try {
+        totalVolume = allFloorsComponents.flat().reduce((sum, comp) => {
+          const volume = Number(comp.volume_cuft) || 0;
+          return sum + volume;
+        }, 0);
+      } catch (error) {
+        console.warn('Error calculating total volume:', error);
+        totalVolume = 0;
       }
 
+      // Create MongoDB-compatible document structure
+      const mongoDocument = {
+        _id: null, // Will be assigned by MongoDB
+        estimationRef: estimationRef,
+        
+        // Metadata fields
+        createdBy: currentUser,
+        modifiedBy: currentUser,
+        createdDate: currentDate.toISOString(),
+        modifiedDate: currentDate.toISOString(),
+        
+        // Document type and version
+        documentType: 'step3_component_calculation',
+        version: '1.0',
+        
+        // Project basic info
+        projectInfo: {
+          width: Number(width) || 0,
+          depth: Number(depth) || 0,
+          floors: Number(floors) || 0,
+          buildupPercent: Number(buildupPercent) || 0,
+          calculatedArea: Number(width) * Number(depth) * (Number(buildupPercent) / 100)
+        },
+
+        // Step 3 component grid data - all floors
+        step3GridData: step3GridData,
+        
+        // Summary statistics
+        summary: {
+          totalFloors: allFloorsComponents.length,
+          totalComponents: allFloorsComponents.flat().length,
+          totalVolume: totalVolume,
+          calculationDate: currentDate.toISOString()
+        }
+
+       
+      };
+
+      // Save to localStorage with error handling
+      try {
+        localStorage.setItem('step3Data', JSON.stringify(mongoDocument));
+        
+        // Also save with timestamped key for history
+        const historyKey = `step3Data_${currentDate.getTime()}`;
+        localStorage.setItem(historyKey, JSON.stringify(mongoDocument));
+      } catch (error) {
+        throw new Error('Failed to save data to local storage: ' + error.message + '. This might be due to storage quota limits.');
+      }
+
+      // Create downloadable MongoDB document for review with error handling
+      try {
+        const documentJSON = JSON.stringify(mongoDocument, null, 2);
+        
+        // Create downloadable file
+        //const blob = new Blob([documentJSON], { type: 'application/json' });
+       // const url = URL.createObjectURL(blob);
+        
+        // Open the document in a new window for review
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          try {
+            newWindow.document.write(`
+              <html>
+                <head>
+                  <title>MongoDB Document - Step 3 Component Calculation</title>
+                  <style>
+                    body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
+                    .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #1976d2; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; }
+                    .metadata { background: #e3f2fd; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+                    .summary { background: #f3e5f5; padding: 15px; border-radius: 6px; margin: 20px 0; }
+                    .error { background: #ffebee; border: 1px solid #f44336; padding: 15px; border-radius: 6px; margin: 20px 0; color: #c62828; }
+                    pre { background: #f8f9fa; padding: 15px; border-radius: 6px; overflow: auto; white-space: pre-wrap; word-wrap: break-word; }
+                    .download-btn { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 10px 5px; }
+                    .download-btn:hover { background: #45a049; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h2>MongoDB Document - Step 3 Component Calculation</h2>
+                      <p>Estimation Reference: ${estimationRef}</p>
+                    </div>
+                    
+                    <div class="metadata">
+                      <h3>Document Metadata</h3>
+                      <p><strong>Created By:</strong> ${currentUser}</p>
+                      <p><strong>Created Date:</strong> ${currentDate.toLocaleString()}</p>
+                      <p><strong>Document Type:</strong> step3_component_calculation</p>
+                      <p><strong>Total Components:</strong> ${mongoDocument.summary.totalComponents}</p>
+                      <p><strong>Total Volume:</strong> ${mongoDocument.summary.totalVolume.toFixed(2)} cu ft</p>
+                    </div>
+
+                    <div class="summary">
+                      <h3>Project Summary</h3>
+                      <p><strong>Dimensions:</strong> ${width}' × ${depth}' (${mongoDocument.projectInfo.calculatedArea.toFixed(2)} sq ft)</p>
+                      <p><strong>Floors:</strong> ${floors}</p>
+                      <p><strong>Buildup Percentage:</strong> ${buildupPercent}%</p>
+                    </div>
+
+                    <button class="download-btn" onclick="downloadDocument()">Download JSON Document</button>
+                    <button class="download-btn" onclick="window.print()">Print Document</button>
+                    
+                    <h3>Complete MongoDB Document:</h3>
+                    <pre>${documentJSON.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                  </div>
+                  
+                  <script>
+                    function downloadDocument() {
+                      try {
+                        const element = document.createElement('a');
+                        element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent('${documentJSON.replace(/'/g, "\\'")}'));
+                        element.setAttribute('download', 'Step3_ComponentCalculation_${estimationRef}.json');
+                        element.style.display = 'none';
+                        document.body.appendChild(element);
+                        element.click();
+                        document.body.removeChild(element);
+                      } catch (error) {
+                        alert('Download failed: ' + error.message);
+                      }
+                    }
+                  </script>
+                </body>
+              </html>
+            `);
+          } catch (error) {
+            console.error('Error creating document preview:', error);
+            alert('Document saved successfully, but preview window failed to load. Check the browser console for details.');
+          }
+        } else {
+          console.warn('Failed to open preview window - popup might be blocked');
+          alert('Document saved successfully! Preview window was blocked. Please check your popup settings.');
+        }
+      } catch (error) {
+        console.error('Error creating document preview:', error);
+        // Continue with success message even if preview fails
+      }
+
+      console.log('Step 3 MongoDB Document:', mongoDocument);
+      alert(`Step 3 component calculation data saved successfully!\n\nEstimation Ref: ${estimationRef}\nTotal Components: ${mongoDocument.summary.totalComponents}\nTotal Volume: ${mongoDocument.summary.totalVolume.toFixed(2)} cu ft\n\nMongoDB document saved to local storage.`);
+      
     } catch (error) {
-      console.error('Error saving Step 3:', error);
-      setAlertMessage({
-        show: true,
-        type: 'danger',
-        message: `Error saving BOQ data: ${error.message}`
-      });
-
-      // Auto-hide error after 5 seconds
-      setTimeout(() => {
-        setAlertMessage({ show: false, type: '', message: '' });
-      }, 5000);
+      console.error('Error in handleSaveStep3:', error);
+      
+      // Show detailed error message to user
+      let errorMessage = 'Failed to save Step 3 data.\n\n';
+      
+      if (error.message.includes('No component data')) {
+        errorMessage += 'Error: No calculation data found.\nPlease complete the component calculations before saving.';
+      } else if (error.message.includes('Missing required project')) {
+        errorMessage += 'Error: Missing project dimensions.\nPlease fill in width, depth, and number of floors.';
+      } else if (error.message.includes('storage quota')) {
+        errorMessage += 'Error: Storage limit exceeded.\nPlease clear some browser data and try again.';
+      } else if (error.message.includes('localStorage')) {
+        errorMessage += 'Error: Unable to access local storage.\nPlease check your browser settings and try again.';
+      } else {
+        errorMessage += `Error: ${error.message}\n\nPlease check the browser console for more details.`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -1988,296 +2136,47 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     setBhkModalIdx(null);
     setBhkModalFloorIdx(null);
   }
+  // Handler to update grid cell
+  function handleRoomDetailChange(row, col, value) {
+    setBhkRoomDetails(prev => {
+      const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+      const details = prev[key] || {};
+      // Deep copy Door and Window objects to preserve all fields
+      const updated = {
+        ...details,
+        'Door': { ...(details['Door'] || {}) },
+        'Window': { ...(details['Window'] || {}) }
+      };
+
+      // Unified Door handling
+      if (row === 'Door Count' || row === 'Door Width (ft)' || row === 'Door Height (ft)') {
+        if (!updated['Door']) updated['Door'] = {};
+        const prevDoor = updated['Door'][col] || { count: 0, width: 0, height: 0 };
+        let newDoor = { ...prevDoor };
+        if (row === 'Door Count') newDoor.count = Number(value);
+        if (row === 'Door Width (ft)') newDoor.width = Number(value);
+        if (row === 'Door Height (ft)') newDoor.height = Number(value);
+        updated['Door'][col] = newDoor;
+      } else if (row === 'Window Count' || row === 'Window Width (ft)' || row === 'Window Height (ft)') {
+        if (!updated['Window']) updated['Window'] = {};
+        const prevWindow = updated['Window'][col] || { count: 0, width: 0, height: 0 };
+        let newWindow = { ...prevWindow };
+        if (row === 'Window Count') newWindow.count = Number(value);
+        if (row === 'Window Width (ft)') newWindow.width = Number(value);
+        if (row === 'Window Height (ft)') newWindow.height = Number(value);
+        updated['Window'][col] = newWindow;
+      } else {
+        if (!updated[row]) updated[row] = {};
+        updated[row][col] = value;
+      }
+      return { ...prev, [key]: updated };
+    });
+  
+  }
 
   // Handler for OK button in modal (now only closes the modal)
   function handleOkBHKModal() {
     handleCloseBHKModal();
-  }
-
-  // Helper function to convert bhkRoomDetails to flat Handsontable data
-  function getBHKHandsontableData() {
-    if (bhkModalFloorIdx == null || bhkModalIdx == null) return [];
-    
-    const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
-    const details = bhkRoomDetails[key] || {};
-    
-    const rowLabels = [
-      'Count',
-      'Length (ft)',
-      'Width (ft)',
-      'Total Carpet Area',
-      'Door Count',
-      'Door Width (ft)',
-      'Door Height (ft)',
-      'Door Area (sqft)',
-      'Window Count',
-      'Window Width (ft)',
-      'Window Height (ft)',
-      'Window Area (sqft)'
-    ];
-    
-    const data = rowLabels.map(rowLabel => {
-      const rowData = { 'Row Label': rowLabel };
-      
-      dynamicRoomColumns.forEach(col => {
-        if (rowLabel === 'Total Carpet Area') {
-          // Calculate total carpet area: Count × Length × Width
-          const count = Number((details['Count'] && details['Count'][col]) || 0);
-          const length = Number((details['Length (ft)'] && details['Length (ft)'][col]) || 0);
-          const width = Number((details['Width (ft)'] && details['Width (ft)'][col]) || 0);
-          rowData[col] = count * length * width;
-        } else if (rowLabel === 'Door Count') {
-          const doorObj = (details['Door'] && details['Door'][col]) || {};
-          rowData[col] = doorObj.count || 0;
-        } else if (rowLabel === 'Door Width (ft)') {
-          const doorObj = (details['Door'] && details['Door'][col]) || {};
-          rowData[col] = doorObj.width || 0;
-        } else if (rowLabel === 'Door Height (ft)') {
-          const doorObj = (details['Door'] && details['Door'][col]) || {};
-          rowData[col] = doorObj.height || 0;
-        } else if (rowLabel === 'Door Area (sqft)') {
-          const doorObj = (details['Door'] && details['Door'][col]) || {};
-          const count = doorObj.count || 0;
-          const width = doorObj.width || 0;
-          const height = doorObj.height || 0;
-          rowData[col] = count * width * height;
-        } else if (rowLabel === 'Window Count') {
-          const windowObj = (details['Window'] && details['Window'][col]) || {};
-          rowData[col] = windowObj.count || 0;
-        } else if (rowLabel === 'Window Width (ft)') {
-          const windowObj = (details['Window'] && details['Window'][col]) || {};
-          rowData[col] = windowObj.width || 0;
-        } else if (rowLabel === 'Window Height (ft)') {
-          const windowObj = (details['Window'] && details['Window'][col]) || {};
-          rowData[col] = windowObj.height || 0;
-        } else if (rowLabel === 'Window Area (sqft)') {
-          const windowObj = (details['Window'] && details['Window'][col]) || {};
-          const count = windowObj.count || 0;
-          const width = windowObj.width || 0;
-          const height = windowObj.height || 0;
-          rowData[col] = count * width * height;
-        } else {
-          // Count, Length, Width
-          rowData[col] = (details[rowLabel] && details[rowLabel][col]) || 0;
-        }
-      });
-      
-      return rowData;
-    });
-    
-    return data;
-  }
-
-  // Handler for Handsontable cell changes
-  function handleBHKTableChange(changes, source) {
-    if (!changes || source === 'loadData') return;
-    
-    const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
-    const hotInstance = bhkHotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
-    
-    const sourceData = hotInstance.getSourceData();
-    
-    setBhkRoomDetails(prev => {
-      const updated = { ...prev };
-      if (!updated[key]) {
-        updated[key] = {
-          'Count': {},
-          'Length (ft)': {},
-          'Width (ft)': {},
-          'Door': {},
-          'Window': {}
-        };
-      }
-      
-      // Deep copy Door and Window objects
-      updated[key] = {
-        ...updated[key],
-        'Door': { ...(updated[key]['Door'] || {}) },
-        'Window': { ...(updated[key]['Window'] || {}) }
-      };
-      
-      changes.forEach(([row, prop, oldValue, newValue]) => {
-        if (prop === 'Row Label') return; // Skip row label column
-        
-        const rowData = sourceData[row];
-        const rowLabel = rowData['Row Label'];
-        const col = prop; // Column name (room name)
-        const value = Number(newValue) || 0;
-        
-        // Update the appropriate nested structure
-        if (rowLabel === 'Count' || rowLabel === 'Length (ft)' || rowLabel === 'Width (ft)') {
-          if (!updated[key][rowLabel]) updated[key][rowLabel] = {};
-          updated[key][rowLabel][col] = value;
-        } else if (rowLabel === 'Door Count') {
-          if (!updated[key]['Door'][col]) updated[key]['Door'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Door'][col] = { ...updated[key]['Door'][col], count: value };
-        } else if (rowLabel === 'Door Width (ft)') {
-          if (!updated[key]['Door'][col]) updated[key]['Door'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Door'][col] = { ...updated[key]['Door'][col], width: value };
-        } else if (rowLabel === 'Door Height (ft)') {
-          if (!updated[key]['Door'][col]) updated[key]['Door'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Door'][col] = { ...updated[key]['Door'][col], height: value };
-        } else if (rowLabel === 'Window Count') {
-          if (!updated[key]['Window'][col]) updated[key]['Window'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Window'][col] = { ...updated[key]['Window'][col], count: value };
-        } else if (rowLabel === 'Window Width (ft)') {
-          if (!updated[key]['Window'][col]) updated[key]['Window'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Window'][col] = { ...updated[key]['Window'][col], width: value };
-        } else if (rowLabel === 'Window Height (ft)') {
-          if (!updated[key]['Window'][col]) updated[key]['Window'][col] = { count: 0, width: 0, height: 0 };
-          updated[key]['Window'][col] = { ...updated[key]['Window'][col], height: value };
-        }
-      });
-      
-      return updated;
-    });
-    
-    // Recalculate and update calculated rows
-    setTimeout(() => {
-      const hotInstance = bhkHotTableRef.current?.hotInstance;
-      if (!hotInstance) return;
-      
-      const data = hotInstance.getSourceData();
-      
-      data.forEach((rowData, rowIndex) => {
-        const rowLabel = rowData['Row Label'];
-        
-        dynamicRoomColumns.forEach(col => {
-          if (rowLabel === 'Total Carpet Area') {
-            const countRow = data.find(r => r['Row Label'] === 'Count');
-            const lengthRow = data.find(r => r['Row Label'] === 'Length (ft)');
-            const widthRow = data.find(r => r['Row Label'] === 'Width (ft)');
-            
-            const count = Number(countRow?.[col] || 0);
-            const length = Number(lengthRow?.[col] || 0);
-            const width = Number(widthRow?.[col] || 0);
-            const calculated = count * length * width;
-            
-            if (rowData[col] !== calculated) {
-              hotInstance.setDataAtRowProp(rowIndex, col, calculated, 'calculation');
-            }
-          } else if (rowLabel === 'Door Area (sqft)') {
-            const doorCountRow = data.find(r => r['Row Label'] === 'Door Count');
-            const doorWidthRow = data.find(r => r['Row Label'] === 'Door Width (ft)');
-            const doorHeightRow = data.find(r => r['Row Label'] === 'Door Height (ft)');
-            
-            const count = Number(doorCountRow?.[col] || 0);
-            const width = Number(doorWidthRow?.[col] || 0);
-            const height = Number(doorHeightRow?.[col] || 0);
-            const calculated = count * width * height;
-            
-            if (rowData[col] !== calculated) {
-              hotInstance.setDataAtRowProp(rowIndex, col, calculated, 'calculation');
-            }
-          } else if (rowLabel === 'Window Area (sqft)') {
-            const windowCountRow = data.find(r => r['Row Label'] === 'Window Count');
-            const windowWidthRow = data.find(r => r['Row Label'] === 'Window Width (ft)');
-            const windowHeightRow = data.find(r => r['Row Label'] === 'Window Height (ft)');
-            
-            const count = Number(windowCountRow?.[col] || 0);
-            const width = Number(windowWidthRow?.[col] || 0);
-            const height = Number(windowHeightRow?.[col] || 0);
-            const calculated = count * width * height;
-            
-            if (rowData[col] !== calculated) {
-              hotInstance.setDataAtRowProp(rowIndex, col, calculated, 'calculation');
-            }
-          }
-        });
-      });
-    }, 0);
-  }
-
-  // Get columns configuration for BHK Handsontable
-  function getBHKHandsontableColumns() {
-    const columns = [
-      {
-        data: 'Row Label',
-        title: '',
-        readOnly: true,
-        className: 'htLeft htMiddle',
-        width: 150
-      }
-    ];
-    
-    dynamicRoomColumns.forEach(col => {
-      columns.push({
-        data: col,
-        title: col === 'Circulation Space' ? 'Circulation Space' : col,
-        type: 'numeric',
-        numericFormat: {
-          pattern: '0,0.00'
-        },
-        className: 'htCenter htMiddle',
-        width: 100
-      });
-    });
-    
-    return columns;
-  }
-
-  // Cell styling function for BHK Handsontable
-  function bhkCellRenderer(instance, td, row, col, prop, value, cellProperties) {
-    const rowLabel = instance.getDataAtRowProp(row, 'Row Label');
-    
-    // Apply default renderer first
-    if (cellProperties.type === 'numeric') {
-      Handsontable.renderers.NumericRenderer.apply(this, arguments);
-    } else {
-      Handsontable.renderers.TextRenderer.apply(this, arguments);
-    }
-    
-    // Style row label column
-    if (col === 0) {
-      td.style.fontWeight = '600';
-      td.style.background = '#f5f5f5';
-      td.style.textAlign = 'right';
-      td.style.fontSize = '0.8rem';
-      td.style.paddingRight = '10px';
-      
-      // Special styling for section headers
-      if (rowLabel === 'Total Carpet Area') {
-        td.style.background = '#e3f2fd';
-        td.style.color = '#1976d2';
-        td.style.fontWeight = '700';
-      } else if (rowLabel.includes('Door')) {
-        td.style.background = '#fffbe7';
-        td.style.color = '#b8860b';
-        if (rowLabel === 'Door Count') {
-          td.style.fontWeight = '700';
-        }
-      } else if (rowLabel.includes('Window')) {
-        td.style.background = '#e7f7ff';
-        td.style.color = '#1976d2';
-        if (rowLabel === 'Window Count') {
-          td.style.fontWeight = '700';
-        }
-      }
-    } else {
-      // Style data cells
-      td.style.fontSize = '0.85rem';
-      
-      // Calculated rows - read-only and highlighted
-      if (rowLabel === 'Total Carpet Area') {
-        td.style.background = '#e8f5e9';
-        td.style.color = '#388e3c';
-        td.style.fontWeight = '700';
-        cellProperties.readOnly = true;
-      } else if (rowLabel === 'Door Area (sqft)') {
-        td.style.background = '#fff9e6';
-        td.style.color = '#b8860b';
-        td.style.fontWeight = '600';
-        cellProperties.readOnly = true;
-      } else if (rowLabel === 'Window Area (sqft)') {
-        td.style.background = '#e3f2fd';
-        td.style.color = '#1976d2';
-        td.style.fontWeight = '600';
-        cellProperties.readOnly = true;
-      }
-    }
-    
-    return td;
   }
 
   
@@ -3240,7 +3139,7 @@ const boqItems = useMemo(() => {
 
   // Move all rendering code inside the PricingCalculator function
   return (
-    <div className="wizard-container calculator-container" style={{ width: '100%', maxWidth: '100%', padding: '0' }}>
+    <div className="wizard-container calculator-container" style={{ maxWidth: '900px' }}>
       {/* Alert Message Display */}
       {alertMessage.show && (
         <div 
@@ -3370,7 +3269,7 @@ const boqItems = useMemo(() => {
         ))}
       </div>
       {/* Step Content */}
-      <div className="wizard-step-content" style={{ padding: step === 3 ? '0' : '0 1rem' }}>
+      <div className="wizard-step-content">
         {step === 1 && (
           <>
             {/* Mode indicator and styled heading for Area Details */}
@@ -4153,23 +4052,184 @@ const boqItems = useMemo(() => {
           </>
         )}
 
+
         {step === 3 && (
           <>
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
             </div>
+              {/* Debug breakdown for Internal Walls calculation - now dynamic by floor */}
+              <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1rem auto', background: '#fffde7', border: '1px solid #ffe082', borderRadius: 6, padding: '10px 14px' }}>
+                
+               
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontWeight: 500, marginRight: 8 }}>Select Floor:</label>
+                  <select value={selectedDebugFloor} onChange={e => setSelectedDebugFloor(Number(e.target.value))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ffe082' }}>
+                    {/* Foundation (index 0) */}
+                    <option key={0} value={0}>Foundation</option>
+                    {/* Basement floors */}
+                    {basementCount > 0 && [...Array(Number(basementCount))].map((_, idx) => (
+                      <option key={`basement-${idx}`} value={idx + 1}>Basement {idx + 1}</option>
+                    ))}
+                    {/* Ground Floor and above (shifted by basementCount + 1) */}
+                    {[...Array(Number(floors) + 1).keys()].map(i => {
+                      const floorIndex = i + Number(basementCount) + 1;
+                      return (
+                        <option key={floorIndex} value={floorIndex}>
+                          {i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                
+              </div>
+            <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 1.5rem auto', background: '#fafafa', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', padding: '18px 12px', fontSize: '.97rem', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.97rem' }}>
+                <thead>
+                  <tr style={{ background: '#f5f5f5' }}>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Component</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Logic</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Percentage (%)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Area (sq ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Thickness (Ft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Volume (cuft)</th>
+                    <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Gridcomponents && Gridcomponents.map((item, idx) => {
+                    // Use item.key for logic, fallback to name for display
+                    const key = item.key || item.name || '';
+                    // Only show Parapet Walls for the true top floor (selectedDebugFloor === Number(floors) + 1)
+                    if (key === 'parapet_walls' || item.name === 'Parapet Walls') {
+                      if (!((selectedDebugFloor || 0) === Number(floors) + 1)) return null;
+                    }
+                    return (
+                      <tr key={idx}>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>{item.name}</td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
+                          {item.name.includes('Internal Walls') ? (
+                            <span>
+                              {item.logic}
+                              {' '}
+                              <button 
+                                onClick={() => {
+                                  setInternalWallsLogic(item.logicDetails || '');
+                                  setShowInternalWallsModal(true);
+                                }}
+                                style={{ 
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#007bff', 
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  font: 'inherit',
+                                  marginLeft: '4px'
+                                }}
+                              >
+                                More details
+                              </button>
+                            </span>
+                          ) : (
+                            item.logic
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {item.isEditable ? (
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              value={
+                                editablePercentages[item.key] !== undefined
+                                  ? editablePercentages[item.key]
+                                  : (item.percentage || '')
+                              }
+                              onChange={(e) => handlePercentageChange(item.key, e.target.value)}
+                              style={{ 
+                                width: '60px', 
+                                padding: '4px', 
+                                border: '1px solid #ccc', 
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            />
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
+                          {(key === 'Beams' || key === 'Columns' || key === 'BasementBeam' || key === 'Basementcolumns' || key === 'BeamVolume')
+                            ? '-' 
+                            : (item.area ? item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-')}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {typeof item.thickness === 'number' && !isNaN(item.thickness) ? (
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={
+                                editableThickness[item.key] !== undefined
+                                  ? editableThickness[item.key]
+                                  : item.thickness
+                              }
+                              onChange={(e) => handleThicknessChange(item.key, e.target.value)}
+                              style={{ 
+                                width: '60px', 
+                                padding: '4px', 
+                                border: '1px solid #ccc', 
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                fontSize: '0.9rem'
+                              }}
+                            />
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
+                          {typeof item.volume_cuft === 'number' && !isNaN(item.volume_cuft) && item.volume_cuft !== 0
+                            ? item.volume_cuft.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                            : '-'}
+                        </td>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                          {item.Category || item.category || '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
 
-            {/* BOQ Estimation Component */}
-            <BOQEstimation 
-              estimationMasterId={id} 
-              floorsList={[
-                'Foundation',
-                ...(basementCount > 0 ? [...Array(Number(basementCount))].map((_, idx) => `Basement ${idx + 1}`) : []),
-                ...([...Array(Number(floors) + 1).keys()].map(i => 
-                  i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`
-                ))
-              ]}
-            />
+                  {/* RCC Volume Summary Row */}
+                  {(() => {
+                    if (!Gridcomponents) return null;
+                    // Only include rows that are visible in the table (apply same filter as table rendering)
+                    const visibleRows = Gridcomponents.filter(item => item.key !== 'parapet_walls');
+                    const categoryMap = {};
+                    visibleRows.forEach(item => {
+                      const cat = (item.Category || item.category || '-').toString().trim();
+                      if (!categoryMap[cat]) categoryMap[cat] = 0;
+                      const vol = Number(item.volume_cuft);
+                      if (!isNaN(vol) && vol) {
+                        categoryMap[cat] += vol;
+                      }
+                    });
+                    return Object.entries(categoryMap).map(([cat, totalVol], idx) => (
+                      <tr key={cat} style={{ background: '#e3f2fd', fontWeight: 700 }}>
+                        <td colSpan={5} style={{ textAlign: 'right', color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2' }}>{cat} Volume (cuft)</td>
+                        <td style={{ color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2', textAlign: 'right' }}>{totalVol ? Math.round(totalVol).toLocaleString('en-IN') : '-'}</td>
+                        <td style={{ color: '#1976d2', fontSize: '1.08rem', border: '1px solid #1976d2', textAlign: 'center' }}></td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
        
@@ -4940,7 +5000,14 @@ const boqItems = useMemo(() => {
             const rows = getFloorRows(bhkModalFloorIdx);
             const bhkType = rows[bhkModalIdx]?.type || '';
             const carpetArea = rows[bhkModalIdx]?.area || '';
-            
+            // Find the BHK config for this type and area
+            let bhkConfigRooms = [];
+            if (bhkType && carpetArea && Array.isArray(allBhkConfigs)) {
+              const config = allBhkConfigs.find(c => c.type === bhkType && String(c.total_carpet_area_sqft) === String(carpetArea));
+              if (config && Array.isArray(config.rooms)) {
+                bhkConfigRooms = config.rooms;
+              }
+            }
             if (!bhkType || !carpetArea) {
               return (
                 <div style={{ color: '#d32f2f', fontWeight: 600, fontSize: '1.1rem', textAlign: 'center', padding: '2rem 0' }}>
@@ -4952,64 +5019,259 @@ const boqItems = useMemo(() => {
             // Only render the table/grid if the row is filled
             return (
               <div style={{ overflowX: 'auto' }}>
-                <HotTable
-                  ref={bhkHotTableRef}
-                  data={getBHKHandsontableData()}
-                  columns={getBHKHandsontableColumns()}
-                  colHeaders={true}
-                  rowHeaders={false}
-                  height="auto"
-                  width="100%"
-                  licenseKey="non-commercial-and-evaluation"
-                  stretchH="all"
-                  className="htCenter htMiddle"
-                  cells={(row, col) => {
-                    const cellProperties = {};
-                    const data = getBHKHandsontableData();
-                    if (data[row]) {
-                      const rowLabel = data[row]['Row Label'];
-                      
-                      // Make calculated rows read-only
-                      if (rowLabel === 'Total Carpet Area' || 
-                          rowLabel === 'Door Area (sqft)' || 
-                          rowLabel === 'Window Area (sqft)') {
-                        cellProperties.readOnly = true;
-                      }
-                      
-                      // Custom renderer for all cells
-                      cellProperties.renderer = bhkCellRenderer;
-                    }
-                    return cellProperties;
-                  }}
-                  afterChange={handleBHKTableChange}
-                  style={{ 
-                    fontSize: '0.85rem', 
-                    background: '#fff', 
-                    borderRadius: '8px', 
-                    boxShadow: '0 2px 8px rgba(33,150,243,0.07)', 
-                    border: '1px solid #e0e0e0',
-                    overflow: 'hidden'
-                  }}
-                />
-                <div style={{ marginTop: '15px', padding: '10px', background: '#e3f2fd', borderRadius: '6px', border: '1px solid #1976d2' }}>
-                  <div style={{ fontWeight: 700, color: '#1976d2', fontSize: '0.9rem', marginBottom: '5px' }}>
-                    Grand Total Carpet Area
-                  </div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#388e3c' }}>
-                    {(() => {
-                      const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
-                      const details = bhkRoomDetails[key] || {};
-                      let totalSum = 0;
-                      dynamicRoomColumns.forEach(col => {
-                        const count = Number((details['Count'] && details['Count'][col]) || 0);
-                        const length = Number((details['Length (ft)'] && details['Length (ft)'][col]) || 0);
-                        const width = Number((details['Width (ft)'] && details['Width (ft)'][col]) || 0);
-                        totalSum += count * length * width;
-                      });
-                      return totalSum.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-                    })()} sq ft
-                  </div>
-                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0' }}>
+                  <thead>
+                    <tr style={{ background: '#f5f5f5' }}>
+                      <th style={{ padding: '8px', border: '1px solid #e0e0e0', minWidth: 70, fontSize: '0.8rem' }}></th>
+                      {dynamicRoomColumns.map(col => (
+                        <th key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', minWidth: 85, fontWeight: 600, color: '#1976d2', textAlign: 'center', fontSize: '0.75rem' }}>{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gridRows.map(rowLabel => (
+                      <tr key={rowLabel}>
+                        <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 600, background: '#f5f5f5', textAlign: 'right', fontSize: '0.8rem' }}>{rowLabel}</td>
+                        {dynamicRoomColumns.map(col => (
+                          <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                            <Form.Control
+                              type="number"
+                              min={0}
+                              value={(() => {
+                                const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                                const details = bhkRoomDetails[key] || {};
+                                const rowObj = details[rowLabel] || {};
+                                return typeof rowObj[col] !== 'undefined' ? rowObj[col] : '';
+                              })()}
+                              onChange={e => handleRoomDetailChange(rowLabel, col, e.target.value)}
+                              size="sm"
+                              style={{ 
+                                maxWidth: 70, 
+                                margin: '0 auto', 
+                                fontSize: '0.85rem', 
+                                borderRadius: 6, 
+                                border: '1px solid #bdbdbd', 
+                                background: col === 'Circulation Space' ? '#f5f5f5' : '#fff',
+                                color: col === 'Circulation Space' ? '#666' : '#000'
+                              }}
+                              placeholder={rowLabel === 'Count' ? '0' : 'ft'}
+                              readOnly={false}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {/* Summary row for Total Area (sq ft) */}
+                    <tr style={{ background: '#e3f2fd' }}>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#1976d2', fontSize: '0.8rem' }}>
+                        Total Carpet Area
+                        <div style={{ fontSize: '0.7em', fontWeight: 400, color: '#666' }}>
+                          ({(() => {
+                            const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                            let totalSum = 0;
+                            dynamicRoomColumns.forEach(col => {
+                              const details = bhkRoomDetails[key] || {};
+                              const count = Number((details['Count'] && typeof details['Count'][col] !== 'undefined') ? details['Count'][col] : 0);
+                              const length = Number((details['Length (ft)'] && typeof details['Length (ft)'][col] !== 'undefined') ? details['Length (ft)'][col] : 0);
+                              const width = Number((details['Width (ft)'] && typeof details['Width (ft)'][col] !== 'undefined') ? details['Width (ft)'][col] : 0);
+                              totalSum += count * length * width;
+                            });
+                            return totalSum.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                          })()} sq ft)
+                        </div>
+                      </td>
+                      {dynamicRoomColumns.map(col => {
+                        const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                        const details = bhkRoomDetails[key] || {};
+                        const count = Number((details['Count'] && typeof details['Count'][col] !== 'undefined') ? details['Count'][col] : 0);
+                        const length = Number((details['Length (ft)'] && typeof details['Length (ft)'][col] !== 'undefined') ? details['Length (ft)'][col] : 0);
+                        const width = Number((details['Width (ft)'] && typeof details['Width (ft)'][col] !== 'undefined') ? details['Width (ft)'][col] : 0);
+                        const total = count * length * width;
+                        return (
+                          <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center', fontWeight: 700, color: '#388e3c', background: '#e8f5e9', fontSize: '0.8rem' }}>
+                            {total > 0 ? total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {/* Door Details Row */}
+                    <tr style={{ background: '#fffbe7' }}>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#b8860b', fontSize: '0.8rem' }}>
+                        Door Details
+
+                        <div style={{ fontSize: '0.7em', fontWeight: 400, color: '#b8860b' }}>
+                          (Count, Width×Height, Area)
+                        </div>
+                        
+                      </td>
+                      {dynamicRoomColumns.map(col => {
+                        // Find config for this room (by name)
+                        const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                        const details = bhkRoomDetails[key] || {};
+                        const doorDetails = details['Door'] || {};
+                        const doorObj = doorDetails[col] || {};
+                        const doorCount = doorObj.count ?? '';
+                        const doorWidth = doorObj.width ?? '';
+                        const doorHeight = doorObj.height ?? '';
+                        const doorArea = (doorObj.count && doorObj.width && doorObj.height) ? doorObj.count * doorObj.width * doorObj.height : '';
+                        const isEntryDoor = col === 'Circulation Space';
+                        return (
+                          <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center', color: '#b8860b', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {isEntryDoor && (
+                                <div style={{ fontWeight: 700, color: '#b8860b', fontSize: '0.85em', marginBottom: 2 }}>Entry Door</div>
+                              )}
+                              <div>
+                                {/* Span for Count */}
+                                 <Form.Control type="number" min={0} value={doorCount} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = {};
+                                      if (!updated[key]['Door']) updated[key]['Door'] = {};
+                                      const configRoom = bhkConfigRooms.find(r => r.name === col) || {};
+                                      const prevObj = (prev[key] && prev[key]['Door'] && prev[key]['Door'][col]) ? prev[key]['Door'][col] : {};
+                                      updated[key]['Door'][col] = {
+                                        count: val,
+                                        width: prevObj.width ?? configRoom.door_width_ft ?? 0,
+                                        height: prevObj.height ?? configRoom.door_height_ft ?? 0,
+                                      };
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                {/* Span for Width */}
+                                <Form.Control type="number" min={0} value={doorWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = {};
+                                      if (!updated[key]['Door']) updated[key]['Door'] = {};
+                                      const configRoom = bhkConfigRooms.find(r => r.name === col) || {};
+                                      const prevObj = (prev[key] && prev[key]['Door'] && prev[key]['Door'][col]) ? prev[key]['Door'][col] : {};
+                                      updated[key]['Door'][col] = {
+                                        count: prevObj.count ?? configRoom.door_count ?? 0,
+                                        width: val,
+                                        height: prevObj.height ?? configRoom.door_height_ft ?? 0,
+                                      };
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                {/* Span for Height */}
+                                 <Form.Control type="number" min={0} value={doorHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = {};
+                                      if (!updated[key]['Door']) updated[key]['Door'] = {};
+                                      const configRoom = bhkConfigRooms.find(r => r.name === col) || {};
+                                      const prevObj = (prev[key] && prev[key]['Door'] && prev[key]['Door'][col]) ? prev[key]['Door'][col] : {};
+                                      updated[key]['Door'][col] = {
+                                        count: prevObj.count ?? configRoom.door_count ?? 0,
+                                        width: prevObj.width ?? configRoom.door_width_ft ?? 0,
+                                        height: val,
+                                      };
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              {/* Area Display */}
+                              <div style={{ fontSize: '0.8em', color: '#b8860b', marginTop: 2 }}>
+                                <b>{doorArea > 0 ? doorArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {/* Window Details Row */}
+                    <tr style={{ background: '#e7f7ff' }}>
+                      <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: 700, textAlign: 'right', color: '#1976d2', fontSize: '0.8rem' }}>
+                        Window Details
+                        <div style={{ fontSize: '0.7em', fontWeight: 400, color: '#1976d2' }}>
+                          (Count, Width×Height, Area)
+                        </div>
+                      </td>
+                      {dynamicRoomColumns.map(col => {
+                        // Find config for this room (by name)
+                        const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+                        const details = bhkRoomDetails[key] || {};
+                        const windowDetails = details['Window'] || {};
+                        const windowCount = (windowDetails[col] && typeof windowDetails[col].count !== 'undefined') ? windowDetails[col].count : (bhkConfigRooms.find(r => r.name === col)?.window_count || 0);
+                        const windowWidth = (windowDetails[col] && typeof windowDetails[col].width !== 'undefined') ? windowDetails[col].width : (bhkConfigRooms.find(r => r.name === col)?.window_width_ft || 0);
+                        const windowHeight = (windowDetails[col] && typeof windowDetails[col].height !== 'undefined') ? windowDetails[col].height : (bhkConfigRooms.find(r => r.name === col)?.window_height_ft || 0);
+                        const windowArea = windowCount * windowWidth * windowHeight;
+                        return (
+                          <td key={col} style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center', color: '#1976d2', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <div>
+                                {/* Span for Count */}
+                                 <Form.Control type="number" min={0} value={windowCount} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = { ...details };
+                                      if (!updated[key]['Window']) updated[key]['Window'] = {};
+                                      if (!updated[key]['Window'][col]) updated[key]['Window'][col] = {};
+                                      updated[key]['Window'][col].count = val;
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                {/* Span for Width */}
+                                <Form.Control type="number" min={0} value={windowWidth} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = { ...details };
+                                      if (!updated[key]['Window']) updated[key]['Window'] = {};
+                                      if (!updated[key]['Window'][col]) updated[key]['Window'][col] = {};
+                                      updated[key]['Window'][col].width = val;
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                {/* Span for Height */}
+                                 <Form.Control type="number" min={0} value={windowHeight} size="sm" style={{ width: 50, display: 'inline-block' }}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBhkRoomDetails(prev => {
+                                      const updated = { ...prev };
+                                      if (!updated[key]) updated[key] = { ...details };
+                                      if (!updated[key]['Window']) updated[key]['Window'] = {};
+                                      if (!updated[key]['Window'][col]) updated[key]['Window'][col] = {};
+                                      updated[key]['Window'][col].height = val;
+                                      return { ...updated };
+                                    });
+                                  }}
+                                />
+                              </div>
+                              {/* Area Display */}
+                              <div style={{ fontSize: '0.8em', color: '#1976d2', marginTop: 2 }}>
+                                 <b>{windowArea > 0 ? windowArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}</b> sq ft
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             );
           })()}
@@ -5022,6 +5284,183 @@ const boqItems = useMemo(() => {
       {/* Large Site Plan Modal */}
 
 
+      {/* Internal Walls Details Modal */}
+      <Modal show={showInternalWallsModal} onHide={() => setShowInternalWallsModal(false)} size="lg">
+        <Modal.Header closeButton style={{ background: '#f8f9fa', borderBottom: '2px solid #007bff' }}>
+          <Modal.Title style={{ color: '#007bff', fontWeight: 'bold' }}>
+            🏗️ Internal Walls - Detailed Calculation
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#fafafa', padding: '15px' }}>
+          <div style={{ background: '#fff', padding: '15px', borderRadius: '6px', border: '1px solid #ddd', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            {internalWallsLogic ? (
+              <>
+                <div style={{ fontFamily: '"Segoe UI", Arial, sans-serif', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                  {(() => {
+                    const sections = internalWallsLogic.replace('Advanced calculation: ', '').split(' | ');
+                    // Filter out duplicate BHK sections by header
+                    const uniqueSections = [];
+                    const seenHeaders = new Set();
+                    sections.forEach(section => {
+                      const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+                      if (!lines.length) return;
+                      const bhkHeader = lines[0];
+                      if (!seenHeaders.has(bhkHeader)) {
+                        uniqueSections.push(section);
+                        seenHeaders.add(bhkHeader);
+                      }
+                    });
+                    return uniqueSections.map((section, index) => {
+
+                      // Prepare lines for each section
+                      const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+                      if (!lines.length) return null;
+                      const bhkHeader = lines[0];
+                      // Room lines: exclude calculation breakdown, reduction/deduction, balcony
+                      const roomLines = lines.slice(1).filter(l =>
+                        l &&
+                        !l.startsWith('--- Calculation Breakdown ---') &&
+                        !l.toLowerCase().includes('balcony') &&
+                        !l.toLowerCase().includes('reduction') &&
+                        !l.toLowerCase().includes('deduct') &&
+                        !l.toLowerCase().includes('total rooms area') &&
+                        !l.toLowerCase().includes('final total wall area')
+                      );
+                      // Area reduction lines: only reduction/deduction lines (from calculation breakdown), filter out 'total deduction' if present
+                      const areaReductionLines = lines.slice(1).filter(l =>
+                        l &&
+                        (l.toLowerCase().includes('reduction') || l.toLowerCase().includes('deduct')) &&
+                        !l.toLowerCase().includes('total deduction')
+                      );
+                      // Total Rooms Area, Total Deduction, and Final Total Wall Area (from calculation breakdown)
+                      const totalRoomsAreaLine = lines.find(l => l.toLowerCase().includes('total rooms area'));
+                      const totalDeductionLine = (() => {
+                        // Try to find a line with 'total deduction'
+                        const found = lines.find(l => l.toLowerCase().includes('total deduction'));
+                        if (found) return found;
+                        return null;
+                      })();
+                      const finalTotalWallAreaLine = lines.find(l => l.toLowerCase().includes('final total wall area'));
+
+                      return (
+                        <div key={index} style={{ marginBottom: '20px' }}>
+                          {/* BHK Header */}
+                          <div style={{ fontWeight: 'bold', color: '#007bff', marginBottom: '12px', fontSize: '1rem', padding: '8px 12px', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', borderRadius: '6px', border: '2px solid #2196f3', borderLeft: '4px solid #007bff', boxShadow: '0 1px 4px rgba(33, 150, 243, 0.15)' }}>
+                            {bhkHeader}
+                          </div>
+                          {/* Room Details */}
+                          <div style={{ marginBottom: '15px' }}>
+                            <h6 style={{ color: '#333', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              🏠 Room Area Breakdown Details
+                            </h6>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
+                              {roomLines.map((line, lineIdx) => (
+                                <div
+                                  key={lineIdx}
+                                  style={{
+                                    background: '#e3f2fd',
+                                    border: '1px solid #2196f3',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    marginBottom: '6px',
+                                    fontWeight: 500,
+                                    color: '#1976d2',
+                                    fontSize: '0.92em',
+                                    boxShadow: '0 1px 2px rgba(33,150,243,0.05)',
+                                    maxWidth: '340px',
+                                    minWidth: '160px',
+                                    width: '100%',
+                                    display: 'inline-block'
+                                  }}
+                                >
+                                  {line}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Area Reduction Section */}
+                          {areaReductionLines.length > 0 && (
+                            <div style={{ marginBottom: '15px' }}>
+                              <h6 style={{ color: '#c2185b', marginBottom: '10px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                ➖ Area Reduction
+                              </h6>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '8px' }}>
+                                {areaReductionLines.map((line, lineIdx) => (
+                                  <div
+                                    key={lineIdx}
+                                    style={{
+                                      background: '#fce4ec',
+                                      border: '1px solid #e91e63',
+                                      borderRadius: '6px',
+                                      padding: '6px 10px',
+                                      marginBottom: '6px',
+                                      fontWeight: 500,
+                                      color: '#c2185b',
+                                      fontSize: '0.92em',
+                                      boxShadow: '0 1px 2px rgba(233,30,99,0.05)',
+                                      maxWidth: '340px',
+                                      minWidth: '160px',
+                                      width: '100%',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {line}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Total Rooms Area, Total Deduction, and Final Total Wall Area */}
+                          <div style={{ marginBottom: '0' }}>
+                            {totalRoomsAreaLine && (
+                              <>
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '6px', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                  <span>{totalRoomsAreaLine}</span>
+                                </div>
+                                {totalDeductionLine && (
+                                  <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '6px', background: '#fff3e0', border: '1px solid #ff9800', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#e65100' }}>
+                                    <span>{totalDeductionLine}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {finalTotalWallAreaLine && (
+                              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 10px', marginBottom: '0', background: '#e8f5e8', border: '1px solid #4caf50', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: '#1b5e20' }}>
+                                <span>{finalTotalWallAreaLine}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', color: '#666', padding: '40px 20px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📝</div>
+                <div>No calculation details available</div>
+              </div>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer style={{ background: '#f8f9fa', borderTop: '1px solid #ddd' }}>
+          <button 
+            onClick={() => setShowInternalWallsModal(false)}
+            style={{ 
+              padding: '8px 20px', 
+              background: '#007bff', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Close
+          </button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

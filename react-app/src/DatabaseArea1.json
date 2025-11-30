@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "description": "Database for area and volume calculations in construction estimation",
+  "last_updated": "2025-10-18",
+  "Applicable Floors": "Foundation",
+  "calculation_components": {
+    "Pile and Pile Cap": {
+      "Area": "buildupArea * Percentage",
+      "Percentage": 12.0,
+      "Labour": "yes",
+      "Material": "no",
+      "Category": "Earthwork"
+    },
+    "Termite Protection": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.5,
+      "Labour": "yes",
+      "Material": "no",
+      "Category": "Earthwork"
+    },
+    "Excavation Volume": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Depth * (1 + Percentage)",
+      "Percentage": 0.12,
+      "Depth": 10.0,
+      "Labour": "yes",
+      "Material": "no",
+      "Category": "Earthwork"
+    },
+    "Shore Pile": {
+      "Area": "Perimeter * Depth",
+      "Volume": "Perimeter * Depth * Thickness",
+      "Thickness": 0.12,
+      "Depth": 10.0,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "Mixture",
+      "Mixture": "M20"
+    },
+    "Backfilling": {
+      "Volume": "ExcavationVolume - RCCVolume",
+      "Labour": "yes",
+      "Material": "no"
+    },
+    "CC Work": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "Mixture",
+      "MixtureType": "M25"
+    },
+    "RCC Footing": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Lift Core Wall": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Shear Wall": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Retaining Wall": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Plaster Work Inside": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Brick Work 10 inch": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Brick Work 5 inch": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Brick Flat Soling (BFS)": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Foundation Slab": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    },
+    "Patent Stone Work": {
+      "Area": "buildupArea",
+      "Volume": "buildupArea * Thickness",
+      "Thickness": 0.12,
+      "Labour": "yes",
+      "Material": "yes",
+      "Category": "RCC",
+      "MixtureType": "R20"
+    }
+  }
+}

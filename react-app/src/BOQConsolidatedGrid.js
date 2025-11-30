@@ -1,4 +1,7 @@
+
 import React, { useState } from 'react';
+import ExportToExcelButton from './components/ExportToExcelButton';
+
 
 // BOQConsolidatedGrid: Renders a consolidated table for BOQ items (civil + finishing materials)
 // Props:
@@ -79,34 +82,111 @@ const BOQConsolidatedGrid = ({ data, brandRateMap }) => {
   // Get unique categories for filter dropdown
   const categoryOptions = Object.keys(grouped);
 
+  // Prepare export data (filtered, flat rows)
+  const exportColumns = [
+    'Category',
+    'Material',
+    'Total Qty',
+    'Unit',
+    'Brand Name',
+    'Rate/Unit',
+    'Cost (₹)'
+  ];
+  // Flatten filtered rows for export
+  const exportRows = [];
+  Object.entries(grouped)
+    .filter(([category]) => categoryFilter === 'All' || category === categoryFilter)
+    .forEach(([category, items]) => {
+      const filteredItems = textFilter.trim() === ''
+        ? items
+        : items.filter(item => {
+            const filter = textFilter.trim().toLowerCase();
+            return (
+              (item.category && item.category.toLowerCase().includes(filter)) ||
+              (item.material && item.material.toLowerCase().includes(filter))
+            );
+          });
+      filteredItems.forEach(item => {
+        const rowKey = `${category}__${item.material}`;
+        let brand = rowState[rowKey]?.brand;
+        let rate = rowState[rowKey]?.rate;
+        if (!brand || brand === 'Select') {
+          brand = getDefaultBrand(item.materialNorm || item.material, item.unitNorm || item.unit);
+          if ((rate === undefined || rate === '') && brand && brand !== 'Select') {
+            rate = getRateForBrand(item.materialNorm || item.material, item.unitNorm || item.unit, brand);
+          }
+        }
+        if (rate === undefined) rate = '';
+        const qty = Math.round(item.totalQty);
+        const cost = rate && qty ? Math.round(rate * qty) : '';
+        exportRows.push({
+          'Category': category,
+          'Material': item.material,
+          'Total Qty': qty,
+          'Unit': item.unit,
+          'Brand Name': brand,
+          'Rate/Unit': rate,
+          'Cost (₹)': cost
+        });
+      });
+    });
+
   return (
     <div>
+      {/* Export icon button will be placed beside filter below */}
       <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0, maxHeight: 600, overflowY: 'auto' }}>
-      {/* Standardized filter textbox */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px 0' }}>
-        <label htmlFor="boqFilterText" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
-        <input
-          id="boqFilterText"
-          type="text"
-          value={textFilter}
-          onChange={e => setTextFilter(e.target.value)}
-          placeholder="Type to filter..."
-          style={{ width: 140, minWidth: 0, padding: '6px 10px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
-        />
-      </div>
-      <table
-        className="step5-material-table"
-        style={{
-          width: '100%',
-          fontSize: '0.93rem',
-          background: '#fff',
-          borderCollapse: 'collapse',
-          borderSpacing: 0,
-          border: '1px solid #d0d7e1',
-          boxShadow: '0 2px 8px rgba(33,150,243,0.07)',
-          borderRadius: '8px'
-        }}
-      >
+        {/* Standardized filter textbox */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 12px 0' }}>
+          <label htmlFor="boqFilterText" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
+          <input
+            id="boqFilterText"
+            type="text"
+            value={textFilter}
+            onChange={e => setTextFilter(e.target.value)}
+            placeholder="Type to filter..."
+            style={{ width: 140, minWidth: 0, padding: '6px 10px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
+          />
+          <ExportToExcelButton
+            data={exportRows}
+            columns={exportColumns}
+            description={`Civil Material Export - ${new Date().toLocaleDateString('en-IN')}`}
+            fileName="CivilMaterialExport.xlsx"
+            renderButton={({ onClick }) => (
+              <button
+                onClick={onClick}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', border: 'none', borderRadius: '50%',
+                  width: 36, height: 36, cursor: 'pointer',
+                  padding: 0, marginLeft: 2
+                }}
+                title="Export Civil Material to Excel"
+              >
+                <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="48" height="48" rx="10" fill="#21A366"/>
+                  <rect x="7" y="7" width="34" height="34" rx="6" fill="#107C41"/>
+                  <path d="M16 16H32V32H16V16Z" fill="#33C481"/>
+                  <path d="M20.5 19L24 29L27.5 19H25.7L24 24.2L22.3 19H20.5Z" fill="white"/>
+                  <rect x="16" y="16" width="16" height="16" rx="2" stroke="#185C37" strokeWidth="2"/>
+                  <rect x="7" y="7" width="34" height="34" rx="6" stroke="#33C481" strokeWidth="2"/>
+                </svg>
+              </button>
+            )}
+          />
+        </div>
+        <table
+          className="step5-material-table"
+          style={{
+            width: '100%',
+            fontSize: '0.93rem',
+            background: '#fff',
+            borderCollapse: 'collapse',
+            borderSpacing: 0,
+            border: '1px solid #d0d7e1',
+            boxShadow: '0 2px 8px rgba(33,150,243,0.07)',
+            borderRadius: '8px'
+          }}
+        >
         <thead style={{ background: '#eaf4fb' }}>
           <tr>
             <th style={{

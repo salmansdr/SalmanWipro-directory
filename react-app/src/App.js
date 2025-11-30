@@ -16,6 +16,14 @@ import ProjectManagement from './ProjectManagement';
 import ProjectManagementEntryForm from './ProjectManagementEntryForm';
 import PricingCalculator from './PricingCalculator';
 import Login from './Login';
+import CompanySetup from './CompanySetup';
+import UserManagement from './UserManagement';
+import ItemMaster from './ItemMaster';
+import RccConfiguration from './RccConfiguration';
+import BHKConfiguration from './BHKConfiguration';
+import AreaCalculation from './AreaCalculation';
+import AreaCalculationHandsontable from './AreaCalculationHandsontable';
+import BOQEstimation from './BOQEstimation';
 
 // Global security feature toggle
 const SECURITY_ENABLED = true; // Set to false to disable security
@@ -149,6 +157,7 @@ function App() {
                   <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/boq-estimation" onClick={() => setExpanded(false)}>BOQ Estimation</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/TestApiPage" onClick={() => setExpanded(false)}>Room Plan</NavDropdown.Item>
                   </NavDropdown>
@@ -156,6 +165,35 @@ function App() {
                 {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
                   <NavDropdown title={<span style={{ color: 'white' }}>Reports</span>} id="reports-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
+                  </NavDropdown>
+                )}
+                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
+                  <NavDropdown title={<span style={{ color: 'white' }}>Master Data</span>} id="master-data-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
+                    <NavDropdown.Item as={NavLink} to="/item-master" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-boxes me-2"></i>Item Master
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/rcc-configuration" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-cubes me-2"></i>RCC Configuration
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/bhk-configuration" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-home me-2"></i>BHK Configuration
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/area-calculation" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-calculator me-2"></i>Area Calculation
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/area-calculation-excel" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-table me-2"></i>Area Calculation (Excel)
+                    </NavDropdown.Item>
+                  </NavDropdown>
+                )}
+                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
+                  <NavDropdown title={<span style={{ color: 'white' }}>Admin</span>} id="admin-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
+                    <NavDropdown.Item as={NavLink} to="/company-setup" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-building me-2"></i>Company Setup
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={NavLink} to="/user-management" onClick={() => setExpanded(false)}>
+                      <i className="fas fa-users me-2"></i>User Management
+                    </NavDropdown.Item>
                   </NavDropdown>
                 )}
                 <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)} style={{ color: 'white' }}>About</Nav.Link>
@@ -174,9 +212,17 @@ function App() {
               {isAuthenticated && <Route path="/project-management" element={<ProjectManagement />} />}
               {isAuthenticated && <Route path="/ProjectManagementEntryForm" element={<ProjectManagementEntryForm />} />}
               {isAuthenticated && <Route path="/project-estimation" element={<ProjectEstimation />} />}
+              {isAuthenticated && <Route path="/boq-estimation" element={<BOQEstimation />} />}
               {isAuthenticated && <Route path="/pricing-calculator" element={<PricingCalculator />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
+              {isAuthenticated && <Route path="/item-master" element={<ItemMaster />} />}
+              {isAuthenticated && <Route path="/rcc-configuration" element={<RccConfiguration />} />}
+              {isAuthenticated && <Route path="/bhk-configuration" element={<BHKConfiguration />} />}
+              {isAuthenticated && <Route path="/area-calculation" element={<AreaCalculation />} />}
+              {isAuthenticated && <Route path="/area-calculation-excel" element={<AreaCalculationHandsontable />} />}
+              {isAuthenticated && <Route path="/company-setup" element={<CompanySetup />} />}
+              {isAuthenticated && <Route path="/user-management" element={<UserManagement />} />}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login onLogin={handleLogin} isAuthenticated={isAuthenticated} />} />

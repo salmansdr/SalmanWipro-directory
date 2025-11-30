@@ -12,15 +12,17 @@ function ProjectSection({ title, projects, showProgress = true }) {
   return (
     <div className="container-fluid mt-3 px-3">
       <div className="row">
-        {projects.map((proj) => (
-          <div key={proj.id} className="col-12 col-md-6 col-lg-3 mb-4">
+        {projects.map((proj, index) => (
+          <div key={`${proj.id}-${index}`} className="col-12 col-md-6 col-lg-3 mb-4">
             <div className="card h-100 shadow-sm d-flex flex-column">
-              <img
-                src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image}
-                alt={proj.name}
-                className="card-img-top"
-                style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}
-              />
+              {proj.image && (
+                <img
+                  src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image}
+                  alt={proj.name}
+                  className="card-img-top"
+                  style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}
+                />
+              )}
               <div className="card-body d-flex flex-column">
                 <h5 className="card-title">{proj.name}</h5>
                 <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
@@ -52,7 +54,7 @@ function Home() {
   const [tab, setTab] = useState('completed');
   const [projectsData, setProjectsData] = useState(null);
   const [searchLocation, setSearchLocation] = useState('');
-  const [searchStatus, setSearchStatus] = useState('completed');
+  const [searchStatus, setSearchStatus] = useState(''); // Changed to empty string to show "All" initially
   const [filteredProjects, setFilteredProjects] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -70,30 +72,77 @@ function Home() {
 
   React.useEffect(() => {
     setTab('completed');
-    fetch(process.env.PUBLIC_URL + '/projects.json')
+    // Updated to call API instead of local file
+    // Use environment variable for API URL, fallback to localhost for development
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://localhost:7777';
+    fetch(`${apiUrl}/api/projects`)
       .then(res => res.json())
       .then(data => {
-        setProjectsData(data);
-        setFilteredProjects(data.completed);
+        let processedData;
+        
+        // Check if API returns a flat array of projects
+        if (Array.isArray(data)) {
+          // Group projects by status
+          processedData = {
+            completed: data.filter(project => project.status === 'completed'),
+            running: data.filter(project => project.status === 'running'),
+            upcoming: data.filter(project => project.status === 'upcoming')
+          };
+         // console.log('Grouped data:', processedData);
+        } else {
+          // API returns object with completed, running, upcoming arrays
+          processedData = data;
+          if (data.completed) {
+            // console.log('data.completed:', data.completed);
+            // console.log('Is data.completed an array?', Array.isArray(data.completed));
+          }
+        }
+        
+        setProjectsData(processedData);
+        // Set filtered projects to completed ones
+        if (processedData.completed && Array.isArray(processedData.completed)) {
+          setFilteredProjects(processedData.completed);
+        } else {
+          console.warn('processedData.completed is not an array or does not exist');
+          setFilteredProjects([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching projects:', error);
+        setProjectsData(null);
+        setFilteredProjects([]);
       });
+    
+    // Previous local file approach - kept for future use:
+    // fetch(process.env.PUBLIC_URL + '/projects.json')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setProjectsData(data);
+    //     setFilteredProjects(data.completed);
+    //   });
   }, []);
 
   if (!projectsData) return <div>Loading...</div>;
 
   const allProjects = [
-    ...projectsData.completed,
-    ...projectsData.running,
-    ...projectsData.upcoming
+    ...(projectsData.completed || []),
+    ...(projectsData.running || []),
+    ...(projectsData.upcoming || [])
   ];
   const uniqueLocations = Array.from(new Set(allProjects.map(p => p.location)));
 
   if (filteredProjects !== null) {
     tabProjects = filteredProjects;
   } else {
-    if (tab === 'completed') tabProjects = projectsData.completed;
-    if (tab === 'running') tabProjects = projectsData.running;
-    if (tab === 'upcoming') tabProjects = projectsData.upcoming;
+    if (tab === 'completed') tabProjects = projectsData.completed || [];
+    if (tab === 'running') tabProjects = projectsData.running || [];
+    if (tab === 'upcoming') tabProjects = projectsData.upcoming || [];
   }
+
+  // Update currentTab for display when showing filtered results
+  const displayTab = filteredProjects !== null ? 
+    (searchStatus ? { key: searchStatus, label: searchStatus.charAt(0).toUpperCase() + searchStatus.slice(1), icon: '🔍' } : { key: 'all', label: 'All', icon: '🔍' }) : 
+    currentTab;
 
   const projectsWithNav = tabProjects.map((proj) => ({
     ...proj,
@@ -113,10 +162,33 @@ function Home() {
   }
 
   function handleSearch(location, status) {
+    console.log('Searching with:', { location, status });
+    console.log('All projects:', allProjects);
+    
+    // If both filters are empty, show all completed projects (default)
+    if (!location && !status) {
+      setFilteredProjects(null);
+      setTab('completed');
+      return;
+    }
+    
     let filtered = allProjects;
-    if (location) filtered = filtered.filter(p => p.location === location);
-    if (status) filtered = filtered.filter(p => p.status && p.status.toLowerCase() === status.toLowerCase());
+    
+    if (location) {
+      filtered = filtered.filter(p => p.location === location);
+      console.log('After location filter:', filtered);
+    }
+    
+    if (status) {
+      filtered = filtered.filter(p => p.status && p.status.toLowerCase() === status.toLowerCase());
+      console.log('After status filter:', filtered);
+    }
+    
+    console.log('Final filtered projects:', filtered);
     setFilteredProjects(filtered);
+    
+    // Reset tab to show all filtered results
+    setTab('filtered');
   }
 
   // Simple email and phone validation
@@ -198,9 +270,9 @@ function Home() {
       </div>
       {/* End Search Section */}
       <ProjectSection
-        title={`${currentTab.icon} ${currentTab.label} Projects`}
+        title={`${displayTab.icon} ${displayTab.label} Projects`}
         projects={projectsWithNav}
-        showProgress={currentTab.showProgress}
+        showProgress={displayTab.showProgress}
       />
 
       {/* Enquire Now Section */}
@@ -220,8 +292,8 @@ function Home() {
               <div className="col-12 col-md-6">
                 <select className="form-select" id="enq-project" required value={enqProject} onChange={e => setEnqProject(e.target.value)}>
                   <option value="">Select project</option>
-                  {allProjects.map(p => (
-                    <option key={p.id} value={p.name}>{p.name}</option>
+                  {allProjects.map((p, index) => (
+                    <option key={`${p.id}-${index}`} value={p.name}>{p.name}</option>
                   ))}
                 </select>
               </div>

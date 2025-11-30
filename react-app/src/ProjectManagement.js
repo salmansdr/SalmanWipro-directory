@@ -8,28 +8,57 @@ function ProjectDetails() {
   const [projects, setProjects] = useState([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch(process.env.PUBLIC_URL + '/projects.json')
-      .then(res => res.json())
-      .then(data => {
-        // Flatten all project arrays (completed, running, upcoming) if present
+  const loadProjects = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      const response = await fetch(`${apiUrl}/api/projects`);
+      const data = await response.json();
+      
+      // Check if data is directly an array of projects
+      if (Array.isArray(data)) {
+        setProjects(data);
+      } else {
+        // Fallback: Flatten all project arrays (completed, running, upcoming) if present
         let allProjects = [];
         if (Array.isArray(data.completed)) allProjects = allProjects.concat(data.completed);
         if (Array.isArray(data.running)) allProjects = allProjects.concat(data.running);
         if (Array.isArray(data.upcoming)) allProjects = allProjects.concat(data.upcoming);
         setProjects(allProjects);
-      })
-      .catch(() => setProjects([]));
-  }, []);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      setProjects([]);
+    }
+  };
 
+  useEffect(() => {
+    loadProjects();
+  }, []);
   const handleEdit = (project) => {
     navigate('/ProjectManagementEntryForm', { state: { project, edit: true } });
   };
 
-  const handleDelete = (projectName) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      setProjects(projects.filter(p => p.name !== projectName));
-      // TODO: Persist delete to backend or file
+  const handleDelete = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      const response = await fetch(`${apiUrl}/api/projects/${projectId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete project');
+      }
+
+      // Refresh the projects list after successful deletion
+      loadProjects();
+      alert('Project deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error deleting project: ' + error.message);
     }
   };
 
@@ -60,8 +89,8 @@ function ProjectDetails() {
               </tr>
             </thead>
             <tbody>
-              {projects.map((project, idx) => (
-                <tr key={project.id || idx}>
+              {projects.map((project) => (
+                <tr key={project._id}>
                   <td>
                     <Link to="/ProjectManagementEntryForm" state={{ project }} className="fw-bold text-decoration-underline">
                       {project.name}
@@ -75,7 +104,7 @@ function ProjectDetails() {
                       <Button variant="outline-primary" size="sm" onClick={() => handleEdit(project)} title="Edit">
                         <FaEdit />
                       </Button>
-                      <Button variant="outline-danger" size="sm" onClick={() => handleDelete(project.name)} title="Delete">
+                      <Button variant="outline-danger" size="sm" onClick={() => handleDelete(project._id)} title="Delete">
                         <FaTrash />
                       </Button>
                     </div>
