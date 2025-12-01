@@ -25,14 +25,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Build .NET API
-        run: dotnet build Server/ConstructionAPI/ConstructionAPI.csproj
-
+     
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
