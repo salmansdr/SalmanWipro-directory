@@ -284,6 +284,7 @@ const AreaCalculationHandsontable = () => {
   };
 
   // Delete selected rows
+  // eslint-disable-next-line no-unused-vars
   const handleDeleteRows = async (section) => {
     const hotInstance = hotTableRefs[section].current?.hotInstance;
     if (!hotInstance) {
@@ -419,6 +420,7 @@ const AreaCalculationHandsontable = () => {
   };
 
   // Export all sections to Excel
+  // eslint-disable-next-line no-unused-vars
   const handleExportAllToExcel = () => {
     const sectionsWithData = floorSections.filter(section => {
       const hotInstance = hotTableRefs[section].current?.hotInstance;
