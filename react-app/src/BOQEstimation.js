@@ -31,6 +31,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const materialTableRef = useRef(null);
   const floorInitializedRef = useRef(false);
   const floorDataCache = useRef({});
+  const materialDataCache = useRef({}); // Cache for material grid data
   const initialLoadDone = useRef(false);
   const previousFloorRef = useRef(''); // Track previous floor for saving data before switching
   const allComponentsRef = useRef({}); // Store all components from AreaCalculation
@@ -367,6 +368,90 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     }
   }, [apiBaseUrl, floorsList, mapFloorName, extractComponentsFromFloorData]);
 
+  // Load material data from API
+  const loadMaterialDataFromAPI = useCallback(async (estimationId) => {
+    try {
+      const url = `${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-estimation-master/${estimationId}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.log('No saved material data found');
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Loaded material data:', data);
+      
+      let floorsArray = null;
+      
+      if (data && data.records && Array.isArray(data.records) && data.records.length > 0) {
+        const record = data.records[0];
+        if (record.floors && Array.isArray(record.floors)) {
+          floorsArray = record.floors;
+        }
+      } else if (data && data.floors && Array.isArray(data.floors)) {
+        floorsArray = data.floors;
+      }
+      
+      if (floorsArray && floorsArray.length > 0) {
+        floorsArray.forEach(floorData => {
+          const floorName = floorData.floorName;
+          if (floorName && floorData.components) {
+            // Convert API format to grid format
+            const materialGridData = [];
+            
+            Object.keys(floorData.components).forEach(compName => {
+              const comp = floorData.components[compName];
+              
+              // Add group header
+              materialGridData.push({
+                component: compName,
+                volume: comp.volume || 0,
+                unit: comp.unit || 'Cum',
+                materialQty: '',
+                uom: '',
+                materialRate: '',
+                labourRate: comp.labourRate || 0,
+                materialAmount: comp.materialAmount || 0,
+                labourAmount: comp.labourAmount || 0,
+                totalAmount: comp.totalAmount || 0,
+                remarks: '',
+                isGroupHeader: true
+              });
+              
+              // Add material child rows
+              if (comp.materials && comp.materials.length > 0) {
+                comp.materials.forEach(mat => {
+                  materialGridData.push({
+                    component: mat.material || '',
+                    volume: '',
+                    unit: '',
+                    materialQty: mat.materialQty || 0,
+                    uom: mat.uom || '',
+                    materialRate: mat.materialRate || 0,
+                    labourRate: '',
+                    materialAmount: mat.materialAmount || 0,
+                    labourAmount: '',
+                    totalAmount: mat.totalAmount || 0,
+                    remarks: '',
+                    isGroupHeader: false
+                  });
+                });
+              }
+            });
+            
+            // Cache the material data
+            materialDataCache.current[floorName] = materialGridData;
+          }
+        });
+        
+        console.log('Material data cached for floors:', Object.keys(materialDataCache.current));
+      }
+    } catch (error) {
+      console.log('Error loading material data:', error);
+    }
+  }, [apiBaseUrl]);
+
   const updateGroupTotal = useCallback((groupIndex) => {
     const hotInstance = quantityTableRef.current?.hotInstance;
     if (!hotInstance) return;
@@ -609,6 +694,21 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   }, [selectedComponent, quantityData, localSelectedFloor, mapFloorName]);
 
 
+  // Save current material grid data to cache
+  const saveCurrentMaterialDataToCache = useCallback((floorName) => {
+    if (!floorName || floorName === '') return;
+    
+    const materialHotInstance = materialTableRef.current?.hotInstance;
+    if (!materialHotInstance) {
+      return;
+    }
+    
+    const currentMaterialData = materialHotInstance.getSourceData();
+    if (currentMaterialData && currentMaterialData.length > 0) {
+      materialDataCache.current[floorName] = JSON.parse(JSON.stringify(currentMaterialData));
+    }
+  }, []);
+
   // Save current grid data back to cache
   const saveCurrentFloorDataToCache = useCallback((floorName) => {
     if (!floorName || floorName === '') return;
@@ -681,9 +781,12 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     if (estimationMasterId && floorsList && floorsList.length > 0 && !initialLoadDone.current) {
       initialLoadDone.current = true;
       
-      loadAllFloorsData(estimationMasterId);
+      loadAllFloorsData(estimationMasterId).then(() => {
+        // After loading quantity data, also load material data
+        loadMaterialDataFromAPI(estimationMasterId);
+      });
     }
-  }, [estimationMasterId, floorsList, loadAllFloorsData]);
+  }, [estimationMasterId, floorsList, loadAllFloorsData, loadMaterialDataFromAPI]);
 
   // Initialize floors list from parent and set first floor as default
   useEffect(() => {
@@ -717,9 +820,10 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
 
   // Function to get all cached data for saving
   const getAllCachedDataForSave = useCallback(() => {
-    // Save current floor data first
+    // Save current floor data first (both quantity and material)
     if (localSelectedFloor && localSelectedFloor !== '') {
       saveCurrentFloorDataToCache(localSelectedFloor);
+      saveCurrentMaterialDataToCache(localSelectedFloor);
     }
     
     const allFloorsData = [];
@@ -787,11 +891,223 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     });
     
     return allFloorsData;
-  }, [localSelectedFloor, estimationMasterId, saveCurrentFloorDataToCache]);
+  }, [localSelectedFloor, estimationMasterId, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
+
+  // Function to get all cached material data for saving
+  const getAllMaterialDataForSave = useCallback(() => {
+    console.log('getAllMaterialDataForSave called');
+    console.log('materialDataCache keys:', Object.keys(materialDataCache.current));
+    console.log('floorDataCache keys:', Object.keys(floorDataCache.current));
+    console.log('rccConfigData:', rccConfigData);
+    
+    // Save current floor material data first
+    if (localSelectedFloor && localSelectedFloor !== '') {
+      saveCurrentMaterialDataToCache(localSelectedFloor);
+    }
+    
+    const allFloorsMaterialData = [];
+    
+    // First, try to use edited material data from materialDataCache
+    // If not available, generate from quantity data in floorDataCache
+    
+    const floorsToProcess = new Set([
+      ...Object.keys(materialDataCache.current),
+      ...Object.keys(floorDataCache.current)
+    ]);
+    
+    floorsToProcess.forEach(floorName => {
+      console.log(`Processing floor: ${floorName}`);
+      
+      // Check if we have edited material data for this floor
+      if (materialDataCache.current[floorName] && materialDataCache.current[floorName].length > 0) {
+        console.log(`Using cached material data for ${floorName}`);
+        const materialGridData = materialDataCache.current[floorName];
+        
+        // Convert grid data to API format
+        const materialComponents = {};
+        
+        materialGridData.forEach(row => {
+          if (row.isGroupHeader) {
+            materialComponents[row.component] = {
+              volume: row.volume || 0,
+              unit: row.unit || 'Cum',
+              labourRate: row.labourRate || 0,
+              labourAmount: row.labourAmount || 0,
+              materialAmount: row.materialAmount || 0,
+              totalAmount: row.totalAmount || 0,
+              materials: []
+            };
+          } else {
+            // Find parent component
+            const parentComponent = Object.keys(materialComponents).pop();
+            if (parentComponent && materialComponents[parentComponent]) {
+              materialComponents[parentComponent].materials.push({
+                material: row.component || '',
+                materialQty: row.materialQty || 0,
+                uom: row.uom || '',
+                materialRate: row.materialRate || 0,
+                materialAmount: row.materialAmount || 0,
+                totalAmount: row.totalAmount || 0
+              });
+            }
+          }
+        });
+        
+        allFloorsMaterialData.push({
+          floorName: floorName,
+          estimationMasterId: estimationMasterId,
+          components: materialComponents
+        });
+        
+        return; // Skip to next floor
+      }
+      
+      // If no edited material data, generate from quantity data
+      const floorCache = floorDataCache.current[floorName];
+      if (!floorCache) {
+        console.log(`No cache found for ${floorName}`);
+        return;
+      }
+      
+      const gridData = floorCache.gridData || [];
+      
+      console.log(`${floorName} gridData length:`, gridData.length);
+      
+      if (gridData.length === 0) return;
+      
+      // Generate material data from this floor's quantity data
+      const floorMaterialData = [];
+      
+      gridData.forEach((row) => {
+        if (row.isGroupHeader) {
+          console.log(`Processing group header: ${row.component}, quantity: ${row.quantity}, mixture: ${row.mixture}`);
+          const volumeQty = parseFloat(row.quantity) || 0;
+          
+          // Skip if volume is 0 or less
+          if (volumeQty <= 0) {
+            return;
+          }
+          
+          // Check if this component has mixture (RCC work) or not (earth work, etc.)
+          if (row.mixture) {
+            // RCC component with material breakdown
+            const mixture = row.mixture;
+            const matchingConfig = rccConfigData.find(config => 
+              config.grade && config.grade.toLowerCase() === mixture.toLowerCase()
+            );
+            
+            if (matchingConfig) {
+              const labourRateValue = parseFloat(row.labourRate) || 0;
+              const labourAmountValue = (volumeQty * labourRateValue).toFixed(2);
+              
+              // Calculate material amounts for all child materials first
+              const materials = [
+                { name: 'Cement', data: matchingConfig.cement },
+                { name: 'Steel', data: matchingConfig.steel },
+                { name: 'Sand', data: matchingConfig.sand },
+                { name: 'Aggregate 20mm', data: matchingConfig.aggregate_20mm },
+                { name: 'Aggregate 40mm', data: matchingConfig.aggregate_40mm },
+                { name: 'Water', data: matchingConfig.water },
+                { name: 'Bricks', data: matchingConfig.bricks }
+              ];
+              
+              let totalMaterialAmount = 0;
+              const materialRowsForGroup = [];
+              
+              materials.forEach(material => {
+                if (material.data && material.data.quantity) {
+                  const matQty = parseFloat(material.data.quantity) || 0;
+                  const totalQty = (volumeQty * matQty).toFixed(2);
+                  
+                  const materialName = material.data.material || material.name;
+                  const defaultRate = parseFloat(material.data.defaultRate) || 0;
+                  
+                  const materialAmt = parseFloat(totalQty * defaultRate);
+                  totalMaterialAmount += materialAmt;
+                  
+                  materialRowsForGroup.push({
+                    material: materialName,
+                    materialQty: totalQty,
+                    uom: material.data.unit || 'KG',
+                    materialRate: defaultRate,
+                    materialAmount: materialAmt.toFixed(2),
+                    totalAmount: materialAmt.toFixed(2)
+                  });
+                }
+              });
+              
+              // Add group header row with calculated total material amount
+              const groupTotalAmount = totalMaterialAmount + parseFloat(labourAmountValue);
+              
+              floorMaterialData.push({
+                component: row.component,
+                volume: parseFloat(volumeQty.toFixed(2)),
+                unit: 'Cum',
+                labourRate: labourRateValue,
+                labourAmount: parseFloat(labourAmountValue),
+                materialAmount: parseFloat(totalMaterialAmount.toFixed(2)),
+                totalAmount: parseFloat(groupTotalAmount.toFixed(2)),
+                materials: materialRowsForGroup,
+                isGroupHeader: true
+              });
+            }
+          } else {
+            // Non-RCC component (Earth Excavation, Backfilling, etc.) - show only labour
+            const labourRateValue = parseFloat(row.labourRate) || 0;
+            const labourAmountValue = parseFloat((volumeQty * labourRateValue).toFixed(2));
+            const totalAmountValue = labourAmountValue;
+            
+            floorMaterialData.push({
+              component: row.component,
+              volume: parseFloat(volumeQty.toFixed(2)),
+              unit: row.unit || 'Cum',
+              labourRate: labourRateValue,
+              labourAmount: labourAmountValue,
+              materialAmount: 0,
+              totalAmount: totalAmountValue,
+              materials: [],
+              isGroupHeader: true
+            });
+          }
+        }
+      });
+      
+      if (floorMaterialData.length === 0) return;
+      
+      // Group materials by component for API format
+      const materialComponents = {};
+      
+      floorMaterialData.forEach(row => {
+        if (row.isGroupHeader) {
+          materialComponents[row.component] = {
+            volume: row.volume || 0,
+            unit: row.unit || 'Cum',
+            labourRate: row.labourRate || 0,
+            labourAmount: row.labourAmount || 0,
+            materialAmount: row.materialAmount || 0,
+            totalAmount: row.totalAmount || 0,
+            materials: row.materials || []
+          };
+        }
+      });
+      
+      allFloorsMaterialData.push({
+        floorName: floorName,
+        estimationMasterId: estimationMasterId,
+        components: materialComponents
+      });
+    });
+    
+    console.log('Total floors with material data:', allFloorsMaterialData.length);
+    console.log('Material data to save:', JSON.stringify(allFloorsMaterialData, null, 2));
+    
+    return allFloorsMaterialData;
+  }, [localSelectedFloor, estimationMasterId, saveCurrentMaterialDataToCache, rccConfigData]);
 
   // Function to clear cache and reload data (to be called after save)
   const refreshDataFromDatabase = useCallback(() => {
     floorDataCache.current = {};
+    materialDataCache.current = {};
     initialLoadDone.current = false;
     if (estimationMasterId && floorsList && floorsList.length > 0) {
       loadAllFloorsData(estimationMasterId).then(() => {
@@ -807,14 +1123,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   useEffect(() => {
     // Always expose the functions to parent
     window.BOQEstimation_getAllCachedData = getAllCachedDataForSave;
+    window.BOQEstimation_getAllMaterialData = getAllMaterialDataForSave;
     window.BOQEstimation_refreshData = refreshDataFromDatabase;
     
     // Cleanup on unmount
     return () => {
       delete window.BOQEstimation_getAllCachedData;
+      delete window.BOQEstimation_getAllMaterialData;
       delete window.BOQEstimation_refreshData;
     };
-  }, [getAllCachedDataForSave, refreshDataFromDatabase]);
+  }, [getAllCachedDataForSave, getAllMaterialDataForSave, refreshDataFromDatabase]);
 
   const addRowToGroup = useCallback((groupIndex) => {
     const newData = [...quantityData];
@@ -1115,10 +1433,18 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   // Update material data when quantityData or tab changes
   useEffect(() => {
     if (activeTab === 'material') {
-      const materials = generateMaterialData();
-      setMaterialData(materials);
+      // Check if we have cached material data for this floor
+      if (materialDataCache.current[localSelectedFloor]) {
+        setMaterialData(materialDataCache.current[localSelectedFloor]);
+      } else {
+        // Generate fresh material data from quantity data
+        const materials = generateMaterialData();
+        setMaterialData(materials);
+        // Cache the generated data
+        materialDataCache.current[localSelectedFloor] = materials;
+      }
     }
-  }, [activeTab, quantityData, rccConfigData, generateMaterialData]);
+  }, [activeTab, quantityData, rccConfigData, generateMaterialData, localSelectedFloor]);
 
   // Get available materials for a given category from MaterialItems API
   // eslint-disable-next-line no-unused-vars
@@ -1133,6 +1459,52 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     // Return array of material names
     return filteredMaterials.map(item => item.material).filter(m => m);
   }, [materialItems]);
+
+  // Helper function to update group header totals
+  const updateGroupHeader = useCallback((hotInstance, allData, groupHeaderRow) => {
+    const groupRowData = allData[groupHeaderRow];
+    if (!groupRowData || !groupRowData.isGroupHeader) return;
+    
+    // Sum all child material amounts
+    let totalMaterialAmount = 0;
+    for (let i = groupHeaderRow + 1; i < allData.length; i++) {
+      const childRow = allData[i];
+      if (!childRow || childRow.isGroupHeader) break;
+      totalMaterialAmount += parseFloat(childRow.materialAmount) || 0;
+    }
+    
+    const labourAmount = parseFloat(groupRowData.labourAmount) || 0;
+    const totalAmount = (totalMaterialAmount + labourAmount).toFixed(2);
+    
+    hotInstance.setDataAtRowProp(groupHeaderRow, 'materialAmount', totalMaterialAmount.toFixed(2));
+    hotInstance.setDataAtRowProp(groupHeaderRow, 'totalAmount', totalAmount);
+    
+    // Update cache
+    if (localSelectedFloor) {
+      materialDataCache.current[localSelectedFloor] = hotInstance.getSourceData();
+    }
+  }, [localSelectedFloor]);
+
+  // Helper function to recalculate child row amounts
+  const recalculateChildRow = useCallback((row) => {
+    const hotInstance = materialTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+    
+    const rowData = hotInstance.getSourceDataAtRow(row);
+    if (!rowData || rowData.isGroupHeader) return;
+    
+    const materialQty = parseFloat(rowData.materialQty) || 0;
+    const materialRate = parseFloat(rowData.materialRate) || 0;
+    const labourRate = parseFloat(rowData.labourRate) || 0;
+    
+    const materialAmount = (materialQty * materialRate).toFixed(2);
+    const labourAmount = (materialQty * labourRate).toFixed(2);
+    const totalAmount = (parseFloat(materialAmount) + parseFloat(labourAmount)).toFixed(2);
+    
+    hotInstance.setDataAtRowProp(row, 'materialAmount', materialAmount);
+    hotInstance.setDataAtRowProp(row, 'labourAmount', labourAmount);
+    hotInstance.setDataAtRowProp(row, 'totalAmount', totalAmount);
+  }, []);
 
   const getMaterialColumns = useMemo(() => [
     {
@@ -2071,12 +2443,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 const hotInstance = materialTableRef.current?.hotInstance;
                                 if (!hotInstance) return;
                                 
-                                const allData = hotInstance.getSourceData();
                                 const groupsToUpdate = new Set();
                                 
-                                // Recalculate amounts when rates change
                                 changes.forEach(([row, prop, oldValue, newValue]) => {
                                   const rowData = hotInstance.getSourceDataAtRow(row);
+                                  if (!rowData) return;
                                   
                                   // Handle group header labour rate changes
                                   if (rowData.isGroupHeader && prop === 'labourRate') {
@@ -2088,41 +2459,26 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     groupsToUpdate.add(row);
                                   }
                                   
-                                  // Handle child row changes (materialQty, materialRate, labourRate, component)
+                                  // Handle child row changes
                                   if (!rowData.isGroupHeader) {
-                                    // If component changed, get material details from MaterialItems API
+                                    // If component changed, get material details
                                     if (prop === 'component' && newValue && materialItems) {
-                                      const selectedMaterial = materialItems.find(item => 
-                                        item.material === newValue
-                                      );
-                                      
+                                      const selectedMaterial = materialItems.find(item => item.material === newValue);
                                       if (selectedMaterial) {
-                                        const defaultRate = parseFloat(selectedMaterial.defaultRate) || 0;
-                                        const uom = selectedMaterial.unit || 'KG';
-                                        
-                                        hotInstance.setDataAtRowProp(row, 'materialRate', defaultRate);
-                                        hotInstance.setDataAtRowProp(row, 'uom', uom);
+                                        hotInstance.setDataAtRowProp(row, 'materialRate', parseFloat(selectedMaterial.defaultRate) || 0);
+                                        hotInstance.setDataAtRowProp(row, 'uom', selectedMaterial.unit || 'KG');
                                       }
                                     }
                                     
-                                    // Recalculate amounts when qty or rates change
+                                    // Track which groups need updating
                                     if (['materialQty', 'materialRate', 'labourRate', 'component'].includes(prop)) {
-                                      const materialQty = parseFloat(rowData.materialQty) || 0;
-                                      const materialRate = parseFloat(rowData.materialRate) || 0;
-                                      const labourRate = parseFloat(rowData.labourRate) || 0;
+                                      // Recalculate this row
+                                      recalculateChildRow(row);
                                       
-                                      const materialAmount = (materialQty * materialRate).toFixed(2);
-                                      const labourAmount = (materialQty * labourRate).toFixed(2);
-                                      const totalAmount = (parseFloat(materialAmount) + parseFloat(labourAmount)).toFixed(2);
-                                      
-                                      hotInstance.setDataAtRowProp(row, 'materialAmount', materialAmount);
-                                      hotInstance.setDataAtRowProp(row, 'labourAmount', labourAmount);
-                                      hotInstance.setDataAtRowProp(row, 'totalAmount', totalAmount);
-                                      
-                                      // Find the group header for this child row
+                                      // Find group header to update
+                                      const allData = hotInstance.getSourceData();
                                       for (let i = row - 1; i >= 0; i--) {
-                                        const checkRow = allData[i];
-                                        if (checkRow && checkRow.isGroupHeader) {
+                                        if (allData[i] && allData[i].isGroupHeader) {
                                           groupsToUpdate.add(i);
                                           break;
                                         }
@@ -2131,30 +2487,15 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   }
                                 });
                                 
-                                // Update group header totals
-                                setTimeout(() => {
-                                  groupsToUpdate.forEach(groupHeaderRow => {
-                                    const groupRowData = hotInstance.getSourceDataAtRow(groupHeaderRow);
-                                    if (!groupRowData || !groupRowData.isGroupHeader) return;
-                                    
-                                    // Sum all child material amounts
-                                    let totalMaterialAmount = 0;
-                                    for (let i = groupHeaderRow + 1; i < allData.length; i++) {
-                                      const childRow = allData[i];
-                                      if (!childRow) break;
-                                      if (childRow.isGroupHeader) break; // Next group started
-                                      
-                                      const childMaterialAmount = parseFloat(childRow.materialAmount) || 0;
-                                      totalMaterialAmount += childMaterialAmount;
-                                    }
-                                    
-                                    const labourAmount = parseFloat(groupRowData.labourAmount) || 0;
-                                    const totalAmount = (totalMaterialAmount + labourAmount).toFixed(2);
-                                    
-                                    hotInstance.setDataAtRowProp(groupHeaderRow, 'materialAmount', totalMaterialAmount.toFixed(2));
-                                    hotInstance.setDataAtRowProp(groupHeaderRow, 'totalAmount', totalAmount);
-                                  });
-                                }, 50);
+                                // Update all affected group headers
+                                if (groupsToUpdate.size > 0) {
+                                  setTimeout(() => {
+                                    const allData = hotInstance.getSourceData();
+                                    groupsToUpdate.forEach(groupHeaderRow => {
+                                      updateGroupHeader(hotInstance, allData, groupHeaderRow);
+                                    });
+                                  }, 50);
+                                }
                               }}
                               cells={((materialItemsData, quantityDataArray) => {
                                 return function(row, col, prop) {

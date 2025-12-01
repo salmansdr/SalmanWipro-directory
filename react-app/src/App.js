@@ -157,9 +157,7 @@ function App() {
                   <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
                     <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
                     <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/boq-estimation" onClick={() => setExpanded(false)}>BOQ Estimation</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/pricing-calculator" onClick={() => setExpanded(false)}>Pricing Calculator</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/TestApiPage" onClick={() => setExpanded(false)}>Room Plan</NavDropdown.Item>
+                    
                   </NavDropdown>
                 )}
                 {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
@@ -178,9 +176,7 @@ function App() {
                     <NavDropdown.Item as={NavLink} to="/bhk-configuration" onClick={() => setExpanded(false)}>
                       <i className="fas fa-home me-2"></i>BHK Configuration
                     </NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/area-calculation" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-calculator me-2"></i>Area Calculation
-                    </NavDropdown.Item>
+                   
                     <NavDropdown.Item as={NavLink} to="/area-calculation-excel" onClick={() => setExpanded(false)}>
                       <i className="fas fa-table me-2"></i>Area Calculation (Excel)
                     </NavDropdown.Item>

@@ -785,6 +785,9 @@ const filteredMaterialRows = useMemo(() => {
       const result = await response.json();
       console.log('Save successful:', result);
 
+      // Save material data (Tab 2) BEFORE refreshing cache
+      await saveMaterialData(estimationMasterId);
+
       // Show success message with auto-hide
       const action = existingRecordId ? 'updated' : 'saved';
       setAlertMessage({
@@ -798,7 +801,7 @@ const filteredMaterialRows = useMemo(() => {
         setAlertMessage({ show: false, type: '', message: '' });
       }, 3000);
 
-      // Refresh data from database
+      // Refresh data from database AFTER material data is saved
       if (window.BOQEstimation_refreshData) {
         window.BOQEstimation_refreshData();
       }
@@ -815,6 +818,88 @@ const filteredMaterialRows = useMemo(() => {
       setTimeout(() => {
         setAlertMessage({ show: false, type: '', message: '' });
       }, 5000);
+    }
+  };
+
+  const saveMaterialData = async (estimationMasterId) => {
+    try {
+      // Get material data from BOQEstimation component
+      if (!window.BOQEstimation_getAllMaterialData) {
+        console.log('Material data function not available');
+        return;
+      }
+
+      const allMaterialData = window.BOQEstimation_getAllMaterialData();
+      
+      if (!allMaterialData || allMaterialData.length === 0) {
+        console.log('No material data to save');
+        return;
+      }
+
+      console.log('Saving material data:', allMaterialData);
+
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      
+      // Check if record already exists
+      const checkResponse = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-estimation-master/${estimationMasterId}`);
+      let existingRecordId = null;
+      
+      if (checkResponse.ok) {
+        const existingData = await checkResponse.json();
+        console.log('Existing material data check:', existingData);
+        
+        // Extract _id from records array
+        if (existingData && existingData.records && existingData.records.length > 0) {
+          existingRecordId = existingData.records[0]._id;
+          console.log('Found existing material record ID:', existingRecordId);
+        }
+      }
+
+      // Prepare single payload with all floors
+      const payload = {
+        estimationMasterId: estimationMasterId,
+        floors: allMaterialData.map(floorData => ({
+          floorName: floorData.floorName,
+          components: floorData.components
+        }))
+      };
+
+      console.log('Material payload:', payload);
+
+      let response;
+      if (existingRecordId) {
+        // UPDATE existing record
+        console.log('Updating existing material record with ID:', existingRecordId);
+        response = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/${existingRecordId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // CREATE new record
+        console.log('Creating new material record');
+        response = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to save material data' }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Material data save successful:', result);
+
+    } catch (error) {
+      console.error('Error saving material data:', error);
+      // Don't show error to user, just log it
     }
   };
 
