@@ -275,8 +275,6 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
   // --- Shared/Other State ---
   // Variables used across steps or for modals, navigation, etc.
 
-  const [showBHKConfigModal, setShowBHKConfigModal] = useState(false);
-    const [bhkConfigJson, setBhkConfigJson] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
     const { mode, id } = location.state || {};
@@ -305,6 +303,15 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
   const [bcColumnHeight, setBCColumnHeight] = useState(0);
 //Step for Labour Work Data
   const [labourWorkData, setLabourWorkData] = useState({});
+
+// Memoized floors list for BOQEstimation (prevents unnecessary re-renders)
+const boqFloorsList = React.useMemo(() => [
+  'Foundation',
+  ...(basementCount > 0 ? [...Array(Number(basementCount))].map((_, idx) => `Basement ${idx + 1}`) : []),
+  ...([...Array(Number(floors) + 1).keys()].map(i => 
+    i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`
+  ))
+], [basementCount, floors]);
 
 const filteredMaterialRows = useMemo(() => {
   if (!materialRows || !Array.isArray(materialRows)) return [];
@@ -336,116 +343,6 @@ const filteredMaterialRows = useMemo(() => {
     },
     [floorBHKConfigs, bhkRows, defaultBHKs, groundFloorHasRooms]
   );
-  function handleSaveBHKConfig() {
-    // Get current timestamp for modified date
-    const currentDate = new Date().toLocaleDateString('en-IN');
-    
-    // Collect complete estimation data in MongoDB-ready format
-    const estimationDocument = {
-      // Header information
-      estimationRef: estimationRef || `EST-${Date.now()}`, // Auto-generate if empty
-      description: description || 'Construction Estimation',
-      createdDate: createDate,
-      modifiedDate: currentDate,
-      createdBy: userName,
-      modifiedBy: userName,
-      
-      // Project details
-      projectDetails: {
-        city: selectedCity,
-      
-        buildupArea: buildupPercent,
-        carpetArea: carpetPercent,
-  
-        floors: Number(floors),
-        liftIncluded: lift
-      },
-      
-      
-      // Floor configuration with embedded room details
-      // Note: BHK configurations start from Ground Floor (floorIdx >= 1) onwards
-      floorConfiguration: Array.from({ length: Number(floors) + 2 }, (_, floorIdx) => {
-        const rows = getFloorRows(floorIdx);
-        // Floor label logic: 0 = Foundation, 1 = Ground, 2+ = nth
-        let floorLabel = '';
-        if (floorIdx === 0) floorLabel = 'Foundation';
-        else if (floorIdx === 1) floorLabel = 'Ground Floor';
-        else if (floorIdx === 2) floorLabel = '1st Floor';
-        else if (floorIdx === 3) floorLabel = '2nd Floor';
-        else if (floorIdx === 4) floorLabel = '3rd Floor';
-        else floorLabel = `${floorIdx - 1}th Floor`;
-        return {
-          floor: floorLabel,
-          floorIndex: floorIdx,
-          isFoundation: floorIdx === 0,
-          isGroundFloor: floorIdx === 1,
-          // BHK units only for Ground Floor and above (excluding Foundation)
-          bhkUnits: floorIdx < 1 ? [] : rows.map((row, idx) => {
-            // Get modal popup grid details if available
-            const key = `${floorIdx}-${idx}`;
-            const modalDetails = bhkRoomDetails[key] || {};
-            
-            // Transform modalDetails to embedded room structure
-            const rooms = [];
-            if (modalDetails['Count']) {
-              const countObj = modalDetails['Count'] || {};
-              const lengthObj = modalDetails['Length (ft)'] || {};
-              const widthObj = modalDetails['Width (ft)'] || {};
-              Object.keys(countObj).forEach(roomName => {
-                const count = Number(countObj[roomName] || 0);
-                const length = Number(lengthObj[roomName] || 0);
-                const width = Number(widthObj[roomName] || 0);
-                const height = 9; // Default height
-                const area_sqft = count * length * width;
-                const doorObj = modalDetails['Door'] && modalDetails['Door'][roomName] ? modalDetails['Door'][roomName] : undefined;
-                const windowObj = modalDetails['Window'] && modalDetails['Window'][roomName] ? modalDetails['Window'][roomName] : undefined;
-                if (count > 0) {
-                  rooms.push({
-                    name: roomName,
-                    count: count,
-                    dimensions: { length, width, height },
-                    areaSqft: area_sqft,
-                    ...(doorObj && { Door: doorObj }),
-                    ...(windowObj && { Window: windowObj })
-                  });
-                }
-              });
-            }
-            
-            return {
-              unitId: `${floorIdx}-${idx}`,
-              bhkType: row.type || '',
-              unitCount: Number(row.units) || 0,
-              carpetAreaSqft: Number(row.area) || 0,
-              rooms: rooms,
-              totalRoomsArea: rooms.reduce((sum, room) => sum + room.areaSqft, 0)
-            };
-          }).filter(unit => unit.unitCount > 0) // Only include units with count > 0
-        };
-      }).filter(floor => 
-        // Include foundation/ground floors (for structural elements) or floors with BHK units (1st floor onwards)
-        floor.isFoundation || floor.isGroundFloor || floor.bhkUnits.length > 0
-      ),
-      
-      // Cost estimation (if available)
-      costEstimation: {
-        costLevel: costLevel,
-        // Add cost breakdown here if needed
-      },
-      
-      // Metadata
-      metadata: {
-        version: "1.0",
-        lastSavedStep: step,
-        totalUnits: Object.values(floorBHKConfigs).flat().reduce((total, row) => total + (Number(row.units) || 0), 0)
-      }
-    };
-
-    // Create the JSON string for display
-    const estimationJson = JSON.stringify(estimationDocument, null, 2);
-    setBhkConfigJson(estimationJson);
-  setShowBHKConfigModal(true);
-  }
 
   // Individual save functions for each step
   const handleSaveStep1 = async () => {
@@ -964,22 +861,6 @@ const filteredMaterialRows = useMemo(() => {
       }
     } else {
       alert('No saved Step 2 data found!');
-    }
-  };
-
-  const handleLoadStep3 = () => {
-    const savedData = localStorage.getItem('step3Data');
-    if (savedData) {
-      try {
-        const step3Data = JSON.parse(savedData);
-        setBeamColumnConfig(step3Data.beamColumnConfig || []);
-        setAreaCalculationLogic(step3Data.areaCalculationLogic || null);
-        alert('Step 3 data loaded successfully!');
-      } catch (error) {
-        alert('Error loading Step 3 data: ' + error.message);
-      }
-    } else {
-      alert('No saved Step 3 data found!');
     }
   };
 
@@ -1839,7 +1720,9 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     
   }
 
-  const handleCircleClick = (s) => setStep(s);
+  const handleCircleClick = (s) => {
+    setStep(s);
+  };
 
   // Excel download logic
  
@@ -3426,7 +3309,7 @@ const boqItems = useMemo(() => {
           <span key={s} style={{ position: 'relative', display: 'inline-block' }}>
             <span
               className={`wizard-circle${step === s ? ' active' : ''}`}
-              onClick={() => handleCircleClick(s)}
+              onClick={(e) => { e.preventDefault(); handleCircleClick(s); }}
             >{s}</span>
             <span
               style={{
@@ -3455,7 +3338,11 @@ const boqItems = useMemo(() => {
         ))}
       </div>
       {/* Step Content */}
-      <div className="wizard-step-content" style={{ padding: step === 3 ? '0' : '0 1rem' }}>
+      <div className="wizard-step-content" style={{ 
+        padding: step === 3 ? '0' : '0 1rem',
+        transition: 'none',
+        willChange: 'auto'
+      }}>
         {step === 1 && (
           <>
             {/* Mode indicator and styled heading for Area Details */}
@@ -3969,15 +3856,6 @@ const boqItems = useMemo(() => {
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Layout</h5>
             </div>
-      {/* BHK Config JSON Modal */}
-      <Modal show={showBHKConfigModal} onHide={() => setShowBHKConfigModal(false)} centered size="lg">
-        <Modal.Header closeButton style={{ background: '#e3f2fd', borderBottom: '1px solid #1976d2' }}>
-          <Modal.Title style={{ fontWeight: 700, color: '#1976d2' }}>BHK Configuration (JSON)</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: '#fafafa', padding: '1.5rem 2rem' }}>
-          <pre style={{ fontSize: '1rem', background: '#f4f4f4', borderRadius: 8, border: '1px solid #ccc', padding: 12, maxHeight: '60vh', overflowY: 'auto' }}>{bhkConfigJson}</pre>
-        </Modal.Body>
-      </Modal>
             {/* Top summary section for area values */}
             <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
               <div className="row w-100" style={{ maxWidth: 600 }}>
@@ -4238,24 +4116,18 @@ const boqItems = useMemo(() => {
           </>
         )}
 
-        {step === 3 && (
-          <>
+        {/* BOQ Estimation Component - Render once and keep mounted */}
+        {id && (
+          <div style={{ display: step === 3 ? 'block' : 'none' }}>
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
             </div>
-
-            {/* BOQ Estimation Component */}
+            
             <BOQEstimation 
               estimationMasterId={id} 
-              floorsList={[
-                'Foundation',
-                ...(basementCount > 0 ? [...Array(Number(basementCount))].map((_, idx) => `Basement ${idx + 1}`) : []),
-                ...([...Array(Number(floors) + 1).keys()].map(i => 
-                  i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`
-                ))
-              ]}
+              floorsList={boqFloorsList}
             />
-          </>
+          </div>
         )}
        
 {step === 4 && (
@@ -4958,9 +4830,6 @@ const boqItems = useMemo(() => {
                 <Button variant="primary" onClick={handleSaveStep3} className="me-2" style={{ fontWeight: 600 }}>
                   Save Step 3
                 </Button>
-                <Button variant="outline-primary" onClick={handleLoadStep3} className="me-2" style={{ fontWeight: 600 }}>
-                  Load Step 3
-                </Button>
               </>
             )}
             {step === 4 && (
@@ -4973,10 +4842,6 @@ const boqItems = useMemo(() => {
                 </Button>
               </>
             )}
-            {/* Global Save Button */}
-            <Button variant="success" onClick={handleSaveBHKConfig} style={{ fontWeight: 600 }}>
-              Save All
-            </Button>
           </>
         )}
       </div>
