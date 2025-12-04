@@ -1,11 +1,12 @@
 import ProjectEstimation from './ProjectEstimation';
 import TestApiPage from './TestApiPage';
 
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Styles/App.css';
 import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
 import React, { useState } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 //import Hero from './Hero';
 import Home from './Home';
 import About from './About';
@@ -18,6 +19,8 @@ import PricingCalculator from './PricingCalculator';
 import Login from './Login';
 import CompanySetup from './CompanySetup';
 import UserManagement from './UserManagement';
+import UserProfile from './UserProfile';
+import RoleManagement from './RoleManagement';
 import ItemMaster from './ItemMaster';
 import RccConfiguration from './RccConfiguration';
 import BHKConfiguration from './BHKConfiguration';
@@ -25,12 +28,30 @@ import AreaCalculation from './AreaCalculation';
 import AreaCalculationHandsontable from './AreaCalculationHandsontable';
 import BOQEstimation from './BOQEstimation';
 
+// Import menu security utilities
+import { 
+  getFilteredMenuItems, 
+  authenticateUser, 
+  setUserRole, 
+  clearUserRole
+} from './utils/menuSecurity';
+
+// Google OAuth Client ID - Replace with your actual Client ID
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
+
 // Global security feature toggle
 const SECURITY_ENABLED = true; // Set to false to disable security
 
 // Avatar dropdown with profile and logout
 function AvatarMenu({ onLogout }) {
   const [show, setShow] = useState(false);
+  const navigate = useNavigate();
+
+  const handleProfileClick = () => {
+    setShow(false);
+    navigate('/user-profile');
+  };
+
   return (
     <NavDropdown
       title={
@@ -48,21 +69,21 @@ function AvatarMenu({ onLogout }) {
       onToggle={setShow}
       menuVariant="light"
     >
-      <NavDropdown.Item disabled>👤 User Profile</NavDropdown.Item>
+      <NavDropdown.Item onClick={handleProfileClick}>
+        <i className="fas fa-user-circle me-2"></i>User Profile
+      </NavDropdown.Item>
       <NavDropdown.Divider />
-      <NavDropdown.Item onClick={() => { setShow(false); onLogout(); }}>Logout</NavDropdown.Item>
+      <NavDropdown.Item onClick={() => { setShow(false); onLogout(); }}>
+        <i className="fas fa-sign-out-alt me-2"></i>Logout
+      </NavDropdown.Item>
     </NavDropdown>
   );
 }
 
 function App() {
   const [expanded, setExpanded] = useState(false);
-  // Hardcoded credentials (should be replaced with secure backend in production)
-  const HARDCODED_USERNAME = 'salmansdr';
-  const HARDCODED_PASSWORD = 'Arman@123';
   const AUTH_KEY = 'isAuthenticated';
   const AUTH_USER_KEY = 'authUser';
-  const AUTH_PASS_KEY = 'authPass';
   const AUTH_TIME_KEY = 'authTime';
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -73,69 +94,180 @@ function App() {
     const lastAuthTime = parseInt(localStorage.getItem(AUTH_TIME_KEY), 10);
     const now = Date.now();
     const storedUser = localStorage.getItem(AUTH_USER_KEY);
-    const storedPass = localStorage.getItem(AUTH_PASS_KEY);
-    // If not authenticated, or expired, or credentials changed, force logout
-    if (!auth) return false;
+    
+    console.log('Auth Init - AUTH_KEY:', localStorage.getItem(AUTH_KEY), 'auth:', auth, 'storedUser:', storedUser, 'lastAuthTime:', lastAuthTime);
+    
+    // If not authenticated, or expired, force logout
+    if (!auth) {
+      // Clean up any stale data
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(AUTH_TIME_KEY);
+      clearUserRole();
+      console.log('Auth Init Result: false (no auth)');
+      return false;
+    }
     if (!lastAuthTime || now - lastAuthTime > ONE_DAY_MS) {
-      localStorage.setItem(AUTH_KEY, 'false');
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(AUTH_TIME_KEY);
+      clearUserRole();
+      console.log('Auth Init Result: false (expired)');
       return false;
     }
-    if (storedUser !== HARDCODED_USERNAME || storedPass !== HARDCODED_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, 'false');
+    if (!storedUser) {
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(AUTH_TIME_KEY);
+      clearUserRole();
+      console.log('Auth Init Result: false (no user)');
       return false;
     }
+    console.log('Auth Init Result: true (authenticated)');
     return true;
   });
 
+  // Get filtered menu items based on authentication and role
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+
+  // Load menu items on mount and when authentication changes
+  React.useEffect(() => {
+    const loadMenuItems = async () => {
+      try {
+        setMenuLoading(true);
+        const items = await getFilteredMenuItems(isAuthenticated);
+        console.log('Menu loaded. isAuthenticated:', isAuthenticated, 'SECURITY_ENABLED:', SECURITY_ENABLED, 'Items:', items.length);
+        setMenuItems(items);
+      } catch (error) {
+        console.error('Error loading menu items:', error);
+        setMenuItems([]);
+      } finally {
+        setMenuLoading(false);
+      }
+    };
+    loadMenuItems();
+  }, [isAuthenticated]);
+
   // Handler for login success
-  const handleLogin = (username, password) => {
+  const handleLogin = async (username, password, userData) => {
     if (!SECURITY_ENABLED) {
       setIsAuthenticated(true);
       localStorage.setItem(AUTH_KEY, 'true');
       localStorage.setItem(AUTH_USER_KEY, username);
-      localStorage.setItem(AUTH_PASS_KEY, password);
       localStorage.setItem(AUTH_TIME_KEY, Date.now().toString());
+      setUserRole('admin'); // Default role when security is disabled
       return true;
     }
-    if (username === HARDCODED_USERNAME && password === HARDCODED_PASSWORD) {
+    
+    // If userData is provided (from API login), use it
+    if (userData) {
       setIsAuthenticated(true);
       localStorage.setItem(AUTH_KEY, 'true');
       localStorage.setItem(AUTH_USER_KEY, username);
-      localStorage.setItem(AUTH_PASS_KEY, password);
       localStorage.setItem(AUTH_TIME_KEY, Date.now().toString());
+      
+      // Store user role and permissions from API response
+      if (userData.roleName) {
+        setUserRole(userData.roleName);
+      }
+      
+      // Reload menu items with new permissions
+      const items = await getFilteredMenuItems(true);
+      setMenuItems(items);
       return true;
     }
+    
+    // Fallback to JSON config authentication (legacy)
+    const user = await authenticateUser(username, password);
+    if (user) {
+      setIsAuthenticated(true);
+      localStorage.setItem(AUTH_KEY, 'true');
+      localStorage.setItem(AUTH_USER_KEY, username);
+      localStorage.setItem(AUTH_TIME_KEY, Date.now().toString());
+      setUserRole(user.role);
+      const items = await getFilteredMenuItems(true);
+      setMenuItems(items);
+      return true;
+    }
+    
     setIsAuthenticated(false);
     localStorage.setItem(AUTH_KEY, 'false');
     return false;
   };
 
   // Handler for logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!SECURITY_ENABLED) return;
     setIsAuthenticated(false);
     localStorage.setItem(AUTH_KEY, 'false');
     localStorage.removeItem(AUTH_USER_KEY);
-    localStorage.removeItem(AUTH_PASS_KEY);
     localStorage.removeItem(AUTH_TIME_KEY);
+    
+    // Clear user data from localStorage
+    localStorage.removeItem('userId');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userPermissions');
+    
+    clearUserRole(); // Clear user role
+    const items = await getFilteredMenuItems(false);
+    setMenuItems(items); // Update menu items
   };
 
-  // On mount, check if session expired or credentials changed (for tab refreshes)
+  // On mount, check if session expired
   React.useEffect(() => {
     if (!SECURITY_ENABLED) return;
     const auth = localStorage.getItem(AUTH_KEY) === 'true';
     const lastAuthTime = parseInt(localStorage.getItem(AUTH_TIME_KEY), 10);
     const now = Date.now();
     const storedUser = localStorage.getItem(AUTH_USER_KEY);
-    const storedPass = localStorage.getItem(AUTH_PASS_KEY);
-    if (!auth || !lastAuthTime || now - lastAuthTime > ONE_DAY_MS || storedUser !== HARDCODED_USERNAME || storedPass !== HARDCODED_PASSWORD) {
+    if (!auth || !lastAuthTime || now - lastAuthTime > ONE_DAY_MS || !storedUser) {
       setIsAuthenticated(false);
       localStorage.setItem(AUTH_KEY, 'false');
       localStorage.removeItem(AUTH_USER_KEY);
-      localStorage.removeItem(AUTH_PASS_KEY);
       localStorage.removeItem(AUTH_TIME_KEY);
+      clearUserRole();
     }
   }, [ONE_DAY_MS]);
+
+  // Render navigation link
+  const renderNavLink = (item) => (
+    <Nav.Link 
+      key={item.id}
+      as={NavLink} 
+      to={item.path} 
+      end={item.path === '/'} 
+      onClick={() => setExpanded(false)} 
+      style={{ color: 'white' }}
+    >
+      {item.icon && <span className="me-2">{item.icon}</span>}
+      {item.label}
+    </Nav.Link>
+  );
+
+  // Render navigation dropdown
+  const renderNavDropdown = (item) => (
+    <NavDropdown 
+      key={item.id}
+      title={<span style={{ color: 'white' }}>{item.icon && <span className="me-2">{item.icon}</span>}{item.label}</span>} 
+      id={`${item.id}-nav-dropdown`} 
+      menuVariant="light" 
+      className="dropdown-white-caret"
+    >
+      {(item.filteredSubmenu || item.submenu || []).map(subItem => (
+        <NavDropdown.Item 
+          key={subItem.id}
+          as={NavLink} 
+          to={subItem.path} 
+          onClick={() => setExpanded(false)}
+        >
+          {subItem.icon && <i className={`${subItem.icon} me-2`}></i>}
+          {subItem.label}
+        </NavDropdown.Item>
+      ))}
+    </NavDropdown>
+  );
 
   return (
     <Router>
@@ -152,52 +284,23 @@ function App() {
             <Navbar.Toggle aria-controls="mainNavbar" className="navbar-toggler-icon-white" />
             <Navbar.Collapse id="mainNavbar">
               <Nav className="ms-auto mb-2 mb-lg-0 align-items-center">
-                <Nav.Link as={NavLink} to="/" end onClick={() => setExpanded(false)} style={{ color: 'white' }}>Home</Nav.Link>
-                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
-                  <NavDropdown title={<span style={{ color: 'white' }}>Project Management</span>} id="project-management-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
-                    <NavDropdown.Item as={NavLink} to="/project-management" onClick={() => setExpanded(false)}>Project Management</NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/project-estimation" onClick={() => setExpanded(false)}>Project Estimation</NavDropdown.Item>
-                    
-                  </NavDropdown>
+                {menuLoading ? (
+                  <Nav.Link style={{ color: 'white' }}>Loading...</Nav.Link>
+                ) : (
+                  <>
+                    {menuItems.map(item => {
+                      if (item.type === 'dropdown') {
+                        return renderNavDropdown(item);
+                      } else {
+                        return renderNavLink(item);
+                      }
+                    })}
+                    {(!isAuthenticated && SECURITY_ENABLED) && (
+                      <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Login</Nav.Link>
+                    )}
+                    {(isAuthenticated && SECURITY_ENABLED) && <AvatarMenu onLogout={handleLogout} />}
+                  </>
                 )}
-                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
-                  <NavDropdown title={<span style={{ color: 'white' }}>Reports</span>} id="reports-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
-                    <NavDropdown.Item as={NavLink} to="/reports" onClick={() => setExpanded(false)}>Cost Report</NavDropdown.Item>
-                  </NavDropdown>
-                )}
-                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
-                  <NavDropdown title={<span style={{ color: 'white' }}>Master Data</span>} id="master-data-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
-                    <NavDropdown.Item as={NavLink} to="/item-master" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-boxes me-2"></i>Item Master
-                    </NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/rcc-configuration" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-cubes me-2"></i>RCC Configuration
-                    </NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/bhk-configuration" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-home me-2"></i>BHK Configuration
-                    </NavDropdown.Item>
-                   
-                    <NavDropdown.Item as={NavLink} to="/area-calculation-excel" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-table me-2"></i>Area Calculation (Excel)
-                    </NavDropdown.Item>
-                  </NavDropdown>
-                )}
-                {((isAuthenticated && SECURITY_ENABLED) || !SECURITY_ENABLED) && (
-                  <NavDropdown title={<span style={{ color: 'white' }}>Admin</span>} id="admin-nav-dropdown" menuVariant="light" className="dropdown-white-caret">
-                    <NavDropdown.Item as={NavLink} to="/company-setup" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-building me-2"></i>Company Setup
-                    </NavDropdown.Item>
-                    <NavDropdown.Item as={NavLink} to="/user-management" onClick={() => setExpanded(false)}>
-                      <i className="fas fa-users me-2"></i>User Management
-                    </NavDropdown.Item>
-                  </NavDropdown>
-                )}
-                <Nav.Link as={NavLink} to="/about" onClick={() => setExpanded(false)} style={{ color: 'white' }}>About</Nav.Link>
-                <Nav.Link as={NavLink} to="/contact" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Contact</Nav.Link>
-                {(!isAuthenticated && SECURITY_ENABLED) && (
-                  <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Login</Nav.Link>
-                )}
-                {(isAuthenticated && SECURITY_ENABLED) && <AvatarMenu onLogout={handleLogout} />}
               </Nav>
             </Navbar.Collapse>
           </Container>
@@ -219,6 +322,8 @@ function App() {
               {isAuthenticated && <Route path="/area-calculation-excel" element={<AreaCalculationHandsontable />} />}
               {isAuthenticated && <Route path="/company-setup" element={<CompanySetup />} />}
               {isAuthenticated && <Route path="/user-management" element={<UserManagement />} />}
+              {isAuthenticated && <Route path="/user-profile" element={<UserProfile />} />}
+              {isAuthenticated && <Route path="/role-management" element={<RoleManagement />} />}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login onLogin={handleLogin} isAuthenticated={isAuthenticated} />} />
@@ -271,4 +376,14 @@ function App() {
       </Router>
   );
 }
-export default App;
+
+// Wrap App with GoogleOAuthProvider
+function AppWithProviders() {
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <App />
+    </GoogleOAuthProvider>
+  );
+}
+
+export default AppWithProviders;

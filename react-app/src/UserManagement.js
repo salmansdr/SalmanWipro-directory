@@ -3,86 +3,63 @@ import { Card, Form, Button, Row, Col, Alert, Table, Modal, Badge } from 'react-
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertVariant, setAlertVariant] = useState('success');
+  
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const [userForm, setUserForm] = useState({
     id: null,
     username: '',
     email: '',
     fullName: '',
-    role: 'user',
-    department: '',
+    roleId: '',
     phone: '',
     status: 'active',
     password: '',
     confirmPassword: ''
   });
 
-  // Available roles
-  const roles = [
-    { value: 'admin', label: 'Administrator', color: 'danger' },
-    { value: 'manager', label: 'Manager', color: 'warning' },
-    { value: 'user', label: 'User', color: 'primary' },
-    { value: 'readonly', label: 'Read Only', color: 'secondary' }
-  ];
-
-  // Available departments
-  const departments = [
-    'Engineering',
-    'Construction',
-    'Project Management',
-    'Finance',
-    'Human Resources',
-    'Quality Assurance',
-    'Safety',
-    'Procurement'
-  ];
-
-  // Load users from localStorage on component mount
+  // Load users and roles from API on component mount
   useEffect(() => {
-    const loadUsers = () => {
+    const loadRoles = async () => {
       try {
-        const savedUsers = localStorage.getItem('userManagement');
-        if (savedUsers) {
-          setUsers(JSON.parse(savedUsers));
-        } else {
-          // Initialize with default admin user
-          const defaultUsers = [
-            {
-              id: 1,
-              username: 'salmansdr',
-            email: 'salman@buildpro.com',
-            fullName: 'Salman SDR',
-            role: 'admin',
-            department: 'Engineering',
-            phone: '+91-9874592300',
-            status: 'active',
-            createdDate: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          }
-        ];
-        setUsers(defaultUsers);
-        localStorage.setItem('userManagement', JSON.stringify(defaultUsers));
-      }
-    } catch (error) {
-      showAlertMessage('Error loading users: ' + error.message, 'danger');
+        const response = await fetch(`${apiBaseUrl}/api/RoleManagement`);
+        if (response.ok) {
+          const data = await response.json();
+          setRoles(data);
+        }
+      } catch (error) {
+        console.error('Error loading roles:', error);
       }
     };
+    
+    const loadUsers = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/Usermaster`);
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
+        } else {
+          console.warn('API not available, using empty state');
+          setUsers([]);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+        showAlertMessage('Error loading users: ' + error.message, 'danger');
+        setUsers([]);
+      }
+    };
+    
+    loadRoles();
     loadUsers();
-  }, []);
+  }, [apiBaseUrl]);
 
-  const saveUsers = (updatedUsers) => {
-    try {
-      localStorage.setItem('userManagement', JSON.stringify(updatedUsers));
-      setUsers(updatedUsers);
-    } catch (error) {
-      showAlertMessage('Error saving users: ' + error.message, 'danger');
-    }
-  };
+
 
   const showAlertMessage = (message, variant = 'success') => {
     setAlertMessage(message);
@@ -104,8 +81,7 @@ const UserManagement = () => {
       setEditingUser(user);
       setUserForm({
         ...user,
-        password: '',
-        confirmPassword: ''
+        roleId: user.roleId?._id || user.roleId || ''
       });
     } else {
       setEditingUser(null);
@@ -114,8 +90,7 @@ const UserManagement = () => {
         username: '',
         email: '',
         fullName: '',
-        role: 'user',
-        department: '',
+        roleId: '',
         phone: '',
         status: 'active',
         password: '',
@@ -133,8 +108,7 @@ const UserManagement = () => {
       username: '',
       email: '',
       fullName: '',
-      role: 'user',
-      department: '',
+      roleId: '',
       phone: '',
       status: 'active',
       password: '',
@@ -145,6 +119,11 @@ const UserManagement = () => {
   const validateForm = () => {
     if (!userForm.username || !userForm.email || !userForm.fullName) {
       showAlertMessage('Please fill in all required fields', 'danger');
+      return false;
+    }
+
+    if (!userForm.roleId) {
+      showAlertMessage('Please select a role', 'danger');
       return false;
     }
 
@@ -171,26 +150,26 @@ const UserManagement = () => {
       return false;
     }
 
-    // Password validation for new users
-    if (!editingUser && !userForm.password) {
-      showAlertMessage('Password is required for new users', 'danger');
-      return false;
-    }
-
-    if (userForm.password && userForm.password !== userForm.confirmPassword) {
-      showAlertMessage('Passwords do not match', 'danger');
-      return false;
-    }
-
-    if (userForm.password && userForm.password.length < 6) {
-      showAlertMessage('Password must be at least 6 characters long', 'danger');
-      return false;
+    // Password validation for new users only
+    if (!editingUser) {
+      if (!userForm.password) {
+        showAlertMessage('Password is required for new users', 'danger');
+        return false;
+      }
+      if (userForm.password !== userForm.confirmPassword) {
+        showAlertMessage('Passwords do not match', 'danger');
+        return false;
+      }
+      if (userForm.password.length < 6) {
+        showAlertMessage('Password must be at least 6 characters long', 'danger');
+        return false;
+      }
     }
 
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -198,91 +177,111 @@ const UserManagement = () => {
     }
 
     try {
-      let updatedUsers;
+      const payload = {
+        username: userForm.username,
+        email: userForm.email,
+        fullName: userForm.fullName,
+        roleId: userForm.roleId,
+        phone: userForm.phone,
+        status: userForm.status
+      };
       
+      // Include password only for new users
+      if (!editingUser && userForm.password) {
+        payload.password = userForm.password;
+      }
+      
+      console.log('Submitting payload:', JSON.stringify(payload, null, 2));
+      console.log('Editing user:', editingUser);
+      
+      let response;
       if (editingUser) {
-        // Update existing user
-        updatedUsers = users.map(user => 
-          user.id === editingUser.id 
-            ? { 
-                ...user, 
-                ...userForm, 
-                modifiedDate: new Date().toISOString(),
-                modifiedBy: localStorage.getItem('currentUser') || 'System'
-              }
-            : user
-        );
+        // PUT for update
+        console.log('PUT request to:', `${apiBaseUrl}/api/Usermaster/${editingUser._id}`);
+        response = await fetch(`${apiBaseUrl}/api/Usermaster/${editingUser._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // POST for new user
+        console.log('POST request to:', `${apiBaseUrl}/api/Usermaster`);
+        response = await fetch(`${apiBaseUrl}/api/Usermaster`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.message || `Failed to save user (${response.status})`);
+      }
+
+      const savedUser = await response.json();
+      console.log('Saved user:', savedUser);
+      
+      // Update local state
+      if (editingUser) {
+        setUsers(users.map(u => u._id === savedUser._id ? savedUser : u));
         showAlertMessage('User updated successfully!', 'success');
       } else {
-        // Add new user
-        const newUser = {
-          ...userForm,
-          id: Date.now(), // Simple ID generation
-          createdDate: new Date().toISOString(),
-          createdBy: localStorage.getItem('currentUser') || 'System',
-          lastLogin: null
-        };
-        updatedUsers = [...users, newUser];
+        setUsers([...users, savedUser]);
         showAlertMessage('User created successfully!', 'success');
       }
 
-      saveUsers(updatedUsers);
       closeModal();
     } catch (error) {
+      console.error('Submit error:', error);
       showAlertMessage('Error saving user: ' + error.message, 'danger');
     }
   };
 
-  const handleDelete = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+  const handleDelete = async (userId) => {
+    if (window.confirm('Are you sure you want to deactivate this user?')) {
       try {
-        const updatedUsers = users.filter(user => user.id !== userId);
-        saveUsers(updatedUsers);
-        showAlertMessage('User deleted successfully!', 'success');
+        const response = await fetch(`${apiBaseUrl}/api/Usermaster/${userId}/deactivate`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to deactivate user');
+        }
+
+        const updatedUser = await response.json();
+        setUsers(users.map(u => u._id === updatedUser._id ? updatedUser : u));
+        showAlertMessage('User deactivated successfully!', 'success');
       } catch (error) {
-        showAlertMessage('Error deleting user: ' + error.message, 'danger');
+        showAlertMessage('Error deactivating user: ' + error.message, 'danger');
       }
     }
   };
 
-  const handleStatusToggle = (userId) => {
+  const handleStatusToggle = async (userId, currentStatus) => {
     try {
-      const updatedUsers = users.map(user => 
-        user.id === userId 
-          ? { 
-              ...user, 
-              status: user.status === 'active' ? 'inactive' : 'active',
-              modifiedDate: new Date().toISOString(),
-              modifiedBy: localStorage.getItem('currentUser') || 'System'
-            }
-          : user
-      );
-      saveUsers(updatedUsers);
+      const endpoint = currentStatus === 'active' ? 'deactivate' : 'activate';
+      const response = await fetch(`${apiBaseUrl}/api/Usermaster/${userId}/${endpoint}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user status');
+      }
+
+      const updatedUser = await response.json();
+      setUsers(users.map(u => u._id === updatedUser._id ? updatedUser : u));
       showAlertMessage('User status updated successfully!', 'success');
     } catch (error) {
       showAlertMessage('Error updating user status: ' + error.message, 'danger');
     }
   };
 
-  const getRoleBadgeVariant = (role) => {
-    const roleObj = roles.find(r => r.value === role);
-    return roleObj ? roleObj.color : 'secondary';
-  };
-
-  const exportUsers = () => {
-    try {
-      const dataStr = JSON.stringify(users, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `users_export_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      showAlertMessage('Users exported successfully!', 'success');
-    } catch (error) {
-      showAlertMessage('Error exporting users: ' + error.message, 'danger');
-    }
-  };
+  
 
   return (
     <div className="container-fluid py-4">
@@ -295,10 +294,7 @@ const UserManagement = () => {
                 User Management
               </h4>
               <div className="d-flex gap-2">
-                <Button variant="light" size="sm" onClick={exportUsers}>
-                  <i className="fas fa-download me-2"></i>
-                  Export
-                </Button>
+                
                 <Button variant="success" size="sm" onClick={() => openModal()}>
                   <i className="fas fa-plus me-2"></i>
                   Add User
@@ -358,7 +354,6 @@ const UserManagement = () => {
                       <th>Full Name</th>
                       <th>Email</th>
                       <th>Role</th>
-                      <th>Department</th>
                       <th>Status</th>
                       <th>Last Login</th>
                       <th>Actions</th>
@@ -375,11 +370,10 @@ const UserManagement = () => {
                           <a href={`mailto:${user.email}`}>{user.email}</a>
                         </td>
                         <td>
-                          <Badge bg={getRoleBadgeVariant(user.role)}>
-                            {roles.find(r => r.value === user.role)?.label || user.role}
+                          <Badge bg="primary">
+                            {user.roleName || 'N/A'}
                           </Badge>
                         </td>
-                        <td>{user.department}</td>
                         <td>
                           <Badge bg={user.status === 'active' ? 'success' : 'danger'}>
                             {user.status}
@@ -401,7 +395,7 @@ const UserManagement = () => {
                             <Button 
                               variant={user.status === 'active' ? 'outline-warning' : 'outline-success'} 
                               size="sm" 
-                              onClick={() => handleStatusToggle(user.id)}
+                              onClick={() => handleStatusToggle(user._id, user.status)}
                               title={user.status === 'active' ? 'Deactivate' : 'Activate'}
                             >
                               <i className={`fas fa-${user.status === 'active' ? 'pause' : 'play'}`}></i>
@@ -409,7 +403,7 @@ const UserManagement = () => {
                             <Button 
                               variant="outline-danger" 
                               size="sm" 
-                              onClick={() => handleDelete(user.id)}
+                              onClick={() => handleDelete(user._id)}
                               title="Delete User"
                             >
                               <i className="fas fa-trash"></i>
@@ -504,40 +498,22 @@ const UserManagement = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Role</Form.Label>
+                  <Form.Label>Role <span className="text-danger">*</span></Form.Label>
                   <Form.Select
-                    name="role"
-                    value={userForm.role}
+                    name="roleId"
+                    value={userForm.roleId}
                     onChange={handleInputChange}
+                    required
                   >
+                    <option value="">Select Role</option>
                     {roles.map(role => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
+                      <option key={role._id} value={role._id}>
+                        {role.name}
                       </option>
                     ))}
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Department</Form.Label>
-                  <Form.Select
-                    name="department"
-                    value={userForm.department}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Status</Form.Label>
@@ -553,41 +529,45 @@ const UserManagement = () => {
               </Col>
             </Row>
 
-            {/* Password fields */}
-            <hr />
-            <h6>Password {editingUser ? '(Leave blank to keep current password)' : ''}</h6>
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>
-                    Password {!editingUser && <span className="text-danger">*</span>}
-                  </Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="password"
-                    value={userForm.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter password"
-                    required={!editingUser}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>
-                    Confirm Password {!editingUser && <span className="text-danger">*</span>}
-                  </Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="confirmPassword"
-                    value={userForm.confirmPassword}
-                    onChange={handleInputChange}
-                    placeholder="Confirm password"
-                    required={!editingUser}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+            {/* Password fields - only for new users */}
+            {!editingUser && (
+              <>
+                <hr />
+                <h6>Password</h6>
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label>
+                        Password <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="password"
+                        value={userForm.password}
+                        onChange={handleInputChange}
+                        placeholder="Enter password"
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label>
+                        Confirm Password <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="confirmPassword"
+                        value={userForm.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirm password"
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </>
+            )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={closeModal}>

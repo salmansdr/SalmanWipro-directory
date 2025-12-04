@@ -1,0 +1,104 @@
+{
+  "menuItems": [
+    {
+      "label": "Home",
+      "path": "/",
+      "type": "link",
+      "requireAuth": false
+    },
+    {
+      "label": "Project Management",
+      "type": "dropdown",
+      "icon": "📊",
+      "requireAuth": true,
+      "submenu": [
+        {
+          "label": "Project Management",
+          "path": "/project-management",
+          "icon": "fas fa-project-diagram"
+        },
+        {
+          "label": "Project Estimation",
+          "path": "/project-estimation",
+          "icon": "fas fa-calculator"
+        }
+      ]
+    },
+    {
+      "label": "Reports",
+      "type": "dropdown",
+      "icon": "📈",
+      "requireAuth": true,
+      "submenu": [
+        {
+          "label": "Cost Report",
+          "path": "/reports",
+          "icon": "fas fa-chart-bar"
+        }
+      ]
+    },
+    {
+      "label": "Master Data",
+      "type": "dropdown",
+      "icon": "🗄️",
+      "requireAuth": true,
+      "submenu": [
+        {
+          "label": "Item Master",
+          "path": "/item-master",
+          "icon": "fas fa-boxes"
+        },
+        {
+          "label": "RCC Configuration",
+          "path": "/rcc-configuration",
+          "icon": "fas fa-cubes"
+        },
+        {
+          "label": "BHK Configuration",
+          "path": "/bhk-configuration",
+          "icon": "fas fa-home"
+        },
+        {
+          "label": "Area Calculation (Excel)",
+          "path": "/area-calculation-excel",
+          "icon": "fas fa-table"
+        }
+      ]
+    },
+    {
+      "label": "Admin",
+      "type": "dropdown",
+      "icon": "⚙️",
+      "requireAuth": true,
+      "submenu": [
+        {
+          "label": "Company Setup",
+          "path": "/company-setup",
+          "icon": "fas fa-building"
+        },
+        {
+          "label": "User Management",
+          "path": "/user-management",
+          "icon": "fas fa-users"
+        },
+        {
+          "label": "Role Management",
+          "path": "/role-management",
+          "icon": "fas fa-shield-alt"
+        }
+      ]
+    },
+    {
+      "label": "About",
+      "path": "/about",
+      "type": "link",
+      "requireAuth": false
+    },
+    {
+      "label": "Contact",
+      "path": "/contact",
+      "type": "link",
+      "requireAuth": false
+    }
+  ]
+}

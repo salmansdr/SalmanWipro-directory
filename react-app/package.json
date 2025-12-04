@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@handsontable/react": "^16.2.0",
+    "@react-oauth/google": "^0.12.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
@@ -13,6 +14,7 @@
     "handsontable": "^16.2.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
+    "jwt-decode": "^4.0.0",
     "mathjs": "^15.0.0",
     "react": "^19.1.1",
     "react-bootstrap": "^3.0.0-beta.5",

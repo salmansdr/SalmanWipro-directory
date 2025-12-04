@@ -27,6 +27,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const [selectedComponent, setSelectedComponent] = useState('');
   const [materialItems, setMaterialItems] = useState([]);
   const [materialCacheVersion, setMaterialCacheVersion] = useState(0); // Track when material cache is updated
+  const [showCopyFloorModal, setShowCopyFloorModal] = useState(false);
+  const [copySourceFloor, setCopySourceFloor] = useState('');
+  const [copyTargetFloor, setCopyTargetFloor] = useState('');
   
   const quantityTableRef = useRef(null);
   const materialTableRef = useRef(null);
@@ -703,7 +706,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     });
   }, [selectedComponent, quantityData, localSelectedFloor, mapFloorName]);
 
-
   // Save current material grid data to cache
   const saveCurrentMaterialDataToCache = useCallback((floorName) => {
     if (!floorName || floorName === '') return;
@@ -741,6 +743,91 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       };
     }
   }, []); // No dependencies - uses refs only
+
+  // Handle opening Copy Floor modal
+  const handleOpenCopyFloorModal = useCallback(() => {
+    setCopySourceFloor('');
+    setCopyTargetFloor(localSelectedFloor); // Default target to current floor
+    setShowCopyFloorModal(true);
+  }, [localSelectedFloor]);
+
+  // Handle copying data from one floor to another
+  const handleCopyFloorData = useCallback(() => {
+    if (!copySourceFloor || !copyTargetFloor) {
+      setAlertMessage({
+        show: true,
+        type: 'warning',
+        message: 'Please select both source and target floors'
+      });
+      return;
+    }
+
+    if (copySourceFloor === copyTargetFloor) {
+      setAlertMessage({
+        show: true,
+        type: 'warning',
+        message: 'Source and target floors cannot be the same'
+      });
+      return;
+    }
+
+    // Check if source floor has data
+    const sourceCache = floorDataCache.current[copySourceFloor];
+    if (!sourceCache || (!sourceCache.gridData || sourceCache.gridData.length === 0)) {
+      setAlertMessage({
+        show: true,
+        type: 'warning',
+        message: `No data found in ${copySourceFloor} to copy`
+      });
+      return;
+    }
+
+    // Check if target floor has existing data
+    const targetCache = floorDataCache.current[copyTargetFloor];
+    const hasTargetData = targetCache && targetCache.gridData && targetCache.gridData.length > 0;
+
+    // Show warning if target has data
+    if (hasTargetData) {
+      const confirmOverride = window.confirm(
+        `Warning: ${copyTargetFloor} already has data.\n\nThis operation will override all existing data in ${copyTargetFloor} with data from ${copySourceFloor}.\n\nDo you want to continue?`
+      );
+      
+      if (!confirmOverride) {
+        return;
+      }
+    }
+
+    // Save current floor data before copying
+    if (localSelectedFloor && localSelectedFloor !== '') {
+      saveCurrentFloorDataToCache(localSelectedFloor);
+    }
+
+    // Deep clone the source data
+    const sourceGridData = JSON.parse(JSON.stringify(sourceCache.gridData));
+    const sourceComponents = JSON.parse(JSON.stringify(sourceCache.components));
+
+    // Update target floor cache
+    floorDataCache.current[copyTargetFloor] = {
+      components: sourceComponents,
+      gridData: sourceGridData
+    };
+
+    // If we're copying to the current floor, refresh the display
+    if (copyTargetFloor === localSelectedFloor) {
+      setTableKey(Date.now());
+      setQuantityData(sourceGridData);
+    }
+
+    setShowCopyFloorModal(false);
+    setCopySourceFloor('');
+    setCopyTargetFloor('');
+
+    setAlertMessage({
+      show: true,
+      type: 'success',
+      message: `Data copied successfully from ${copySourceFloor} to ${copyTargetFloor}`
+    });
+  }, [copySourceFloor, copyTargetFloor, localSelectedFloor, saveCurrentFloorDataToCache]);
 
   const loadComponentsForFloor = useCallback(async (floor) => {
     try {
@@ -1867,7 +1954,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'component',
       title: 'Component',
-      width: 250,
+      width: 220,
       type: 'text',
       readOnly: false
     },
@@ -1892,7 +1979,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'widthBreadth',
       title: 'Width/Breadth (m)',
-      width: 120,
+      width: 130,
       type: 'numeric',
       numericFormat: {
         pattern: '0.000'
@@ -1901,7 +1988,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'heightDepth',
       title: 'Height/Depth (m)',
-      width: 120,
+      width: 130,
       type: 'numeric',
       numericFormat: {
         pattern: '0.000'
@@ -2054,7 +2141,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'action',
       title: 'Action',
-      width: 90,
+      width: 100,
       type: 'text',
       readOnly: true,
       className: 'htCenter',
@@ -2314,7 +2401,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                         </Form.Select>
                       </Form.Group>
                     </Col>
-                    <Col md={3} className="d-flex align-items-end">
+                    <Col md={6} className="d-flex align-items-end gap-2">
                       <Button 
                         variant="primary" 
                         size="sm"
@@ -2323,6 +2410,15 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                         style={{ marginBottom: '0px' }}
                       >
                         + Add Component
+                      </Button>
+                      <Button 
+                        variant="info" 
+                        size="sm"
+                        onClick={handleOpenCopyFloorModal}
+                        disabled={!localSelectedFloor || floors.length < 2}
+                        style={{ marginBottom: '0px' }}
+                      >
+                        Copy from Floor
                       </Button>
                     </Col>
                   </Row>
@@ -2439,9 +2535,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               width="100%"
                               height="600px"
                               licenseKey="non-commercial-and-evaluation"
-                              stretchH="all"
                               contextMenu={true}
                               manualColumnResize={true}
+                              fixedColumnsLeft={1}
                               beforeOnCellContextMenu={(event, coords) => {
                                 const rowData = quantityData[coords.row];
                                 if (rowData?.isGroupHeader) {
@@ -2912,6 +3008,58 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             disabled={!selectedComponent}
           >
             Add Component
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Copy Floor Modal */}
+      <Modal show={showCopyFloorModal} onHide={() => setShowCopyFloorModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Copy Floor Data</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="info">
+            This will copy all quantity data from the source floor to the target floor.
+          </Alert>
+          <Form.Group className="mb-3">
+            <Form.Label>Copy From (Source Floor)</Form.Label>
+            <Form.Select
+              value={copySourceFloor}
+              onChange={(e) => setCopySourceFloor(e.target.value)}
+            >
+              <option value="">-- Select Source Floor --</option>
+              {floors.map((floor, idx) => (
+                <option key={idx} value={floor}>
+                  {floor}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Copy To (Target Floor)</Form.Label>
+            <Form.Select
+              value={copyTargetFloor}
+              onChange={(e) => setCopyTargetFloor(e.target.value)}
+            >
+              <option value="">-- Select Target Floor --</option>
+              {floors.map((floor, idx) => (
+                <option key={idx} value={floor}>
+                  {floor}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCopyFloorModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleCopyFloorData}
+            disabled={!copySourceFloor || !copyTargetFloor}
+          >
+            Copy Data
           </Button>
         </Modal.Footer>
       </Modal>
