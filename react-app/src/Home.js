@@ -12,38 +12,49 @@ function ProjectSection({ title, projects, showProgress = true }) {
   return (
     <div className="container-fluid mt-3 px-3">
       <div className="row">
-        {projects.map((proj, index) => (
-          <div key={`${proj.id}-${index}`} className="col-12 col-md-6 col-lg-3 mb-4">
-            <div className="card h-100 shadow-sm d-flex flex-column">
-              {proj.image && (
-                <img
-                  src={proj.image.startsWith('http') ? proj.image : process.env.PUBLIC_URL + '/' + proj.image}
-                  alt={proj.name}
-                  className="card-img-top"
-                  style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem' }}
-                />
-              )}
-              <div className="card-body d-flex flex-column">
-                <h5 className="card-title">{proj.name}</h5>
-                <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
-                <div className="mb-2">{proj.status}</div>
-                {proj.status === 'running' && (
-                  <div className="mb-2">
-                    <span className="fw-bold">Progress: {proj.progress}%</span>
-                  </div>
+        {projects.map((proj, index) => {
+          // Extract Project Image from projectdocuments array
+          let projectImage = proj.image;
+          if (!projectImage && proj.projectdocuments && Array.isArray(proj.projectdocuments)) {
+            const imageDoc = proj.projectdocuments.find(doc => doc.name === 'Project Image');
+            if (imageDoc && imageDoc.data) {
+              projectImage = imageDoc.data; // This is base64 data
+            }
+          }
+
+          return (
+            <div key={`${proj.id}-${index}`} className="col-12 col-md-6 col-lg-3 mb-4">
+              <div className="card h-100 shadow-sm d-flex flex-column">
+                {projectImage && (
+                  <img
+                    src={projectImage.startsWith('http') ? projectImage : (projectImage.startsWith('data:') ? projectImage : process.env.PUBLIC_URL + '/' + projectImage)}
+                    alt={proj.name}
+                    className="card-img-top"
+                    style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem', objectFit: 'cover', height: '200px' }}
+                  />
                 )}
-                <button
-                  type="button"
-                  className={`btn btn-outline-primary mt-auto`}
-                  id={proj.id}
-                  onClick={() => proj.onKnowMore()}
-                >
-                  More Details
-                </button>
+                <div className="card-body d-flex flex-column">
+                  <h5 className="card-title">{proj.name}</h5>
+                  <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
+                  <div className="mb-2">{proj.status}</div>
+                  {proj.status === 'running' && (
+                    <div className="mb-2">
+                      <span className="fw-bold">Progress: {proj.progress}%</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className={`btn btn-outline-primary mt-auto`}
+                    id={proj._id}
+                    onClick={() => proj.onKnowMore()}
+                  >
+                    More Details
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -72,40 +83,56 @@ function Home() {
 
   React.useEffect(() => {
     setTab('completed');
+    // Get companyId from localStorage
+    const companyId = localStorage.getItem('selectedCompanyId');
+    
     // Updated to call API instead of local file
     // Use environment variable for API URL, fallback to localhost for development
     const apiUrl = process.env.REACT_APP_API_URL || 'https://localhost:7777';
-    fetch(`${apiUrl}/api/projects`)
+    const endpoint = companyId 
+      ? `${apiUrl}/api/Projects/all-data?companyId=${companyId}`
+      : `${apiUrl}/api/Projects/all-data`;
+    
+    console.log('Fetching projects from:', endpoint);
+    
+    fetch(endpoint)
       .then(res => res.json())
       .then(data => {
+        console.log('Raw API data:', data);
         let processedData;
         
         // Check if API returns a flat array of projects
         if (Array.isArray(data)) {
+          // Log first project to check structure
+          if (data.length > 0) {
+            console.log('Sample project data:', data[0]);
+            console.log('Sample project projectdocuments:', data[0].projectdocuments);
+          }
+          
           // Group projects by status
           processedData = {
             completed: data.filter(project => project.status === 'completed'),
             running: data.filter(project => project.status === 'running'),
             upcoming: data.filter(project => project.status === 'upcoming')
           };
-         // console.log('Grouped data:', processedData);
+          console.log('Grouped data:', processedData);
         } else {
           // API returns object with completed, running, upcoming arrays
           processedData = data;
-          if (data.completed) {
-            // console.log('data.completed:', data.completed);
-            // console.log('Is data.completed an array?', Array.isArray(data.completed));
+          if (data.completed && data.completed.length > 0) {
+            console.log('Sample completed project:', data.completed[0]);
+            console.log('Sample completed project projectdocuments:', data.completed[0].projectdocuments);
           }
         }
         
         setProjectsData(processedData);
-        // Set filtered projects to completed ones
-        if (processedData.completed && Array.isArray(processedData.completed)) {
-          setFilteredProjects(processedData.completed);
-        } else {
-          console.warn('processedData.completed is not an array or does not exist');
-          setFilteredProjects([]);
-        }
+        // Set filtered projects to all projects initially
+        const allProjectsArray = [
+          ...(processedData.completed || []),
+          ...(processedData.running || []),
+          ...(processedData.upcoming || [])
+        ];
+        setFilteredProjects(allProjectsArray);
       })
       .catch(error => {
         console.error('Error fetching projects:', error);
@@ -147,7 +174,8 @@ function Home() {
   const projectsWithNav = tabProjects.map((proj) => ({
     ...proj,
     onKnowMore: () => {
-      setSelectedProject(proj.id);
+      console.log('More Details clicked for project:', proj);
+      setSelectedProject(proj._id || proj.id);
       setShowDetails(true);
     }
   }));
@@ -165,10 +193,10 @@ function Home() {
     console.log('Searching with:', { location, status });
     console.log('All projects:', allProjects);
     
-    // If both filters are empty, show all completed projects (default)
+    // If both filters are empty, show all projects
     if (!location && !status) {
-      setFilteredProjects(null);
-      setTab('completed');
+      setFilteredProjects(allProjects);
+      setTab('all');
       return;
     }
     
@@ -187,8 +215,12 @@ function Home() {
     console.log('Final filtered projects:', filtered);
     setFilteredProjects(filtered);
     
-    // Reset tab to show all filtered results
-    setTab('filtered');
+    // Set appropriate tab
+    if (status) {
+      setTab(status);
+    } else {
+      setTab('all');
+    }
   }
 
   // Simple email and phone validation
@@ -258,10 +290,10 @@ function Home() {
                     handleSearch(searchLocation, newStatus);
                   }}
                 >
+                  <option value="">All</option>
                   <option value="completed">Completed</option>
                   <option value="running">Running</option>
                   <option value="upcoming">Upcoming</option>
-                  <option value="">All</option>
                 </select>
               </div>
             </div>

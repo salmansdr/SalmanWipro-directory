@@ -18,7 +18,8 @@ const UserProfile = () => {
     fullName: '',
     phone: '',
     roleName: '',
-    roleDescription: ''
+    roleDescription: '',
+    useSso: false
   });
 
   const [profileForm, setProfileForm] = useState({
@@ -147,14 +148,18 @@ const UserProfile = () => {
     }
 
     try {
-      const userId = localStorage.getItem('userId');
+      
       const payload = {
+
+       
+        userId : localStorage.getItem('userId'),
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        newPassword: passwordForm.newPassword,
+        updatedBy: localStorage.getItem('username') || 'system'
       };
 
-      const response = await fetch(`${apiBaseUrl}/api/Usermaster/${userId}/change-password`, {
-        method: 'PATCH',
+      const response = await fetch(`${apiBaseUrl}/api/Usermaster/change-password`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
@@ -316,70 +321,73 @@ const UserProfile = () => {
                   </Form>
                 </Tab>
 
-                <Tab eventKey="password" title={<><i className="fas fa-key me-2"></i>Change Password</>}>
-                  <Form onSubmit={handlePasswordUpdate}>
-                    <Row className="mb-3">
-                      <Col md={12}>
-                        <Alert variant="info">
-                          <i className="fas fa-info-circle me-2"></i>
-                          Password must be at least 6 characters long and different from your current password.
-                        </Alert>
-                      </Col>
-                    </Row>
+                {/* Change Password Tab - Only show for non-SSO users */}
+                {!currentUser.useSso && (
+                  <Tab eventKey="password" title={<><i className="fas fa-key me-2"></i>Change Password</>}>
+                    <Form onSubmit={handlePasswordUpdate}>
+                      <Row className="mb-3">
+                        <Col md={12}>
+                          <Alert variant="info">
+                            <i className="fas fa-info-circle me-2"></i>
+                            Password must be at least 6 characters long and different from your current password.
+                          </Alert>
+                        </Col>
+                      </Row>
 
-                    <Row className="mb-3">
-                      <Col md={12}>
-                        <Form.Group>
-                          <Form.Label>Current Password <span className="text-danger">*</span></Form.Label>
-                          <Form.Control
-                            type="password"
-                            name="currentPassword"
-                            value={passwordForm.currentPassword}
-                            onChange={handlePasswordChange}
-                            placeholder="Enter current password"
-                            required
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
+                      <Row className="mb-3">
+                        <Col md={12}>
+                          <Form.Group>
+                            <Form.Label>Current Password <span className="text-danger">*</span></Form.Label>
+                            <Form.Control
+                              type="password"
+                              name="currentPassword"
+                              value={passwordForm.currentPassword}
+                              onChange={handlePasswordChange}
+                              placeholder="Enter current password"
+                              required
+                            />
+                          </Form.Group>
+                        </Col>
+                      </Row>
 
-                    <Row className="mb-3">
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>New Password <span className="text-danger">*</span></Form.Label>
-                          <Form.Control
-                            type="password"
-                            name="newPassword"
-                            value={passwordForm.newPassword}
-                            onChange={handlePasswordChange}
-                            placeholder="Enter new password"
-                            required
-                          />
-                        </Form.Group>
-                      </Col>
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label>Confirm New Password <span className="text-danger">*</span></Form.Label>
-                          <Form.Control
-                            type="password"
-                            name="confirmPassword"
-                            value={passwordForm.confirmPassword}
-                            onChange={handlePasswordChange}
-                            placeholder="Confirm new password"
-                            required
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
+                      <Row className="mb-3">
+                        <Col md={6}>
+                          <Form.Group>
+                            <Form.Label>New Password <span className="text-danger">*</span></Form.Label>
+                            <Form.Control
+                              type="password"
+                              name="newPassword"
+                              value={passwordForm.newPassword}
+                              onChange={handlePasswordChange}
+                              placeholder="Enter new password"
+                              required
+                            />
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group>
+                            <Form.Label>Confirm New Password <span className="text-danger">*</span></Form.Label>
+                            <Form.Control
+                              type="password"
+                              name="confirmPassword"
+                              value={passwordForm.confirmPassword}
+                              onChange={handlePasswordChange}
+                              placeholder="Confirm new password"
+                              required
+                            />
+                          </Form.Group>
+                        </Col>
+                      </Row>
 
-                    <div className="text-end">
-                      <Button variant="warning" type="submit">
-                        <i className="fas fa-key me-2"></i>
-                        Change Password
-                      </Button>
-                    </div>
-                  </Form>
-                </Tab>
+                      <div className="text-end">
+                        <Button variant="warning" type="submit">
+                          <i className="fas fa-key me-2"></i>
+                          Change Password
+                        </Button>
+                      </div>
+                    </Form>
+                  </Tab>
+                )}
               </Tabs>
             </Card.Body>
           </Card>

@@ -5,7 +5,7 @@ import { Container, Row, Col, Card, Form, Button, Dropdown, DropdownButton, Aler
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 
-const statusOptions = ['Upcoming', 'Running', 'Completed'];
+const statusOptions = ['Upcoming', 'Running', 'Completed','Closed'];
 
 const stageNames = [
   'Approval process',
@@ -18,7 +18,7 @@ const stageNames = [
   'Handover'
 ];
 
-const docNames = ['Master Plan', 'Site Plan', 'Booking Form', 'Brochure'];
+const docNames = ['Master Plan', 'Site Plan', 'Booking Form', 'Brochure', 'Project Image'];
 const indoorAmenities = ['Gym', 'Club House', 'Indoor Games', 'Yoga Room', 'Library'];
 
 const outdoorAmenities = ['Swimming Pool', 'Garden', 'Children Play Area', 'Jogging Track', 'Tennis Court'];
@@ -31,12 +31,14 @@ function ProjectManagement() {
   const isEdit = location.state && location.state.edit === true;
   // Master section state
   const [projectName, setProjectName] = useState('');
+  const [projectType, setProjectType] = useState('');
   const [projectLocation, setProjectLocation] = useState('');
   const [landArea, setLandArea] = useState('');
   const [constructionArea, setConstructionArea] = useState('');
   // const [image, setImage] = useState(null); // Removed unused image state
   const [floors, setFloors] = useState(1);
   const [flatsPerFloor, setFlatsPerFloor] = useState(1);
+  const [basementCount, setBasementCount] = useState(0);
   const [sellingPrice, setSellingPrice] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -44,16 +46,57 @@ function ProjectManagement() {
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const [showViewer, setShowViewer] = useState(false);
   const [viewerContent, setViewerContent] = useState({ type: '', data: '', name: '' });
-  // Populate form fields if editing or viewing
+  const [loading, setLoading] = useState(false);
+
+  // Populate form fields - fetch from API if ID is provided
   useEffect(() => {
-    if (location.state && location.state.project) {
-      const p = location.state.project;
+    const loadProjectData = async () => {
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      
+      // Check if we have project data in location.state
+      if (location.state && location.state.project) {
+        const projectId = location.state.project._id;
+        
+        // Fetch fresh data from API
+        if (projectId) {
+          try {
+            setLoading(true);
+            const response = await fetch(`${apiUrl}/api/Projects/${projectId}`);
+            
+            if (!response.ok) {
+              throw new Error('Failed to load project data');
+            }
+            
+            const p = await response.json();
+            populateFormFields(p);
+          } catch (error) {
+            console.error('Error loading project:', error);
+            setAlertMessage({
+              show: true,
+              type: 'danger',
+              message: `Error loading project: ${error.message}`
+            });
+            // Fallback to location.state data
+            populateFormFields(location.state.project);
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          // No ID, use location.state data directly
+          populateFormFields(location.state.project);
+        }
+      }
+    };
+
+    const populateFormFields = (p) => {
       setProjectName(p.name || '');
+      setProjectType(p.projectType || '');
       setProjectLocation(p.location || '');
       setLandArea(p.landArea || '');
       setConstructionArea(p.constructionArea || '');
       setFloors(p.floors || 1);
       setFlatsPerFloor(p.flatsPerFloor || 1);
+      setBasementCount(p.basementCount || 0);
       setSellingPrice(p.sellingPrice || '');
       setStartDate(p.startDate || '');
       setEndDate(p.endDate || '');
@@ -116,7 +159,9 @@ function ProjectManagement() {
         });
         setDocs(updatedDocs);
       }
-    }
+    };
+
+    loadProjectData();
   }, [location.state]);
 
   // Stages section state
@@ -221,14 +266,21 @@ function ProjectManagement() {
           })
       );
 
+      // Get user and company info from localStorage
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
+      const companyId = localStorage.getItem('selectedCompanyId');
+
       // Prepare project data
       const projectData = {
         name: projectName,
+        projectType: projectType,
         location: projectLocation,
         landArea: landArea,
         constructionArea: constructionArea,
         floors: floors,
         flatsPerFloor: flatsPerFloor,
+        basementCount: basementCount,
         sellingPrice: sellingPrice,
         startDate: startDate,
         endDate: endDate,
@@ -244,7 +296,10 @@ function ProjectManagement() {
         amenities: [
           { type: 'indoor', items: selectedIndoor },
           { type: 'outdoor', items: selectedOutdoor }
-        ]
+        ],
+        companyId: companyId,
+        createdBy: projectId ? project.createdBy : (username|| userId ),
+        modifiedBy:username|| userId 
       };
 
       // Determine if POST (new) or PUT (update)
@@ -312,6 +367,14 @@ function ProjectManagement() {
         </Alert>
       )}
 
+      {/* Loading Indicator */}
+      {loading && (
+        <Alert variant="info" className="text-center">
+          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          Loading project data...
+        </Alert>
+      )}
+
       <Card className="mb-4 shadow-sm">
         <Card.Header as="h3" className="bg-primary text-white">Project Management</Card.Header>
         <Card.Body>
@@ -322,17 +385,19 @@ function ProjectManagement() {
               <Card.Body>
                 <Row className="mb-3">
                   <Col md={4}><Form.Group><Form.Label>Project Name</Form.Label><Form.Control value={projectName} onChange={e => setProjectName(e.target.value)} required /></Form.Group></Col>
-                  <Col md={4}><Form.Group><Form.Label>Location</Form.Label><Form.Control value={projectLocation} onChange={e => setProjectLocation(e.target.value)} required /></Form.Group></Col>
-                  <Col md={4}><Form.Group><Form.Label>Land Area (Katha/Sq ft)</Form.Label><Form.Control value={landArea} onChange={e => setLandArea(e.target.value)} placeholder="e.g., 5 Katha / 3500 sq ft" /></Form.Group></Col>
+                  <Col md={4}><Form.Group><Form.Label>Project Type</Form.Label><Form.Control value={projectType} onChange={e => setProjectType(e.target.value)} placeholder="e.g., Residential, Commercial" /></Form.Group></Col>
+                  <Col md={4}><Form.Group><Form.Label>Project Address</Form.Label><Form.Control value={projectLocation} onChange={e => setProjectLocation(e.target.value)} required /></Form.Group></Col>
                 </Row>
                 <Row className="mb-3">
+                  <Col md={4}><Form.Group><Form.Label>Land Area (Katha/Sq ft)</Form.Label><Form.Control value={landArea} onChange={e => setLandArea(e.target.value)} placeholder="e.g., 5 Katha / 3500 sq ft" /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Construction Area (Sq ft)</Form.Label><Form.Control type="number" value={constructionArea} onChange={e => setConstructionArea(e.target.value)} placeholder="Total construction area" /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Number of Floors</Form.Label><Form.Control type="number" min={1} value={floors} onChange={e => setFloors(Number(e.target.value))} required /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Flats per Floor</Form.Label><Form.Control type="number" min={1} value={flatsPerFloor} onChange={e => setFlatsPerFloor(Number(e.target.value))} required /></Form.Group></Col>
                 </Row>
                 <Row className="mb-3">
                   {/* Project Image input removed since image state is not used */}
-                  <Col md={12}><Form.Group><Form.Label>Selling Price Details</Form.Label><Form.Control as="textarea" rows={2} value={sellingPrice} onChange={e => setSellingPrice(e.target.value)} required /></Form.Group></Col>
+                  <Col md={4}><Form.Group><Form.Label>Basement Count</Form.Label><Form.Control type="number" min={0} value={basementCount} onChange={e => setBasementCount(Number(e.target.value))} /></Form.Group></Col>
+                  <Col md={8}><Form.Group><Form.Label>Selling Price Details</Form.Label><Form.Control as="textarea" rows={2} value={sellingPrice} onChange={e => setSellingPrice(e.target.value)} required /></Form.Group></Col>
                 </Row>
                 <Row className="mb-3">
                   <Col md={6}><Form.Group><Form.Label>Project Start Date</Form.Label><Form.Control type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required /></Form.Group></Col>

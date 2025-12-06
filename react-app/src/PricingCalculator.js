@@ -23,10 +23,7 @@ export const roomColumns = ["BedRoom", "Living Room", "Kitchen", "Bathroom", "St
 // Default grid rows (make available globally)
 export const gridRows = ["Count", "Length (ft)", "Width (ft)"];
 
-const cities = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Surat',
-  'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara'
-];
+const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 
 
@@ -72,12 +69,14 @@ const [step, setStep] = useState(1);
     const [estimationRef, setEstimationRef] = useState('');
     const [description, setDescription] = useState('');
     const [createDate] = useState(new Date().toLocaleDateString('en-IN'));
-    const [userName] = useState('Admin User');
+    const [userName] = useState(localStorage.getItem('username') || 'Admin User');
     const [width, setWidth] = useState('');
     const [depth, setDepth] = useState('');
     const [buildupPercent, setBuildupPercent] = useState(0);
     const [carpetPercent, setCarpetPercent] = useState(80);
-    const [selectedCity, setSelectedCity] = useState('');
+    const [projects, setProjects] = useState([]);
+    const [selectedProject, setSelectedProject] = useState('');
+    const [selectedProjectId, setSelectedProjectId] = useState('');
   
     // --- Step 2: Floor Layout State ---
     // Variables for Step 2 (Floors, BHK configs, Lift, etc.)
@@ -104,6 +103,7 @@ const [step, setStep] = useState(1);
     const [roomDataSource, setRoomDataSource] = useState(''); // Track where room data is coming from
     const [savedRoomUnits, setSavedRoomUnits] = useState(new Set()); // Track units with database-saved rooms
     const bhkHotTableRef = useRef(null); // Reference to Handsontable instance for BHK modal
+    const [isTableReady, setIsTableReady] = useState(false); // Track if table is ready to render
     
   // --- Step 3: Component Calculation State ---
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
@@ -380,6 +380,10 @@ const filteredMaterialRows = useMemo(() => {
     // Get current timestamp for modified date
     const currentDate = new Date().toLocaleDateString('en-IN');
     
+    // Get user and company info from localStorage
+    const companyId = localStorage.getItem('selectedCompanyId');
+    const username = localStorage.getItem('username');
+    
     // Comprehensive MongoDB document including Step 1 + Step 2 + Beam/Column data
     const mongoDocument = {
       // Header information
@@ -387,22 +391,16 @@ const filteredMaterialRows = useMemo(() => {
       description: description || 'Construction Estimation',
       createdDate: createDate,
       modifiedDate: currentDate,
-      createdBy: userName,
-      modifiedBy: userName,
+      createdBy: username || userName, // Use username from localStorage
+      modifiedBy: username || userName, // Use username from localStorage
+      companyId: companyId,
       
-      // Project details (Step 1)
-      projectDetails: {
-        city: selectedCity,
-        buildupArea: buildupPercent,
-        carpetArea: carpetPercent,
-        carpetAreaSqFt: Number(carpetAreaSqFt) || 0,
-        constructionPerimeter: Number(constructionPerimeter) || 0,
-        floors: Number(floors),
-        basementCount: Number(basementCount) || 0,
-        groundFloorHasRooms: groundFloorHasRooms || false,
-        liftIncluded: lift,
-        numberOfLifts: lift ? Number(numLifts) : 0
-      },
+      // Project reference (only save projectId as reference, don't duplicate project details)
+      projectId: selectedProjectId || null,
+      
+      // Estimation-specific configuration
+      basementCount: Number(basementCount) || 0,
+      groundFloorHasRooms: groundFloorHasRooms || false,
       
       // Floor configuration with embedded room details (Step 2)
       floorConfiguration: Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
@@ -492,19 +490,6 @@ const filteredMaterialRows = useMemo(() => {
           }
         })),
         // areaCalculationLogic: areaCalculationLogic // Excluded from save
-      },
-      
-      // Metadata
-      metadata: {
-        version: "1.0",
-        documentType: "construction_estimation",
-        savedFrom: "step1_comprehensive",
-        totalUnits: Object.values(floorBHKConfigs).flat().reduce((total, row) => total + (Number(row.units) || 0), 0),
-        totalFloors: Number(floors) + 1, // Ground Floor + Other floors
-        basementCount: Number(basementCount) || 0,
-        groundFloorHasRooms: groundFloorHasRooms || false,
-        hasLift: lift,
-        estimationStage: "initial_planning"
       }
     };
 
@@ -641,8 +626,14 @@ const filteredMaterialRows = useMemo(() => {
       }
 
       // Prepare single payload with all floors
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const username = localStorage.getItem('username');
+      
       const payload = {
         estimationMasterId: estimationMasterId,
+        companyId: companyId,
+        createdBy: existingRecordId ? undefined : username, // Only set on create
+        modifiedBy: username,
         floors: allFloorsData.map(floorData => ({
           floorName: floorData.floorName,
           components: floorData.components
@@ -753,8 +744,14 @@ const filteredMaterialRows = useMemo(() => {
       }
 
       // Prepare single payload with all floors
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const username = localStorage.getItem('username');
+      
       const payload = {
         estimationMasterId: estimationMasterId,
+        companyId: companyId,
+        createdBy: existingRecordId ? undefined : username, // Only set on create
+        modifiedBy: username,
         floors: allMaterialData.map(floorData => ({
           floorName: floorData.floorName,
           components: floorData.components
@@ -822,11 +819,10 @@ const filteredMaterialRows = useMemo(() => {
         const step1Data = JSON.parse(savedData);
         setEstimationRef(step1Data.estimationRef || '');
         setDescription(step1Data.description || '');
-        setSelectedCity(step1Data.projectDetails?.city || '');
         setWidth(step1Data.projectDetails?.sbaWidth || '');
         setDepth(step1Data.projectDetails?.sbaLength || '');
-        setBuildupPercent(step1Data.projectDetails?.buildupArea || 90);
-        setCarpetPercent(step1Data.projectDetails?.carpetArea || 80);
+        setBuildupPercent(step1Data.projectDetails?.buildupArea);
+        setCarpetPercent(step1Data.projectDetails?.carpetArea);
         setCarpetAreaSqFt(step1Data.projectDetails?.carpetAreaSqFt || '');
         setConstructionPerimeter(step1Data.projectDetails?.constructionPerimeter || '');
         setFloors(step1Data.projectDetails?.floors || 1);
@@ -1102,19 +1098,42 @@ const filteredMaterialRows = useMemo(() => {
           setEstimationRef(projectData.estimationRef || '');
           setDescription(projectData.description || '');
           
-          // Populate project details
-          if (projectData.projectDetails) {
-            setSelectedCity(projectData.projectDetails.city || '');
-            setWidth(projectData.projectDetails.sbaWidth?.toString() || '');
-            setDepth(projectData.projectDetails.sbaLength?.toString() || '');
-            setBuildupPercent(projectData.projectDetails.buildupArea || 90);
-            setCarpetAreaSqFt(projectData.projectDetails.carpetAreaSqFt?.toString() || '');
-            setConstructionPerimeter(projectData.projectDetails.constructionPerimeter?.toString() || '');
-            setFloors(projectData.projectDetails.floors || 1);
-            setBasementCount(projectData.projectDetails.basementCount || 0);
-            setGroundFloorHasRooms(projectData.projectDetails.groundFloorHasRooms || false);
-            setLift(projectData.projectDetails.liftIncluded || false);
-            setNumLifts(projectData.projectDetails.numLifts || 1);
+          // Load estimation-specific fields if saved
+          if (projectData.groundFloorHasRooms !== undefined) {
+            setGroundFloorHasRooms(projectData.groundFloorHasRooms);
+          }
+          if (projectData.basementCount !== undefined) {
+            setBasementCount(projectData.basementCount);
+          }
+          
+          // Populate project reference and fetch project details
+          if (projectData.projectId) {
+            setSelectedProjectId(projectData.projectId);
+            setSelectedProject(projectData.projectId);
+            
+            // Fetch actual project data to populate fields
+            try {
+              const projectResponse = await fetch(`${apiBaseUrl}/api/Projects/${projectData.projectId}`);
+              if (projectResponse.ok) {
+                const project = await projectResponse.json();
+                // Populate fields from project data (same as handleProjectSelect)
+                const constructionArea = project.constructionAreaSqft || 
+                                          project.constructionArea || 
+                                          project.buildupArea || 
+                                          project.plotArea || 
+                                          '';
+                setWidth(constructionArea);
+                
+                const landArea = project.landAreaKatha || project.landArea || '';
+                setDepth(landArea);
+                
+                setFloors(project.floors || project.numberOfFloors || 1);
+                setBasementCount(project.basementCount || 0);
+                console.log('Project data loaded for estimation:', project);
+              }
+            } catch (error) {
+              console.error('Error fetching project details:', error);
+            }
           }
           
           // Populate floor configuration if available
@@ -1226,6 +1245,79 @@ const filteredMaterialRows = useMemo(() => {
 
     loadProjectData();
   }, [mode, id]);
+
+  // --- Load Projects from API ---
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const companyId = localStorage.getItem('selectedCompanyId');
+        const endpoint = companyId 
+          ? `${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`
+          : `${apiBaseUrl}/api/Projects/basic`;
+        
+        const response = await fetch(endpoint);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Projects fetched:', data);
+          
+          // Handle both array and grouped object structures
+          let projectsList = [];
+          if (Array.isArray(data)) {
+            projectsList = data;
+          } else {
+            // Flatten grouped data
+            projectsList = [
+              ...(data.completed || []),
+              ...(data.running || []),
+              ...(data.upcoming || [])
+            ];
+          }
+          
+          setProjects(projectsList);
+        } else {
+          console.error('Failed to fetch projects');
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  // --- Handler for Project Selection ---
+  const handleProjectSelect = (e) => {
+    const projectId = e.target.value;
+    setSelectedProject(projectId);
+    setSelectedProjectId(projectId);
+    
+    if (projectId) {
+      const project = projects.find(p => p._id === projectId);
+      if (project) {
+        // Populate fields from selected project
+        // Try multiple possible field names for construction area
+        const constructionArea = project.constructionArea || 
+                                  project.constructionArea || 
+                                  project.buildupArea || 
+                                  project.plotArea || 
+                                  '';
+        setWidth(constructionArea);
+        
+        // Set land area if available
+        const landArea = project.landAreaKatha || project.landArea || '';
+        setDepth(landArea);
+        
+        setFloors(project.floors || project.numberOfFloors || 1);
+        setBasementCount(project.basementCount || 0);
+        console.log('Project selected:', project);
+        console.log('Construction Area set to:', constructionArea);
+      }
+    } else {
+      // Clear fields if no project selected
+      setWidth('');
+      setDepth('');
+      setFloors(1);
+    }
+  };
 
   // --- Load Beam & Column Config from API ---
 useEffect(() => {
@@ -1743,6 +1835,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     
     setBhkModalFloorIdx(floorIdx);
     setBhkModalIdx(idx);
+    setIsTableReady(false); // Reset table ready state
     
     try {
       // Check if this unit has saved room data from the database
@@ -1756,7 +1849,10 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
         const savedRoomNames = Object.keys(existingSavedDetails['Count'] || {});
         setDynamicRoomColumns(savedRoomNames);
         
+        setIsTableReady(false);
         setShowBHKModal(true);
+        // Delay table rendering to ensure modal is fully mounted
+        setTimeout(() => setIsTableReady(true), 100);
         return;
       }
       
@@ -1902,8 +1998,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             [key]: roomDetails
           };
         });
+        setIsTableReady(false);
         setTimeout(() => {
           setShowBHKModal(true);
+          // Delay table rendering to ensure modal is fully mounted
+          setTimeout(() => setIsTableReady(true), 100);
         }, 0);
       } else {
         // Fallback to static columns if no match found
@@ -1941,13 +2040,17 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
           };
         });
         console.warn(`No BHK configuration found for ${bhkType} with ${bhkArea} sq ft`);
+        setIsTableReady(false);
         setShowBHKModal(true);
+        setTimeout(() => setIsTableReady(true), 100);
       }
     } catch (error) {
       console.error('Error loading BHK configuration:', error);
       // Fallback to static columns
       setDynamicRoomColumns([...roomColumns, 'Circulation Space']);
+      setIsTableReady(false);
       setShowBHKModal(true);
+      setTimeout(() => setIsTableReady(true), 100);
     }
   }
   // Handler to close modal
@@ -1955,6 +2058,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     setShowBHKModal(false);
     setBhkModalIdx(null);
     setBhkModalFloorIdx(null);
+    setIsTableReady(false);
   }
 
   // Handler for OK button in modal (now only closes the modal)
@@ -1967,7 +2071,17 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
     if (bhkModalFloorIdx == null || bhkModalIdx == null) return [];
     
     const key = `${bhkModalFloorIdx}-${bhkModalIdx}`;
-    const details = bhkRoomDetails[key] || {};
+    const details = bhkRoomDetails[key];
+    
+    // Return empty array if details are not initialized
+    if (!details || typeof details !== 'object') {
+      return [];
+    }
+    
+    // Ensure dynamicRoomColumns has values
+    if (!dynamicRoomColumns || dynamicRoomColumns.length === 0) {
+      return [];
+    }
     
     const rowLabels = [
       'Count',
@@ -2159,6 +2273,11 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
   // Get columns configuration for BHK Handsontable
   function getBHKHandsontableColumns() {
+    // Safety check for dynamicRoomColumns
+    if (!dynamicRoomColumns || dynamicRoomColumns.length === 0) {
+      return [];
+    }
+    
     const columns = [
       {
         data: 'Row Label',
@@ -3312,6 +3431,7 @@ const boqItems = useMemo(() => {
               onClick={(e) => { e.preventDefault(); handleCircleClick(s); }}
             >{s}</span>
             <span
+              className="wizard-step-label"
               style={{
                 position: 'absolute',
                 left: '50%',
@@ -3492,11 +3612,11 @@ const boqItems = useMemo(() => {
                       marginBottom: '0.5rem',
                       display: 'block'
                     }}>
-                      Select City
+                      Select Project
                     </Form.Label>
                     <Form.Select 
-                      value={selectedCity} 
-                      onChange={e => setSelectedCity(e.target.value)}
+                      value={selectedProject} 
+                      onChange={handleProjectSelect}
                       disabled={isViewMode}
                       style={{
                         borderRadius: '6px',
@@ -3508,9 +3628,42 @@ const boqItems = useMemo(() => {
                         color: isViewMode ? '#6c757d' : '#495057'
                       }}
                     >
-                      <option value="">Select City</option>
-                      {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                      <option value="">Select Project</option>
+                      {projects.map(project => (
+                        <option key={project._id} value={project._id}>
+                          {project.name} - {project.location}
+                        </option>
+                      ))}
                     </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label style={{
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      color: '#495057',
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Land Area
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={projects.find(p => p._id === selectedProject)?.landArea || ''}
+                      readOnly
+                      disabled
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        width: '100%',
+                        height: '42px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#6c757d'
+                      }}
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
@@ -3526,10 +3679,9 @@ const boqItems = useMemo(() => {
                     </Form.Label>
                     <Form.Control
                       type="number"
-                      value={buildupPercent}
-                      onChange={e => setBuildupPercent(Number(e.target.value))}
-                      min={1}
-                      disabled={isViewMode}
+                      value={width}
+                      onChange={e => setWidth(e.target.value)}
+                      disabled={isViewMode || !!selectedProject}
                       style={{
                         borderRadius: '6px',
                         border: '1px solid #ced4da',
@@ -3537,8 +3689,8 @@ const boqItems = useMemo(() => {
                         fontSize: '0.9rem',
                         width: '100%',
                         height: '42px',
-                        backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
-                        color: isViewMode ? '#6c757d' : '#495057'
+                        backgroundColor: (isViewMode || selectedProject) ? '#f8f9fa' : '#fff',
+                        color: (isViewMode || selectedProject) ? '#6c757d' : '#495057'
                       }}
                     />
                   </Form.Group>
@@ -3552,14 +3704,14 @@ const boqItems = useMemo(() => {
                       marginBottom: '0.5rem',
                       display: 'block'
                     }}>
-                      Carpet Area (Sq Ft)
+                      Number of Floors
                     </Form.Label>
-                    <Form.Control
-                      type="number"
-                      value={carpetAreaSqFt}
-                      onChange={e => setCarpetAreaSqFt(Number(e.target.value))}
+                    <Form.Control 
+                      type="number" 
+                      value={floors} 
+                      onChange={e => setFloors(e.target.value)} 
                       min={1}
-                      disabled={isViewMode}
+                      disabled={isViewMode || !!selectedProject}
                       style={{
                         borderRadius: '6px',
                         border: '1px solid #ced4da',
@@ -3567,122 +3719,72 @@ const boqItems = useMemo(() => {
                         fontSize: '0.9rem',
                         width: '100%',
                         height: '42px',
-                        backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
-                        color: isViewMode ? '#6c757d' : '#495057'
+                        backgroundColor: (isViewMode || selectedProject) ? '#f8f9fa' : '#fff',
+                        color: (isViewMode || selectedProject) ? '#6c757d' : '#495057'
                       }}
                     />
                   </Form.Group>
                 </Col>
-                <Col md={3} sm={6} className="mb-3">
-                  <Form.Group>
-                    <Form.Label style={{
-                      fontSize: '0.9rem',
-                      fontWeight: '500',
-                      color: '#495057',
-                      marginBottom: '0.5rem',
-                      display: 'block'
-                    }}>
-                      Construction Perimeter (Ft)
-                    </Form.Label>
-                    <Form.Control
-                      type="number"
-                      value={constructionPerimeter}
-                      min={1}
-                      onChange={e => setConstructionPerimeter(e.target.value)}
-                      style={{
-                        borderRadius: '6px',
-                        border: '1px solid #ced4da',
-                        padding: '0.75rem',
-                        fontSize: '0.9rem',
-                        width: '100%',
-                        height: '42px'
-                      }}
-                    />
-                  </Form.Group>
-                </Col>
-              
               </Row>
-
-{/* --- Floor Definition Section (Step 1) --- */}
-<div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 32 }}>
-  <div style={{ width: 600, background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px #0001', padding: 24 }}>
-    <h4 style={{ textAlign: 'center', color: '#1976d2', fontWeight: 600, marginBottom: 24 }}>
-      Floor Definition
-    </h4>
-    
-    <Row className="align-items-center mb-3">
-      <Col xs={12} md={6}>
-        <Form.Group>
-          <Form.Label>Number of Floors</Form.Label>
-          <Form.Control 
-            type="number" 
-            value={floors} 
-            onChange={e => setFloors(e.target.value)} 
-            min={1}
-            disabled={isViewMode}
-          />
-        </Form.Group>
-      </Col>
-      <Col xs={12} md={6}>
-        <Form.Group>
-          <Form.Label>Basement Count</Form.Label>
-          <Form.Control 
-            type="number" 
-            value={basementCount} 
-            onChange={e => setBasementCount(Math.max(0, Number(e.target.value)))} 
-            min={0}
-            disabled={isViewMode}
-          />
-        </Form.Group>
-      </Col>
-    </Row>
-    
-    <Row className="align-items-center mb-3">
-      <Col xs={12} md={6}>
-        <Form.Group>
-          <Form.Label>Ground Floor</Form.Label>
-          <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem' }}>
-            <Form.Check 
-              type="checkbox" 
-              label="Has Rooms" 
-              checked={groundFloorHasRooms} 
-              onChange={e => setGroundFloorHasRooms(e.target.checked)}
-              disabled={isViewMode}
-            />
-          </div>
-        </Form.Group>
-      </Col>
-      <Col xs={12} md={6}>
-        <Form.Group>
-          <Form.Label>Lift Requirement</Form.Label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-            <Form.Check 
-              type="switch" 
-              label="Lift Required" 
-              checked={lift} 
-              onChange={e => setLift(e.target.checked)}
-              disabled={isViewMode}
-            />
-            {lift && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <Form.Label style={{ fontSize: '0.85rem', color: '#888', marginBottom: 2 }}>No. of Lifts</Form.Label>
-                <Form.Control
-                  type="number"
-                  min={1}
-                  value={numLifts}
-                  onChange={e => setNumLifts(Math.max(1, Number(e.target.value)))}
-                  style={{ width: 60, fontSize: '0.95rem', padding: '4px 8px', height: 32, borderRadius: 4, border: '1px solid #bdbdbd' }}
-                  size="sm"
-                  disabled={isViewMode}
-                />
-              </div>
-            )}
-          </div>
-        </Form.Group>
-      </Col>
-    </Row>
-  </div>
-</div>
+              <Row>
+                <Col md={3} sm={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label style={{
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      color: '#495057',
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Basement Count
+                    </Form.Label>
+                    <Form.Control 
+                      type="number" 
+                      value={basementCount} 
+                      onChange={e => setBasementCount(Math.max(0, Number(e.target.value)))} 
+                      min={0}
+                      disabled={isViewMode}
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        width: '100%',
+                        height: '42px',
+                        backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
+                        color: isViewMode ? '#6c757d' : '#495057'
+                      }}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label style={{
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      color: '#495057',
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Ground Floor
+                    </Form.Label>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      height: '42px',
+                      paddingLeft: '0.75rem'
+                    }}>
+                      <Form.Check 
+                        type="checkbox" 
+                        label="Has Rooms" 
+                        checked={groundFloorHasRooms} 
+                        onChange={e => setGroundFloorHasRooms(e.target.checked)}
+                        disabled={isViewMode}
+                      />
+                    </div>
+                  </Form.Group>
+                </Col>
+              </Row>
 
 {/* --- Beam & Column Section UI (Step 1) --- */}
 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 32 }}>
@@ -3862,22 +3964,22 @@ const boqItems = useMemo(() => {
                 <div className="col-12 col-md-6 mb-3 mb-md-0">
                   <div style={{ background: '#e8f5e9', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(76,175,80,0.07)', minWidth: 0, fontWeight: 400 }}>
                     <div style={{ fontWeight: 400, color: '#388e3c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em', fontFamily: 'inherit' }}>
-                      Construction Area
-                      <span title="Usable area including walls, balcony, etc." style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#388e3c', verticalAlign: 'middle' }}>ℹ️</span>
+                      Construction Area (Sq Ft)
+                      <span title="Construction area in square feet" style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#388e3c', verticalAlign: 'middle' }}>ℹ️</span>
                     </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 400, marginTop: 2, fontFamily: 'inherit' }}>
-                      {Number(buildupPercent) ? Number(buildupPercent).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      {Number(width) ? Number(width).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
                     </div>
                   </div>
                 </div>
                 <div className="col-12 col-md-6">
                   <div style={{ background: '#fce4ec', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(233,30,99,0.07)', minWidth: 0, fontWeight: 400 }}>
                     <div style={{ fontWeight: 400, color: '#d81b60', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em', fontFamily: 'inherit' }}>
-                      Carpet Area
-                      <span title="Actual area within walls (where carpet can be laid)" style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#d81b60', verticalAlign: 'middle' }}>ℹ️</span>
+                      Land Area
+                      <span title="Total land area from selected project" style={{ cursor: 'pointer', fontSize: '1em', marginLeft: '2px', color: '#d81b60', verticalAlign: 'middle' }}>ℹ️</span>
                     </div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 400, marginTop: 2, fontFamily: 'inherit' }}>
-                      {Number(carpetAreaSqFt) ? Number(carpetAreaSqFt).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-'}
+                      {selectedProject ? (projects.find(p => p._id === selectedProject)?.landArea || '-') : '-'}
                     </div>
                   </div>
                 </div>
@@ -4861,7 +4963,7 @@ const boqItems = useMemo(() => {
         </Modal.Header>
         <Modal.Body style={{ background: '#fafafa', padding: '1.5rem 2rem' }}>
           {/* Data Source Information */}
-          {roomDataSource && (
+          {showBHKModal && roomDataSource && (
             <div style={{
               background: roomDataSource.includes('Saved') ? '#e8f5e9' : '#fff3e0',
               border: roomDataSource.includes('Saved') ? '1px solid #4caf50' : '1px solid #ff9800',
@@ -4886,7 +4988,15 @@ const boqItems = useMemo(() => {
           )}
           
           {(() => {
+            if (!showBHKModal) return null; // Don't render anything if modal is not shown
+            
             if (bhkModalFloorIdx == null || bhkModalIdx == null) return null;
+            
+            // Early exit if table is not ready
+            if (!isTableReady) {
+              return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.1rem', color: '#666' }}>Loading...</div>;
+            }
+            
             const rows = getFloorRows(bhkModalFloorIdx);
             const bhkType = rows[bhkModalIdx]?.type || '';
             const carpetArea = rows[bhkModalIdx]?.area || '';
@@ -4899,13 +5009,37 @@ const boqItems = useMemo(() => {
                 </div>
               );
             }
+            
+            // Additional safety check for bhkRoomDetails before getting data
+            const modalKey = `${bhkModalFloorIdx}-${bhkModalIdx}`;
+            if (!bhkRoomDetails[modalKey]) {
+              return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.1rem', color: '#666' }}>Initializing room details...</div>;
+            }
+            
+            // Validate that bhkRoomDetails has required structure
+            const requiredKeys = ['Count', 'Length (ft)', 'Width (ft)', 'Door', 'Window'];
+            const hasRequiredStructure = requiredKeys.every(key => bhkRoomDetails[modalKey][key] !== undefined);
+            if (!hasRequiredStructure) {
+              return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.1rem', color: '#666' }}>Room details not properly initialized...</div>;
+            }
+            
             // Only render the table/grid if the row is filled
-            return (
-              <div style={{ overflowX: 'auto' }}>
-                <HotTable
-                  ref={bhkHotTableRef}
-                  data={getBHKHandsontableData()}
-                  columns={getBHKHandsontableColumns()}
+            const tableData = getBHKHandsontableData();
+            const tableColumns = getBHKHandsontableColumns();
+            
+            // Don't render if data is invalid
+            if (!tableData || tableData.length === 0 || !tableColumns || tableColumns.length === 0) {
+              return <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>No data available</div>;
+            }
+            
+            // Wrap in try-catch to prevent rendering errors
+            try {
+              return (
+                <div style={{ overflowX: 'auto' }} key={`bhk-table-${bhkModalFloorIdx}-${bhkModalIdx}`}>
+                  <HotTable
+                    ref={bhkHotTableRef}
+                    data={tableData}
+                    columns={tableColumns}
                   colHeaders={true}
                   rowHeaders={false}
                   height="auto"
@@ -4913,11 +5047,13 @@ const boqItems = useMemo(() => {
                   licenseKey="non-commercial-and-evaluation"
                   stretchH="all"
                   className="htCenter htMiddle"
+                  preventOverflow="horizontal"
+                  autoRowSize={false}
+                  autoColumnSize={false}
                   cells={(row, col) => {
                     const cellProperties = {};
-                    const data = getBHKHandsontableData();
-                    if (data[row]) {
-                      const rowLabel = data[row]['Row Label'];
+                    if (tableData && tableData[row]) {
+                      const rowLabel = tableData[row]['Row Label'];
                       
                       // Make calculated rows read-only
                       if (rowLabel === 'Total Carpet Area' || 
@@ -4962,6 +5098,14 @@ const boqItems = useMemo(() => {
                 </div>
               </div>
             );
+            } catch (error) {
+              console.error('Error rendering BHK table:', error);
+              return (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#d32f2f' }}>
+                  Error loading table. Please close and reopen the modal.
+                </div>
+              );
+            }
           })()}
           <div style={{ textAlign: 'center', marginTop: '2rem' }}>
             <Button variant="primary" size="lg" style={{ minWidth: 120, fontWeight: 600, letterSpacing: '0.5px' }} onClick={handleOkBHKModal}>OK</Button>

@@ -11,7 +11,12 @@ function ProjectDetails() {
   const loadProjects = async () => {
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-      const response = await fetch(`${apiUrl}/api/projects`);
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const endpoint = companyId 
+        ? `${apiUrl}/api/Projects?companyId=${companyId}`
+        : `${apiUrl}/api/Projects`;
+      
+      const response = await fetch(endpoint);
       const data = await response.json();
       
       // Check if data is directly an array of projects

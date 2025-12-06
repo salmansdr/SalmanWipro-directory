@@ -15,7 +15,10 @@ function ProjectEstimation() {
       try {
         setLoading(true);
         const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-      const endpoint = `${apiUrl}/api/ProjectEstimation`;
+        const companyId = localStorage.getItem('selectedCompanyId');
+        const endpoint = companyId 
+          ? `${apiUrl}/api/ProjectEstimation?companyId=${companyId}`
+          : `${apiUrl}/api/ProjectEstimation`;
         const response = await fetch(endpoint);
         if (!response.ok) {
           throw new Error('Failed to load project estimation data');
@@ -38,17 +41,14 @@ function ProjectEstimation() {
           _id: project._id,
           ref: project.estimationRef || 'N/A',
           description: project.description || 'No description available',
-          location: project.projectDetails?.city || 'Not specified',
+          location: project.location || 'Not specified',
+          projectName: project.projectName || 'Unnamed Project',
           creationDate: formatDate(project.createdDate),
           modificationDate: formatDate(project.modifiedDate),
           createdBy: project.createdBy || 'Unknown',
           modifiedBy: project.modifiedBy || 'Unknown',
           action: 'Edit',
-          // Store additional project details for future use
-          projectDetails: project.projectDetails,
-          floorConfiguration: project.floorConfiguration,
-          costEstimation: project.costEstimation,
-          metadata: project.metadata
+         
         }));
         
         setRows(projectRows);
@@ -70,6 +70,9 @@ function ProjectEstimation() {
     try {
       // Create a new project estimation via POST API
       const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const userId = localStorage.getItem('userId');
+      const username = localStorage.getItem('username');
       const endpoint = `${apiUrl}/api/ProjectEstimation`;
       
       const response = await fetch(endpoint, {
@@ -77,7 +80,11 @@ function ProjectEstimation() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({}) // Empty object to create new estimation
+        body: JSON.stringify({
+          companyId: companyId,
+          createdBy: userId || username,
+          modifiedBy: userId || username
+        })
       });
       
       if (!response.ok) {
@@ -194,6 +201,7 @@ function ProjectEstimation() {
                 <thead className="table-light">
                   <tr>
                     <th>Estimation Ref#</th>
+                    <th>Project Name</th>
                     <th>Description</th>
                     <th>Location</th>
                     <th>Creation Date</th>
@@ -209,6 +217,7 @@ function ProjectEstimation() {
                       <td>
                         <Button variant="link" onClick={() => handleRefClick(row._id)} style={{padding: 0}}>{row.ref}</Button>
                       </td>
+                      <td>{row.projectName}</td>
                       <td>{row.description}</td>
                       <td>{row.location}</td>
                       <td>{row.creationDate}</td>

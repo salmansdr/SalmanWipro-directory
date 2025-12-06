@@ -67,6 +67,7 @@ const CompanySetup = () => {
     ifscCode: '',
     // Branding
     themeColor: '#0d6efd',
+    fontColor: '#000000',
     logo: null
   });
 
@@ -124,6 +125,7 @@ const CompanySetup = () => {
       accountNumber: company.invoicing?.banking?.accountNumber || company.accountNumber || '',
       ifscCode: company.invoicing?.banking?.ifscCode || company.ifscCode || '',
       themeColor: company.branding?.themeColor || company.themeColor || '#0d6efd',
+      fontColor: company.branding?.fontColor || company.fontColor || '#000000',
       logo: company.branding?.logo || company.logo || null
     });
     setIsEditMode(true);
@@ -195,6 +197,7 @@ const CompanySetup = () => {
       accountNumber: '',
       ifscCode: '',
       themeColor: '#0d6efd',
+      fontColor: '#000000',
       logo: null
     });
     setIsEditMode(false);
@@ -295,6 +298,7 @@ const CompanySetup = () => {
         },
         branding: {
           themeColor: companyData.themeColor,
+          fontColor: companyData.fontColor,
           logo: companyData.logo ? {
             fileName: companyData.logo.fileName,
             fileType: companyData.logo.fileType,
@@ -829,6 +833,33 @@ const CompanySetup = () => {
                   </div>
                   <Form.Text className="text-muted">
                     This color will be used for headers and branding elements
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-4">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Font Color</Form.Label>
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Control
+                      type="color"
+                      name="fontColor"
+                      value={companyData.fontColor}
+                      onChange={handleInputChange}
+                      style={{ width: '60px', height: '38px' }}
+                    />
+                    <Form.Control
+                      type="text"
+                      name="fontColor"
+                      value={companyData.fontColor}
+                      onChange={handleInputChange}
+                      placeholder="#000000"
+                    />
+                  </div>
+                  <Form.Text className="text-muted">
+                    This color will be used for text in branding elements
                   </Form.Text>
                 </Form.Group>
               </Col>

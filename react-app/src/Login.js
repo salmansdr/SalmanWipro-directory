@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Container, Row, Col } from 'react-bootstrap';
+import { Container, Row, Col, Modal, Form, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
@@ -10,6 +10,10 @@ function Login({ onLogin, isAuthenticated }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [userCompanies, setUserCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [pendingUserData, setPendingUserData] = useState(null);
   const navigate = useNavigate();
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -18,6 +22,58 @@ function Login({ onLogin, isAuthenticated }) {
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
+
+  const finalizeLogin = async (userData, companyData = null) => {
+    // Store user data in localStorage
+    localStorage.setItem('userId', userData._id);
+    localStorage.setItem('username', userData.username);
+    localStorage.setItem('userRole', userData.roleName);
+    localStorage.setItem('userPermissions', JSON.stringify(userData.rolePermissions || []));
+    
+    // Store company data if provided
+    if (companyData) {
+      localStorage.setItem('selectedCompanyId', companyData._id);
+      localStorage.setItem('companyName', companyData.companyName);
+      localStorage.setItem('companyCode', companyData.companyCode);
+      localStorage.setItem('companyLogo', companyData.branding?.logo?.base64Data || '');
+      localStorage.setItem('companyThemeColor', companyData.branding?.themeColor || '#2563eb');
+      localStorage.setItem('companyFontColor', companyData.branding?.fontColor || '#000000');
+    }
+    
+    // Call parent onLogin handler
+    if (onLogin) {
+      onLogin(userData.username, null, userData);
+    }
+    
+    setError('');
+    navigate('/');
+  };
+
+  const handleCompanySelection = async () => {
+    if (!selectedCompanyId) {
+      setError('Please select a company');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/CompanySetup/${selectedCompanyId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load company details');
+      }
+
+      const companyData = await response.json();
+      setShowCompanyModal(false);
+      await finalizeLogin(pendingUserData, companyData);
+      // Reload page to update navbar with company info
+      window.location.reload();
+    } catch (error) {
+      console.error('Company selection error:', error);
+      setError(error.message || 'Failed to load company details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,19 +94,27 @@ function Login({ onLogin, isAuthenticated }) {
 
       const userData = await response.json();
       
-      // Store user data in localStorage
-      localStorage.setItem('userId', userData._id);
-      localStorage.setItem('username', userData.username);
-      localStorage.setItem('userRole', userData.roleName);
-      localStorage.setItem('userPermissions', JSON.stringify(userData.rolePermissions || []));
+      console.log('User data received:', userData);
+      console.log('Companies array:', userData.companies);
+      console.log('Companies length:', userData.companies?.length);
       
-      // Call parent onLogin handler
-      if (onLogin) {
-        onLogin(username, password, userData);
+      // Check if user has multiple companies
+      if (userData.companies && userData.companies.length > 1) {
+        console.log('Multiple companies detected, showing modal');
+        // Show company selection modal
+        setUserCompanies(userData.companies);
+        setPendingUserData(userData);
+        setShowCompanyModal(true);
+        setLoading(false);
+        return;
       }
       
-      setError('');
-      navigate('/');
+      // Single company or no company - proceed with login
+      const companyData = userData.companies && userData.companies.length === 1 
+        ? await fetch(`${apiBaseUrl}/api/CompanySetup/${userData.companies[0]._id}`).then(r => r.json()).catch(() => null)
+        : null;
+      
+      await finalizeLogin(userData, companyData);
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'Invalid username or password');
@@ -89,19 +153,33 @@ function Login({ onLogin, isAuthenticated }) {
 
       const userData = await response.json();
       
-      // Store user data in localStorage
-      localStorage.setItem('userId', userData._id);
-      localStorage.setItem('username', userData.username);
-      localStorage.setItem('userRole', userData.roleName);
-      localStorage.setItem('userPermissions', JSON.stringify(userData.rolePermissions || []));
+      console.log('SSO User data received:', userData);
+      console.log('SSO Companies array:', userData.companies);
+      console.log('SSO Companies length:', userData.companies?.length);
+      console.log('SSO useSso flag:', userData.useSso);
       
-      // Call parent onLogin handler
-      if (onLogin) {
-        onLogin(userData.username, null, userData);
+      // Check if SSO is enabled for this user
+      if (userData.useSso === false) {
+        throw new Error('Single Sign-On is not enabled for this account. Please use username and password to login.');
       }
       
-      setError('');
-      navigate('/');
+      // Check if user has multiple companies
+      if (userData.companies && userData.companies.length > 1) {
+        console.log('Multiple companies detected for SSO user, showing modal');
+        // Show company selection modal
+        setUserCompanies(userData.companies);
+        setPendingUserData(userData);
+        setShowCompanyModal(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Single company or no company - proceed with login
+      const companyData = userData.companies && userData.companies.length === 1 
+        ? await fetch(`${apiBaseUrl}/api/CompanySetup/${userData.companies[0]._id}`).then(r => r.json()).catch(() => null)
+        : null;
+      
+      await finalizeLogin(userData, companyData);
     } catch (error) {
       console.error('Google login error:', error);
       setError(error.message || 'Google login failed. User may not be registered.');
@@ -202,6 +280,60 @@ function Login({ onLogin, isAuthenticated }) {
           </div>
         </Col>
       </Row>
+
+      {/* Company Selection Modal */}
+      <Modal show={showCompanyModal} onHide={() => {}} backdrop="static" centered>
+        <Modal.Header>
+          <Modal.Title>
+            <i className="fas fa-building me-2"></i>
+            Select Company
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            You are associated with multiple companies. Please select one to continue.
+          </p>
+          <Form.Group>
+            <Form.Label>Company <span className="text-danger">*</span></Form.Label>
+            <Form.Select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              size="lg"
+            >
+              <option value="">-- Select Company --</option>
+              {userCompanies.map(company => (
+                <option key={company._id} value={company._id}>
+                  {company.companyName} ({company.companyCode})
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          {error && (
+            <div className="alert alert-danger mt-3 mb-0">
+              {error}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="primary"
+            onClick={handleCompanySelection}
+            disabled={loading || !selectedCompanyId}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Loading...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-check me-2"></i>
+                Continue
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }

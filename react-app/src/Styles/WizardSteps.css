@@ -188,11 +188,24 @@
   }
   .wizard-indicator {
     gap: 1.2rem;
+    margin-bottom: 4rem;
+    padding: 0 20px;
+  }
+  .wizard-indicator::before {
+    left: 20px;
+    right: 20px;
   }
   .wizard-circle {
     width: 30px;
     height: 30px;
     font-size: 1rem;
+  }
+  .wizard-step-label {
+    fontSize: 0.55em !important;
+    top: 130% !important;
+    maxWidth: 60px;
+    whiteSpace: normal !important;
+    wordBreak: break-word;
   }
   .plot-area-display {
     font-size: 0.98rem;

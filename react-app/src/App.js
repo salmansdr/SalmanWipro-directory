@@ -82,6 +82,10 @@ function AvatarMenu({ onLogout }) {
 
 function App() {
   const [expanded, setExpanded] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [companyLogo, setCompanyLogo] = useState('');
+  const [themeColor, setThemeColor] = useState('#003366');
+  const [fontColor, setFontColor] = useState('#ffffff');
   const AUTH_KEY = 'isAuthenticated';
   const AUTH_USER_KEY = 'authUser';
   const AUTH_TIME_KEY = 'authTime';
@@ -147,6 +151,26 @@ function App() {
       }
     };
     loadMenuItems();
+  }, [isAuthenticated]);
+
+  // Load company data from localStorage
+  React.useEffect(() => {
+    const loadCompanyData = () => {
+      const name = localStorage.getItem('companyName') || 'BuildPro';
+      const logo = localStorage.getItem('companyLogo') || '';
+      const color = localStorage.getItem('companyThemeColor') || '#003366';
+      const font = localStorage.getItem('companyFontColor') || '#ffffff';
+      setCompanyName(name);
+      setCompanyLogo(logo);
+      setThemeColor(color);
+      setFontColor(font);
+      console.log('Company data loaded:', { name, hasLogo: !!logo, themeColor: color, fontColor: font });
+    };
+    loadCompanyData();
+
+    // Listen for storage changes (when company is selected)
+    window.addEventListener('storage', loadCompanyData);
+    return () => window.removeEventListener('storage', loadCompanyData);
   }, [isAuthenticated]);
 
   // Handler for login success
@@ -239,7 +263,7 @@ function App() {
       to={item.path} 
       end={item.path === '/'} 
       onClick={() => setExpanded(false)} 
-      style={{ color: 'white' }}
+      style={{ color: fontColor }}
     >
       {item.icon && <span className="me-2">{item.icon}</span>}
       {item.label}
@@ -250,7 +274,7 @@ function App() {
   const renderNavDropdown = (item) => (
     <NavDropdown 
       key={item.id}
-      title={<span style={{ color: 'white' }}>{item.icon && <span className="me-2">{item.icon}</span>}{item.label}</span>} 
+      title={<span style={{ color: fontColor }}>{item.icon && <span className="me-2">{item.icon}</span>}{item.label}</span>} 
       id={`${item.id}-nav-dropdown`} 
       menuVariant="light" 
       className="dropdown-white-caret"
@@ -272,20 +296,29 @@ function App() {
   return (
     <Router>
       <div className="bg-light min-vh-100" style={{ padding: 0 }}>
-        <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: '#003366', margin: 0}} expanded={expanded} onToggle={setExpanded}>
+        <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: themeColor, margin: 0}} expanded={expanded} onToggle={setExpanded}>
           <Container fluid style={{width: '100%'}}>
             <Navbar.Brand as={NavLink} to="/" className="d-flex flex-column align-items-start" onClick={() => setExpanded(false)}>
               <div className="d-flex align-items-center">
-                <span style={{ fontSize: '1.7rem', marginRight: '0.7rem', color: 'white' }}>🏗️</span>
-                <span style={{ color: 'white' }}>BuildPro</span>
+                {companyLogo ? (
+                  <img 
+                    src={companyLogo} 
+                    alt="Company Logo" 
+                    style={{ height: '2.5rem', marginRight: '0.7rem', objectFit: 'contain' }}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '1.7rem', marginRight: '0.7rem', color: fontColor }}>🏗️</span>
+                )}
+                <span style={{ color: fontColor }}>{companyName}</span>
               </div>
-              <small className="fw-light mt-1" style={{ color: 'white', fontSize: '0.75rem' }}>Powered by Salman & Kawsar</small>
+              <small className="fw-light mt-1" style={{ color: fontColor, fontSize: '0.75rem' }}>Powered by Salman & Kawsar</small>
             </Navbar.Brand>
             <Navbar.Toggle aria-controls="mainNavbar" className="navbar-toggler-icon-white" />
             <Navbar.Collapse id="mainNavbar">
               <Nav className="ms-auto mb-2 mb-lg-0 align-items-center">
                 {menuLoading ? (
-                  <Nav.Link style={{ color: 'white' }}>Loading...</Nav.Link>
+                  <Nav.Link style={{ color: fontColor }}>Loading...</Nav.Link>
                 ) : (
                   <>
                     {menuItems.map(item => {
@@ -296,7 +329,7 @@ function App() {
                       }
                     })}
                     {(!isAuthenticated && SECURITY_ENABLED) && (
-                      <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: 'white' }}>Login</Nav.Link>
+                      <Nav.Link as={NavLink} to="/login" onClick={() => setExpanded(false)} style={{ color: fontColor }}>Login</Nav.Link>
                     )}
                     {(isAuthenticated && SECURITY_ENABLED) && <AvatarMenu onLogout={handleLogout} />}
                   </>

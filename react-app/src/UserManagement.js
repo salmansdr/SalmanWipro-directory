@@ -4,6 +4,7 @@ import { Card, Form, Button, Row, Col, Alert, Table, Modal, Badge } from 'react-
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
@@ -21,10 +22,12 @@ const UserManagement = () => {
     phone: '',
     status: 'active',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    useSso: false,
+    companyIds: []
   });
 
-  // Load users and roles from API on component mount
+  // Load users, roles, and companies from API on component mount
   useEffect(() => {
     const loadRoles = async () => {
       try {
@@ -38,12 +41,29 @@ const UserManagement = () => {
       }
     };
     
+    const loadCompanies = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/CompanySetup`);
+        if (response.ok) {
+          const data = await response.json();
+          setCompanies(data);
+        }
+      } catch (error) {
+        console.error('Error loading companies:', error);
+      }
+    };
+    
     const loadUsers = async () => {
       try {
         const response = await fetch(`${apiBaseUrl}/api/Usermaster`);
         if (response.ok) {
           const data = await response.json();
-          setUsers(data);
+          // Map role names from roleId
+          const usersWithRoleNames = data.map(user => ({
+            ...user,
+            roleName: user.roleId?.name || roles.find(r => r._id === user.roleId)?.name || 'N/A'
+          }));
+          setUsers(usersWithRoleNames);
         } else {
           console.warn('API not available, using empty state');
           setUsers([]);
@@ -56,8 +76,9 @@ const UserManagement = () => {
     };
     
     loadRoles();
+    loadCompanies();
     loadUsers();
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, roles]);
 
 
 
@@ -76,12 +97,32 @@ const UserManagement = () => {
     }));
   };
 
+  const handleCompanySelection = (companyId) => {
+    setUserForm(prev => {
+      const currentIds = prev.companyIds || [];
+      const isSelected = currentIds.includes(companyId);
+      
+      return {
+        ...prev,
+        companyIds: isSelected
+          ? currentIds.filter(id => id !== companyId)
+          : [...currentIds, companyId]
+      };
+    });
+  };
+
   const openModal = (user = null) => {
     if (user) {
       setEditingUser(user);
+      // Extract company IDs from companies array if it contains objects
+      const companyIds = user.companies 
+        ? user.companies.map(c => typeof c === 'string' ? c : c._id)
+        : (user.companyIds || []);
+      
       setUserForm({
         ...user,
-        roleId: user.roleId?._id || user.roleId || ''
+        roleId: user.roleId?._id || user.roleId || '',
+        companyIds: companyIds
       });
     } else {
       setEditingUser(null);
@@ -94,7 +135,9 @@ const UserManagement = () => {
         phone: '',
         status: 'active',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        useSso: false,
+        companyIds: []
       });
     }
     setShowModal(true);
@@ -112,7 +155,9 @@ const UserManagement = () => {
       phone: '',
       status: 'active',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      useSso: false,
+      companyIds: []
     });
   };
 
@@ -150,8 +195,8 @@ const UserManagement = () => {
       return false;
     }
 
-    // Password validation for new users only
-    if (!editingUser) {
+    // Password validation for new users only (skip if SSO is enabled)
+    if (!editingUser && !userForm.useSso) {
       if (!userForm.password) {
         showAlertMessage('Password is required for new users', 'danger');
         return false;
@@ -183,21 +228,21 @@ const UserManagement = () => {
         fullName: userForm.fullName,
         roleId: userForm.roleId,
         phone: userForm.phone,
-        status: userForm.status
+        status: userForm.status,
+        useSso: userForm.useSso || false,
+        companyIds: userForm.companyIds || []
       };
       
-      // Include password only for new users
-      if (!editingUser && userForm.password) {
+      // Include password only for new users and when SSO is not enabled
+      if (!editingUser && !userForm.useSso && userForm.password) {
         payload.password = userForm.password;
       }
       
-      console.log('Submitting payload:', JSON.stringify(payload, null, 2));
-      console.log('Editing user:', editingUser);
       
       let response;
       if (editingUser) {
         // PUT for update
-        console.log('PUT request to:', `${apiBaseUrl}/api/Usermaster/${editingUser._id}`);
+       
         response = await fetch(`${apiBaseUrl}/api/Usermaster/${editingUser._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -205,7 +250,7 @@ const UserManagement = () => {
         });
       } else {
         // POST for new user
-        console.log('POST request to:', `${apiBaseUrl}/api/Usermaster`);
+       
         response = await fetch(`${apiBaseUrl}/api/Usermaster`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -213,16 +258,16 @@ const UserManagement = () => {
         });
       }
 
-      console.log('Response status:', response.status);
+     
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error response:', errorData);
+        
         throw new Error(errorData.message || `Failed to save user (${response.status})`);
       }
 
       const savedUser = await response.json();
-      console.log('Saved user:', savedUser);
+      
       
       // Update local state
       if (editingUser) {
@@ -235,7 +280,7 @@ const UserManagement = () => {
 
       closeModal();
     } catch (error) {
-      console.error('Submit error:', error);
+      
       showAlertMessage('Error saving user: ' + error.message, 'danger');
     }
   };
@@ -303,12 +348,6 @@ const UserManagement = () => {
             </Card.Header>
 
             <Card.Body>
-              {showAlert && (
-                <Alert variant={alertVariant} dismissible onClose={() => setShowAlert(false)}>
-                  {alertMessage}
-                </Alert>
-              )}
-
               {/* Users Statistics */}
               <Row className="mb-4">
                 <Col md={3}>
@@ -330,7 +369,7 @@ const UserManagement = () => {
                 <Col md={3}>
                   <Card className="bg-warning text-white">
                     <Card.Body className="text-center">
-                      <h4>{users.filter(u => u.role === 'admin').length}</h4>
+                      <h4>{users.filter(u => u.roleName?.toLowerCase().includes('admin')).length}</h4>
                       <small>Administrators</small>
                     </Card.Body>
                   </Card>
@@ -354,6 +393,7 @@ const UserManagement = () => {
                       <th>Full Name</th>
                       <th>Email</th>
                       <th>Role</th>
+                      <th>Companies</th>
                       <th>Status</th>
                       <th>Last Login</th>
                       <th>Actions</th>
@@ -373,6 +413,19 @@ const UserManagement = () => {
                           <Badge bg="primary">
                             {user.roleName || 'N/A'}
                           </Badge>
+                        </td>
+                        <td>
+                          {user.companies && user.companies.length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {user.companies.map((company, idx) => (
+                                <Badge key={idx} bg="info" className="me-1">
+                                  {company.companyName || company.companyCode || company}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted">No companies</span>
+                          )}
                         </td>
                         <td>
                           <Badge bg={user.status === 'active' ? 'success' : 'danger'}>
@@ -438,6 +491,18 @@ const UserManagement = () => {
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
+            {/* Alert Message in Modal */}
+            {showAlert && (
+              <Alert 
+                variant={alertVariant} 
+                dismissible 
+                onClose={() => setShowAlert(false)}
+                className="mb-3"
+              >
+                {alertMessage}
+              </Alert>
+            )}
+
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
@@ -529,43 +594,97 @@ const UserManagement = () => {
               </Col>
             </Row>
 
-            {/* Password fields - only for new users */}
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label>Companies</Form.Label>
+                  <div style={{ 
+                    border: '1px solid #ced4da', 
+                    borderRadius: '0.375rem', 
+                    padding: '10px', 
+                    maxHeight: '150px', 
+                    overflowY: 'auto' 
+                  }}>
+                    {companies.length === 0 ? (
+                      <div className="text-muted text-center py-2">No companies available</div>
+                    ) : (
+                      companies.map(company => (
+                        <Form.Check
+                          key={company._id}
+                          type="checkbox"
+                          id={`company-${company._id}`}
+                          label={company.companyName}
+                          checked={userForm.companyIds?.includes(company._id) || false}
+                          onChange={() => handleCompanySelection(company._id)}
+                          className="mb-2"
+                        />
+                      ))
+                    )}
+                  </div>
+                  <Form.Text className="text-muted">
+                    Select the companies this user can access
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Authentication Method - only for new users */}
             {!editingUser && (
               <>
                 <hr />
-                <h6>Password</h6>
+                <h6>Authentication Method</h6>
                 <Row className="mb-3">
-                  <Col md={6}>
+                  <Col md={12}>
                     <Form.Group>
-                      <Form.Label>
-                        Password <span className="text-danger">*</span>
-                      </Form.Label>
-                      <Form.Control
-                        type="password"
-                        name="password"
-                        value={userForm.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter password"
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group>
-                      <Form.Label>
-                        Confirm Password <span className="text-danger">*</span>
-                      </Form.Label>
-                      <Form.Control
-                        type="password"
-                        name="confirmPassword"
-                        value={userForm.confirmPassword}
-                        onChange={handleInputChange}
-                        placeholder="Confirm password"
-                        required
+                      <Form.Check
+                        type="checkbox"
+                        label="Enable Single Sign-On (SSO) - User will login with Google/Microsoft account"
+                        name="useSso"
+                        checked={userForm.useSso}
+                        onChange={(e) => setUserForm(prev => ({ ...prev, useSso: e.target.checked }))}
                       />
                     </Form.Group>
                   </Col>
                 </Row>
+
+                {/* Password fields - only shown when SSO is not enabled */}
+                {!userForm.useSso && (
+                  <>
+                    <h6>Password</h6>
+                    <Row className="mb-3">
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label>
+                            Password <span className="text-danger">*</span>
+                          </Form.Label>
+                          <Form.Control
+                            type="password"
+                            name="password"
+                            value={userForm.password}
+                            onChange={handleInputChange}
+                            placeholder="Enter password"
+                            required
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label>
+                            Confirm Password <span className="text-danger">*</span>
+                          </Form.Label>
+                          <Form.Control
+                            type="password"
+                            name="confirmPassword"
+                            value={userForm.confirmPassword}
+                            onChange={handleInputChange}
+                            placeholder="Confirm password"
+                            required
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </>
+                )}
               </>
             )}
           </Modal.Body>

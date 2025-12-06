@@ -4,7 +4,7 @@ import './Styles/MoreDetails.css';
 
 
 function MoreDetails({ onBack, projectId, allProjects }) {
-  const project = allProjects.find(p => p.id === projectId) || {};
+  const project = allProjects.find(p => (p._id || p.id) === projectId) || {};
   // Fallback for documents if missing
   const documents = project.projectdocuments && project.projectdocuments.length > 0
     ? project.projectdocuments
@@ -86,7 +86,24 @@ function MoreDetails({ onBack, projectId, allProjects }) {
           <Row>
             <Col md={6} className="mb-3">
               <Card className="mb-3">
-                <Card.Img variant="top" src={project.image.startsWith('http') ? project.image : process.env.PUBLIC_URL + '/' + project.image} alt={project.name} className="main-project-image" />
+                {(() => {
+                  // Extract Project Image from projectdocuments array or use image property
+                  let projectImage = project.image;
+                  if (!projectImage && project.projectdocuments && Array.isArray(project.projectdocuments)) {
+                    const imageDoc = project.projectdocuments.find(doc => doc.name === 'Project Image');
+                    if (imageDoc && imageDoc.data) {
+                      projectImage = imageDoc.data;
+                    }
+                  }
+                  return projectImage ? (
+                    <Card.Img 
+                      variant="top" 
+                      src={projectImage.startsWith('http') ? projectImage : (projectImage.startsWith('data:') ? projectImage : process.env.PUBLIC_URL + '/' + projectImage)} 
+                      alt={project.name} 
+                      className="main-project-image" 
+                    />
+                  ) : null;
+                })()}
               </Card>
               <Card className="mb-3">
                 <Card.Body>
