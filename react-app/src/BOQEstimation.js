@@ -243,9 +243,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 const componentsList = Object.keys(floorData.components).map(compName => {
                   const comp = floorData.components[compName];
                   
-                  // Find category from allComponentsRef
+                  // Use Category from database first, fallback to allComponentsRef
                   const componentInfo = allComponentsRef.current[floorCategory]?.find(c => c.component === compName);
-                  const category = componentInfo?.category || null;
+                  const category = comp.Category || componentInfo?.category || null;
                   
                   // Use PricePerUnit from EstimationMaterialFloorWise if available, otherwise from AreaCalculation
                   const labourRate = parseFloat(comp.PricePerUnit) || categoryPrices[compName] || 0;
@@ -270,9 +270,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                     const comp = floorData.components[compName];
                     const labourRate = parseFloat(comp.PricePerUnit) || categoryPrices[compName] || 0;
                     
-                    // Find category from allComponentsRef
+                    // Use Category from database first, fallback to allComponentsRef
                     const componentInfo = allComponentsRef.current[floorCategory]?.find(c => c.component === compName);
-                    const category = componentInfo?.category || null;
+                    const category = comp.Category || componentInfo?.category || null;
                     
                     // Add group header with total quantity
                     gridData.push({
@@ -282,7 +282,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                       unit: comp.Unit || 'cu m',
                       mixture: comp.Mixture || '',
                       labourRate: labourRate,
-                      category: category, // Include category
+                      category: category, // Include category from DB or fallback
                       isGroupHeader: true,
                       groupIndex: index
                     });
@@ -405,15 +405,23 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         floorsArray.forEach(floorData => {
           const floorName = floorData.floorName;
           if (floorName && floorData.components) {
+            // Get the floor category to look up category from AreaCalculation
+            const floorCategory = mapFloorName(floorName);
+            
             // Convert API format to grid format
             const materialGridData = [];
             
             Object.keys(floorData.components).forEach(compName => {
               const comp = floorData.components[compName];
               
+              // Find category from allComponentsRef (AreaCalculationLogic)
+              const componentInfo = allComponentsRef.current[floorCategory]?.find(c => c.component === compName);
+              const category = componentInfo?.category || '';
+              
               // Add group header
               materialGridData.push({
                 component: compName,
+                category: category,
                 volume: comp.volume || 0,
                 unit: comp.unit || 'Cum',
                 materialQty: '',
@@ -425,7 +433,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 materialAmount: comp.materialAmount || 0,
                 labourAmount: comp.labourAmount || 0,
                 totalAmount: comp.totalAmount || 0,
-                remarks: '',
+                remarks: comp.remarks || '',
                 isGroupHeader: true
               });
               
@@ -434,6 +442,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 comp.materials.forEach(mat => {
                   materialGridData.push({
                     component: mat.material || '',
+                    materialId: mat.materialId || '',
                     volume: '',
                     unit: '',
                     materialQty: mat.materialQty || 0,
@@ -445,7 +454,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                     materialAmount: mat.materialAmount || 0,
                     labourAmount: '',
                     totalAmount: mat.totalAmount || 0,
-                    remarks: '',
+                    remarks: mat.remarks || '',
                     isGroupHeader: false
                   });
                 });
@@ -469,8 +478,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     } catch (error) {
       console.log('Error loading material data:', error);
     }
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, mapFloorName]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const updateGroupTotal = useCallback((groupIndex) => {
     const hotInstance = quantityTableRef.current?.hotInstance;
     if (!hotInstance) return;
@@ -806,22 +816,31 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     // Save current floor data before copying
     if (localSelectedFloor && localSelectedFloor !== '') {
       saveCurrentFloorDataToCache(localSelectedFloor);
+      saveCurrentMaterialDataToCache(localSelectedFloor);
     }
 
-    // Deep clone the source data
+    // Deep clone the source quantity data (Tab 1)
     const sourceGridData = JSON.parse(JSON.stringify(sourceCache.gridData));
     const sourceComponents = JSON.parse(JSON.stringify(sourceCache.components));
 
-    // Update target floor cache
+    // Update target floor cache for quantity data
     floorDataCache.current[copyTargetFloor] = {
       components: sourceComponents,
       gridData: sourceGridData
     };
 
+    // Deep clone the source material data (Tab 2) if exists
+    const sourceMaterialCache = materialDataCache.current[copySourceFloor];
+    if (sourceMaterialCache && sourceMaterialCache.length > 0) {
+      const sourceMaterialData = JSON.parse(JSON.stringify(sourceMaterialCache));
+      materialDataCache.current[copyTargetFloor] = sourceMaterialData;
+    }
+
     // If we're copying to the current floor, refresh the display
     if (copyTargetFloor === localSelectedFloor) {
       setTableKey(Date.now());
       setQuantityData(sourceGridData);
+      setMaterialCacheVersion(prev => prev + 1); // Refresh material grid if on Tab 2
     }
 
     setShowCopyFloorModal(false);
@@ -833,7 +852,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       type: 'success',
       message: `Data copied successfully from ${copySourceFloor} to ${copyTargetFloor}`
     });
-  }, [copySourceFloor, copyTargetFloor, localSelectedFloor, saveCurrentFloorDataToCache]);
+  }, [copySourceFloor, copyTargetFloor, localSelectedFloor, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
 
   const loadComponentsForFloor = useCallback(async (floor) => {
     try {
@@ -999,11 +1018,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         // Has user edits - extract from grid
         gridData.forEach(row => {
           if (row.isGroupHeader && row.component) {
-            // Initialize component with basic info including total quantity
+            // Initialize component with basic info including total quantity and category
             floorComponents[row.component] = {
               Unit: row.unit || 'cu m',
               Mixture: row.mixture || '',
-              Category: '',
+              Category: row.category || '',  // Use category from grid data
               Labour: 'yes',
               Material: 'yes',
               TotalQuantity: row.quantity || 0,  // Add total quantity from group header
@@ -1034,7 +1053,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           floorComponents[comp.component] = {
             Unit: comp.unit || 'cu m',
             Mixture: comp.mixture || '',
-            Category: '',
+            Category: comp.category || '',  // Use category from components
             Labour: 'yes',
             Material: 'yes',
             rows: []
@@ -1094,6 +1113,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               labourAmount: row.labourAmount || 0,
               materialAmount: row.materialAmount || 0,
               totalAmount: row.totalAmount || 0,
+              Category: row.category || '',
+              remarks: row.remarks || '',
               materials: []
             };
           } else {
@@ -1101,6 +1122,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             const parentComponent = Object.keys(materialComponents).pop();
             if (parentComponent && materialComponents[parentComponent]) {
               materialComponents[parentComponent].materials.push({
+                materialId: row.materialId || '',
                 material: row.component || '',
                 materialQty: row.materialQty || 0,
                 wastage: row.wastage || 0,
@@ -1108,7 +1130,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 uom: row.uom || '',
                 materialRate: row.materialRate || 0,
                 materialAmount: row.materialAmount || 0,
-                totalAmount: row.totalAmount || 0
+                totalAmount: row.totalAmount || 0,
+                remarks: row.remarks || ''
               });
             }
           }
@@ -1206,6 +1229,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               
               floorMaterialData.push({
                 component: row.component,
+                category: row.category || '',
                 volume: parseFloat(volumeQty.toFixed(2)),
                 unit: 'Cum',
                 labourRate: labourRateValue,
@@ -1224,6 +1248,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             
             floorMaterialData.push({
               component: row.component,
+              category: row.category || '',
               volume: parseFloat(volumeQty.toFixed(2)),
               unit: row.unit || 'Cum',
               labourRate: labourRateValue,
@@ -1251,6 +1276,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             labourAmount: row.labourAmount || 0,
             materialAmount: row.materialAmount || 0,
             totalAmount: row.totalAmount || 0,
+            Category: row.category || '',
+            remarks: row.remarks || '',
             materials: row.materials || []
           };
         }
@@ -1525,6 +1552,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 const totalQty = (parseFloat(materialQty) * (1 + wastage / 100)).toFixed(2);
                 
                 const materialName = material.data.material || material.name;
+                const materialId = material.data._id || material.data.materialId || '';
                 const defaultRate = parseFloat(material.data.defaultRate) || 0;
                 
                 const materialAmt = parseFloat(totalQty * defaultRate);
@@ -1532,6 +1560,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 
                 childMaterials.push({
                   component: materialName,
+                  materialId: materialId,
                   volume: '',
                   unit: '',
                   materialQty: parseFloat(materialQty),
@@ -1787,8 +1816,24 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       // Check if we have cached material data for this floor
       const cachedMaterial = materialDataCache.current[localSelectedFloor];
       if (cachedMaterial && Array.isArray(cachedMaterial) && cachedMaterial.length > 0) {
-        // Use cached data only if it's valid (not null, not empty array)
-        setMaterialData(cachedMaterial);
+        // Migrate old cached data to add materialId if missing
+        const migratedData = cachedMaterial.map(row => {
+          if (!row.isGroupHeader && row.component && !row.materialId && materialItems) {
+            // Find material by name and populate materialId
+            const foundMaterial = materialItems.find(item => item.material === row.component);
+            if (foundMaterial) {
+              return {
+                ...row,
+                materialId: foundMaterial._id || foundMaterial.materialId || ''
+              };
+            }
+          }
+          return row;
+        });
+        
+        // Update cache with migrated data
+        materialDataCache.current[localSelectedFloor] = migratedData;
+        setMaterialData(migratedData);
       } else {
         // No cache or invalid cache - generate from quantityData
         const materials = generateMaterialData();
@@ -1801,7 +1846,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         }
       }
     }
-  }, [activeTab, localSelectedFloor, generateMaterialData, materialCacheVersion]);
+  }, [activeTab, localSelectedFloor, generateMaterialData, materialCacheVersion, materialItems]);
 
   // Save material data to cache when switching away from material tab
   useEffect(() => {
@@ -1883,7 +1928,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'component',
       title: 'Component',
-      width: 180,
+      width: 160,
       type: 'dropdown',
       source: [],
       readOnly: function(row, col) {
@@ -1894,9 +1939,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       }
     },
     {
+      data: 'category',
+      title: 'Category',
+      width: 120,
+      type: 'text',
+      readOnly: true
+    },
+    {
       data: 'volume',
       title: 'Volume',
-      width: 80,
+      width: 70,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1906,14 +1958,14 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'unit',
       title: 'Unit',
-      width: 60,
+      width: 50,
       type: 'text',
       readOnly: true
     },
     {
       data: 'materialQty',
       title: 'Qty',
-      width: 70,
+      width: 60,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1928,7 +1980,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'wastage',
       title: 'Wastage (%)',
-      width: 80,
+      width: 70,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1952,14 +2004,14 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'uom',
       title: 'UOM',
-      width: 60,
+      width: 50,
       type: 'text',
       readOnly: true
     },
     {
       data: 'materialRate',
       title: 'Rate',
-      width: 70,
+      width: 60,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1969,7 +2021,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'labourRate',
       title: 'Labour Rate',
-      width: 90,
+      width: 80,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1978,8 +2030,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'materialAmount',
-      title: 'Material Amount',
-      width: 100,
+      title: 'Material Amt',
+      width: 90,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1988,8 +2040,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'labourAmount',
-      title: 'Labour Amount',
-      width: 100,
+      title: 'Labour Amt',
+      width: 90,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -1998,8 +2050,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'totalAmount',
-      title: 'Total Amount',
-      width: 120,
+      title: 'Total Amt',
+      width: 90,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -2009,7 +2061,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'remarks',
       title: 'Remarks',
-      width: 150,
+      width: 120,
       type: 'text',
       readOnly: false
     }
@@ -2912,6 +2964,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               contextMenu={true}
                               manualColumnResize={true}
                               fixedColumnsLeft={1}
+                              autoWrapCol={true}
+                              autoWrapRow={true}
                               afterChange={(changes, source) => {
                                 if (!changes || source === 'loadData' || !materialData || !Array.isArray(materialData)) return;
                                 
@@ -2946,6 +3000,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     if (prop === 'component' && newValue && materialItems) {
                                       const selectedMaterial = materialItems.find(item => item.material === newValue);
                                       if (selectedMaterial) {
+                                        hotInstance.setDataAtRowProp(row, 'materialId', selectedMaterial._id || selectedMaterial.materialId || '');
                                         hotInstance.setDataAtRowProp(row, 'materialRate', parseFloat(selectedMaterial.defaultRate) || 0);
                                         hotInstance.setDataAtRowProp(row, 'wastage', parseFloat(selectedMaterial.wastage) || 0);
                                         hotInstance.setDataAtRowProp(row, 'uom', selectedMaterial.unit || 'KG');
@@ -3056,6 +3111,18 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                         td.innerHTML = value ? parseFloat(value).toFixed(2) : '';
                                         return td;
                                       };
+                                    } else if (prop === 'remarks') {
+                                      // Allow remarks in group header rows
+                                      cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                        td.style.backgroundColor = '#f7fafc';
+                                        td.style.fontWeight = '600';
+                                        td.style.padding = '10px 8px';
+                                        td.style.fontSize = '13px';
+                                        td.style.color = '#4a5568';
+                                        td.innerHTML = value || '';
+                                        return td;
+                                      };
+                                      cellProperties.readOnly = false; // Make remarks editable in group headers
                                     } else {
                                       cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
                                         td.style.backgroundColor = '#f7fafc';

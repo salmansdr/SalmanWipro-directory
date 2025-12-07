@@ -1,7 +1,7 @@
 import ProjectEstimation from './ProjectEstimation';
 import TestApiPage from './TestApiPage';
 
-import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Styles/App.css';
 import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
@@ -77,6 +77,34 @@ function AvatarMenu({ onLogout }) {
         <i className="fas fa-sign-out-alt me-2"></i>Logout
       </NavDropdown.Item>
     </NavDropdown>
+  );
+}
+
+// WhatsApp button component - only shows on home page
+function WhatsAppButton() {
+  const location = useLocation();
+  
+  // Only show on home page
+  if (location.pathname !== '/') {
+    return null;
+  }
+  
+  return (
+    <a
+      href="https://wa.me/9874592300"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="position-fixed end-0 rounded-circle shadow"
+      style={{ 
+        zIndex: 999, 
+        top: '50%', 
+        transform: 'translateY(-50%)', 
+        right: '20px' 
+      }}
+      aria-label="WhatsApp"
+    >
+      <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="img-fluid rounded-circle" style={{ width: '48px', height: '48px' }} />
+    </a>
   );
 }
 
@@ -363,21 +391,7 @@ function App() {
               <Route path="/TestApiPage" element={<TestApiPage />} />
               <Route path="*" element={<Home />} />
             </Routes>
-            <a
-              href="https://wa.me/9874592300"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="position-fixed end-0 rounded-circle shadow"
-              style={{ 
-                zIndex: 999, 
-                top: '50%', 
-                transform: 'translateY(-50%)', 
-                right: '20px' 
-              }}
-              aria-label="WhatsApp"
-            >
-              <img src={process.env.PUBLIC_URL + '/social/whatsapp.png'} alt="WhatsApp" className="img-fluid rounded-circle" style={{ width: '48px', height: '48px' }} />
-            </a>
+            <WhatsAppButton />
           </main>
           <footer className="bg-light pt-3 pb-2 shadow-sm">
             <div className="container">

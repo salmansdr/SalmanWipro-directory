@@ -82,7 +82,6 @@ const [step, setStep] = useState(1);
     // Variables for Step 2 (Floors, BHK configs, Lift, etc.)
     const [floors, setFloors] = useState(1);
     const [lift, setLift] = useState(false);
-    const [numLifts, setNumLifts] = useState(1);
     const [groundFloorHasRooms, setGroundFloorHasRooms] = useState(false);
     const [basementCount, setBasementCount] = useState(0);
     const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
@@ -279,7 +278,6 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
     const navigate = useNavigate();
     const { mode, id } = location.state || {};
     const isViewMode = mode === 'view';
-    const isNewMode = mode === 'new';
 
   // Step 5 variable
   const [materialConfig, setMaterialConfig] = useState(null);
@@ -591,7 +589,7 @@ const filteredMaterialRows = useMemo(() => {
         return;
       }
 
-      console.log('Saving BOQ data:', allFloorsData);
+      //console.log('Saving BOQ data:', allFloorsData);
 
       const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
       
@@ -616,12 +614,12 @@ const filteredMaterialRows = useMemo(() => {
       
       if (checkResponse.ok) {
         const existingData = await checkResponse.json();
-        console.log('Existing data check:', existingData);
+       // console.log('Existing data check:', existingData);
         
         // Extract _id from records array
         if (existingData && existingData.records && existingData.records.length > 0) {
           existingRecordId = existingData.records[0]._id;
-          console.log('Found existing record ID:', existingRecordId);
+          //console.log('Found existing record ID:', existingRecordId);
         }
       }
 
@@ -631,6 +629,7 @@ const filteredMaterialRows = useMemo(() => {
       
       const payload = {
         estimationMasterId: estimationMasterId,
+        estimationRef: estimationRef,
         companyId: companyId,
         createdBy: existingRecordId ? undefined : username, // Only set on create
         modifiedBy: username,
@@ -640,12 +639,12 @@ const filteredMaterialRows = useMemo(() => {
         }))
       };
 
-      console.log('Payload:', payload);
+      //console.log('Payload:', payload);
 
       let response;
       if (existingRecordId) {
         // UPDATE existing record
-        console.log('Updating existing record with ID:', existingRecordId);
+        //console.log('Updating existing record with ID:', existingRecordId);
         response = await fetch(`${apiBaseUrl}/api/EstimationMaterialFloorWise/${existingRecordId}`, {
           method: 'PUT',
           headers: {
@@ -655,7 +654,7 @@ const filteredMaterialRows = useMemo(() => {
         });
       } else {
         // CREATE new record
-        console.log('Creating new record');
+        //console.log('Creating new record');
         response = await fetch(`${apiBaseUrl}/api/EstimationMaterialFloorWise`, {
           method: 'POST',
           headers: {
@@ -749,6 +748,7 @@ const filteredMaterialRows = useMemo(() => {
       
       const payload = {
         estimationMasterId: estimationMasterId,
+        estimationRef: estimationRef,
         companyId: companyId,
         createdBy: existingRecordId ? undefined : username, // Only set on create
         modifiedBy: username,
@@ -829,7 +829,6 @@ const filteredMaterialRows = useMemo(() => {
         setBasementCount(step1Data.projectDetails?.basementCount || 0);
         setGroundFloorHasRooms(step1Data.projectDetails?.groundFloorHasRooms || false);
         setLift(step1Data.projectDetails?.liftIncluded || false);
-        setNumLifts(step1Data.projectDetails?.numberOfLifts || 1);
         alert('Step 1 data loaded successfully!');
       } catch (error) {
         alert('Error loading Step 1 data: ' + error.message);
@@ -847,7 +846,6 @@ const filteredMaterialRows = useMemo(() => {
         const step2Data = JSON.parse(savedData);
         setFloors(step2Data.floors || 1);
         setLift(step2Data.lift || false);
-        setNumLifts(step2Data.numLifts || 1);
         setFloorBHKConfigs(step2Data.floorBHKConfigs || {});
         setBhkRows(step2Data.bhkRows || []);
         setBhkRoomDetails(step2Data.bhkRoomDetails || {});
@@ -3501,15 +3499,15 @@ const boqItems = useMemo(() => {
                     value={estimationRef} 
                     onChange={e => setEstimationRef(e.target.value)} 
                     placeholder="Enter reference number"
-                    readOnly={isViewMode || isNewMode}
+                    readOnly
                     style={{
                       borderRadius: '6px',
                       border: '1px solid #ced4da',
                       padding: '0.75rem',
                       fontSize: '0.9rem',
                       height: '42px',
-                      backgroundColor: (isViewMode || isNewMode) ? '#f8f9fa' : '#fff',
-                      color: (isViewMode || isNewMode) ? '#6c757d' : '#495057'
+                      backgroundColor: '#f8f9fa',
+                      color: '#6c757d'
                     }}
                   />
                 </Form.Group>
