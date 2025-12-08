@@ -133,7 +133,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 // PDF Document Component
-const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData }) => {
+const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMaterialDetails, processedDetailedData, detailedFloors, currencySymbol }) => {
   // Comprehensive validation
   if (!reportData || !categoryWiseData || !Array.isArray(categoryWiseData) || categoryWiseData.length === 0 || 
       !floorWiseData || !Array.isArray(floorWiseData) || floorWiseData.length === 0) {
@@ -337,6 +337,82 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData }) => {
 
         <Text style={pdfStyles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
       </Page>
+
+      {/* Page 3: Material Details (conditional) */}
+      {includeMaterialDetails && processedDetailedData && processedDetailedData.length > 0 && (
+        <Page size="A4" orientation="landscape" style={pdfStyles.page}>
+          <View style={pdfStyles.header}>
+            <Text style={pdfStyles.companyName}>{reportData?.companyDetails?.companyName || 'N/A'}</Text>
+            <Text style={pdfStyles.companyAddress}>Material Details</Text>
+          </View>
+
+          <View style={pdfStyles.table}>
+            <View style={pdfStyles.tableHeader}>
+              <Text style={{ width: '20%', paddingRight: 3 }}>Item</Text>
+              {detailedFloors && detailedFloors.map((floor, idx) => (
+                <Text key={idx} style={{ width: `${60 / (detailedFloors.length + 3)}%`, textAlign: 'right', paddingRight: 3 }}>{floor}</Text>
+              ))}
+              <Text style={{ width: '8%', textAlign: 'right', paddingRight: 3 }}>Total</Text>
+              <Text style={{ width: '6%', textAlign: 'center', paddingRight: 3 }}>Unit</Text>
+              <Text style={{ width: '8%', textAlign: 'right', paddingRight: 3 }}>Rate</Text>
+              <Text style={{ width: '10%', textAlign: 'right' }}>{`Amount (${currencySymbol || '₹'})`}</Text>
+            </View>
+            {processedDetailedData.map((row, index) => {
+              if (row.isGroupHeader) {
+                return (
+                  <View key={index} style={pdfStyles.floorGroupHeader}>
+                    <Text style={{ width: '100%', paddingLeft: 5 }}>{row.category}</Text>
+                  </View>
+                );
+              }
+              if (row.isSubtotal) {
+                return (
+                  <View key={index} style={pdfStyles.floorSubtotal}>
+                    <Text style={{ width: '20%', paddingLeft: 5 }}>Subtotal</Text>
+                    {detailedFloors && detailedFloors.map((floor, idx) => (
+                      <Text key={idx} style={{ width: `${60 / (detailedFloors.length + 3)}%` }}></Text>
+                    ))}
+                    <Text style={{ width: '8%' }}></Text>
+                    <Text style={{ width: '6%' }}></Text>
+                    <Text style={{ width: '8%' }}></Text>
+                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toFixed(2) || '0.00'}</Text>
+                  </View>
+                );
+              }
+              if (row.isGrandTotal) {
+                return (
+                  <View key={index} style={pdfStyles.tableRowTotal}>
+                    <Text style={{ width: '20%', paddingLeft: 5 }}>Grand Total</Text>
+                    {detailedFloors && detailedFloors.map((floor, idx) => (
+                      <Text key={idx} style={{ width: `${60 / (detailedFloors.length + 3)}%` }}></Text>
+                    ))}
+                    <Text style={{ width: '8%' }}></Text>
+                    <Text style={{ width: '6%' }}></Text>
+                    <Text style={{ width: '8%' }}></Text>
+                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toFixed(2) || '0.00'}</Text>
+                  </View>
+                );
+              }
+              return (
+                <View key={index} style={index % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
+                  <Text style={{ width: '20%', paddingLeft: 3 }}>{row.item}</Text>
+                  {detailedFloors && detailedFloors.map((floor, idx) => (
+                    <Text key={idx} style={{ width: `${60 / (detailedFloors.length + 3)}%`, textAlign: 'right', paddingRight: 3 }}>
+                      {row[floor] ? row[floor].toFixed(2) : '0.00'}
+                    </Text>
+                  ))}
+                  <Text style={{ width: '8%', textAlign: 'right', paddingRight: 3 }}>{row.total?.toFixed(2) || '0.00'}</Text>
+                  <Text style={{ width: '6%', textAlign: 'center', paddingRight: 3 }}>{row.unit || ''}</Text>
+                  <Text style={{ width: '8%', textAlign: 'right', paddingRight: 3 }}>{row.rate?.toFixed(2) || '0.00'}</Text>
+                  <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toFixed(2) || '0.00'}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <Text style={pdfStyles.pageNumber} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
+        </Page>
+      )}
     </Document>
   );
 };
@@ -352,11 +428,15 @@ function Reports() {
   const [currencySymbol, setCurrencySymbol] = useState('₹');
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
+  const [detailedMaterialData, setDetailedMaterialData] = useState([]);
+  const [detailedFloors, setDetailedFloors] = useState([]);
+  const [includeMaterialDetails, setIncludeMaterialDetails] = useState(false);
   const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
   
   // Refs for Handsontable instances
   const summaryTableRef = useRef(null);
   const floorWiseTableRef = useRef(null);
+  const detailedTableRef = useRef(null);
 
   // Check if data is ready for PDF export
   useEffect(() => {
@@ -372,6 +452,140 @@ function Reports() {
       floorCount: floorWiseData?.length || 0
     });
   }, [reportData, categoryWiseData, floorWiseData]);
+
+  // Fetch detailed material report data
+  useEffect(() => {
+    const fetchDetailedMaterialReport = async () => {
+      if (selectedEstimationId) {
+        try {
+          console.log('Fetching detailed material report for:', selectedEstimationId);
+          const response = await fetch(`${apiUrl}/api/ProjectEstimation/report-by-material/${selectedEstimationId}`);
+          console.log('Detailed material report response status:', response.status);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Detailed material report data:', data);
+            
+            if (data.data && Array.isArray(data.data)) {
+              setDetailedMaterialData(data.data);
+              setDetailedFloors(data.floors || []);
+              console.log('Set detailed material data:', data.data.length, 'items');
+            } else {
+              console.warn('Invalid data structure:', data);
+              setDetailedMaterialData([]);
+              setDetailedFloors([]);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('Failed to fetch detailed material report:', response.status, errorText);
+            setDetailedMaterialData([]);
+            setDetailedFloors([]);
+          }
+        } catch (error) {
+          console.error('Error fetching detailed material report:', error);
+          setDetailedMaterialData([]);
+          setDetailedFloors([]);
+        }
+      } else {
+        setDetailedMaterialData([]);
+        setDetailedFloors([]);
+      }
+    };
+    
+    fetchDetailedMaterialReport();
+  }, [selectedEstimationId, apiUrl]);
+
+  // Process detailed material data to add category group headers
+  const [processedDetailedData, setProcessedDetailedData] = useState([]);
+  
+  useEffect(() => {
+    if (detailedMaterialData && detailedMaterialData.length > 0) {
+      const grouped = [];
+      let currentCategory = null;
+      let categorySubtotal = 0;
+      let grandTotal = 0;
+
+      detailedMaterialData.forEach((item, index) => {
+        // Add subtotal for previous category when category changes
+        if (currentCategory !== null && currentCategory !== item.category) {
+          grouped.push({
+            isSubtotal: true,
+            category: currentCategory,
+            item: 'Subtotal',
+            ...detailedFloors.reduce((acc, floor) => ({ ...acc, [floor]: '' }), {}),
+            total: '',
+            unit: '',
+            rate: '',
+            amount: categorySubtotal,
+            remarks: ''
+          });
+          categorySubtotal = 0;
+        }
+
+        // Add category group header when category changes
+        if (currentCategory !== item.category) {
+          grouped.push({
+            isGroupHeader: true,
+            category: item.category,
+            item: '',
+            ...detailedFloors.reduce((acc, floor) => ({ ...acc, [floor]: '' }), {}),
+            total: '',
+            unit: '',
+            rate: '',
+            amount: '',
+            remarks: ''
+          });
+          currentCategory = item.category;
+        }
+        
+        // Add the actual item row
+        grouped.push({
+          ...item,
+          isGroupHeader: false,
+          isSubtotal: false,
+          isGrandTotal: false
+        });
+
+        // Accumulate amounts
+        categorySubtotal += parseFloat(item.amount) || 0;
+        grandTotal += parseFloat(item.amount) || 0;
+      });
+
+      // Add the last category subtotal
+      if (currentCategory !== null) {
+        grouped.push({
+          isSubtotal: true,
+          category: currentCategory,
+          item: 'Subtotal',
+          ...detailedFloors.reduce((acc, floor) => ({ ...acc, [floor]: '' }), {}),
+          total: '',
+          unit: '',
+          rate: '',
+          amount: categorySubtotal,
+          remarks: ''
+        });
+      }
+
+      // Add grand total row
+      if (detailedMaterialData.length > 0) {
+        grouped.push({
+          isGrandTotal: true,
+          category: '',
+          item: 'Grand Total',
+          ...detailedFloors.reduce((acc, floor) => ({ ...acc, [floor]: '' }), {}),
+          total: '',
+          unit: '',
+          rate: '',
+          amount: grandTotal,
+          remarks: ''
+        });
+      }
+
+      setProcessedDetailedData(grouped);
+    } else {
+      setProcessedDetailedData([]);
+    }
+  }, [detailedMaterialData, detailedFloors]);
 
   // Process floor-wise data to add group headers, subtotals, and grand total
   useEffect(() => {
@@ -579,6 +793,8 @@ function Reports() {
         // Reset processed data immediately when estimation changes to prevent stale data
         setCategoryWiseData([]);
         setFloorWiseData([]);
+        setDetailedMaterialData([]);
+        setDetailedFloors([]);
         setIsDataReady(false);
         
         try {
@@ -595,17 +811,23 @@ function Reports() {
             setReportData(null);
             setCategoryWiseData([]);
             setFloorWiseData([]);
+            setDetailedMaterialData([]);
+            setDetailedFloors([]);
           }
         } catch (error) {
           console.error('Error fetching report data:', error);
           setReportData(null);
           setCategoryWiseData([]);
           setFloorWiseData([]);
+          setDetailedMaterialData([]);
+          setDetailedFloors([]);
         }
       } else {
         setReportData(null);
         setCategoryWiseData([]);
         setFloorWiseData([]);
+        setDetailedMaterialData([]);
+        setDetailedFloors([]);
       }
     };
     
@@ -1037,6 +1259,190 @@ function Reports() {
     
     XLSX.utils.book_append_sheet(wb, ws3, 'Floor-wise Details');
     
+    // ===== SHEET 4: Material Details =====
+    const ws4Data = [];
+    
+    // Add title and headers
+    ws4Data.push(['Material Details Report']);
+    ws4Data.push([]);
+    
+    // Add column headers
+    const materialHeaders = [
+      'Item',
+      ...detailedFloors,
+      'Total',
+      'Unit',
+      'Rate',
+      `Amount (${currencySymbol})`,
+      'Remarks'
+    ];
+    ws4Data.push(materialHeaders);
+    
+    // Add data rows with category grouping
+    processedDetailedData.forEach(row => {
+      if (row.isGroupHeader) {
+        // Category group header
+        const groupRow = [row.category];
+        for (let i = 1; i < materialHeaders.length; i++) {
+          groupRow.push('');
+        }
+        ws4Data.push(groupRow);
+      } else if (row.isSubtotal) {
+        // Subtotal row
+        const subtotalRow = ['Subtotal'];
+        detailedFloors.forEach(() => subtotalRow.push(''));
+        subtotalRow.push(''); // Total
+        subtotalRow.push(''); // Unit
+        subtotalRow.push(''); // Rate
+        subtotalRow.push(row.amount);
+        subtotalRow.push('');
+        ws4Data.push(subtotalRow);
+      } else if (row.isGrandTotal) {
+        // Grand total row
+        const grandTotalRow = ['Grand Total'];
+        detailedFloors.forEach(() => grandTotalRow.push(''));
+        grandTotalRow.push(''); // Total
+        grandTotalRow.push(''); // Unit
+        grandTotalRow.push(''); // Rate
+        grandTotalRow.push(row.amount);
+        grandTotalRow.push('');
+        ws4Data.push(grandTotalRow);
+      } else {
+        // Regular data row
+        const dataRow = [row.item];
+        detailedFloors.forEach(floor => dataRow.push(row[floor] || 0));
+        dataRow.push(row.total);
+        dataRow.push(row.unit);
+        dataRow.push(row.rate);
+        dataRow.push(row.amount);
+        dataRow.push(row.remarks || '');
+        ws4Data.push(dataRow);
+      }
+    });
+    
+    const ws4 = XLSX.utils.aoa_to_sheet(ws4Data);
+    
+    // Set column widths
+    ws4['!cols'] = [
+      { wch: 30 }, // Item
+      ...detailedFloors.map(() => ({ wch: 15 })),
+      { wch: 15 }, // Total
+      { wch: 10 }, // Unit
+      { wch: 12 }, // Rate
+      { wch: 18 }, // Amount
+      { wch: 20 }  // Remarks
+    ];
+    
+    // Apply styling
+    const materialRange = XLSX.utils.decode_range(ws4['!ref']);
+    
+    // Title row styling (row 0)
+    for (let C = materialRange.s.c; C <= materialRange.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!ws4[cellAddress]) ws4[cellAddress] = { t: 's', v: '' };
+      ws4[cellAddress].s = {
+        font: { bold: true, sz: 16, color: { rgb: '1a365d' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+    
+    // Merge title row
+    ws4['!merges'] = ws4['!merges'] || [];
+    ws4['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: materialHeaders.length - 1 } });
+    
+    // Header row styling (row 2)
+    for (let C = materialRange.s.c; C <= materialRange.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 2, c: C });
+      if (!ws4[cellAddress]) continue;
+      ws4[cellAddress].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '4472C4' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: '000000' } },
+          bottom: { style: 'thin', color: { rgb: '000000' } },
+          left: { style: 'thin', color: { rgb: '000000' } },
+          right: { style: 'thin', color: { rgb: '000000' } }
+        }
+      };
+    }
+    
+    // Data rows styling
+    let dataRowIndex = 3;
+    processedDetailedData.forEach((row, index) => {
+      for (let C = materialRange.s.c; C <= materialRange.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: dataRowIndex, c: C });
+        if (!ws4[cellAddress]) ws4[cellAddress] = { t: 's', v: '' };
+        
+        if (row.isGroupHeader) {
+          // Category group header styling
+          ws4[cellAddress].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '4a5568' } },
+            alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: '000000' } },
+              bottom: { style: 'thin', color: { rgb: '000000' } },
+              left: { style: 'thin', color: { rgb: '000000' } },
+              right: { style: 'thin', color: { rgb: '000000' } }
+            }
+          };
+        } else if (row.isSubtotal) {
+          // Subtotal row styling
+          ws4[cellAddress].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'e9ecef' } },
+            alignment: { horizontal: C === 0 ? 'left' : 'right', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: '000000' } },
+              bottom: { style: 'thin', color: { rgb: '000000' } },
+              left: { style: 'thin', color: { rgb: '000000' } },
+              right: { style: 'thin', color: { rgb: '000000' } }
+            }
+          };
+          // Format amount
+          if (C === materialHeaders.length - 2) {
+            ws4[cellAddress].z = '#,##0.00';
+          }
+        } else if (row.isGrandTotal) {
+          // Grand total row styling
+          ws4[cellAddress].s = {
+            font: { bold: true, sz: 12 },
+            fill: { fgColor: { rgb: 'dee2e6' } },
+            alignment: { horizontal: C === 0 ? 'left' : 'right', vertical: 'center' },
+            border: {
+              top: { style: 'medium', color: { rgb: '000000' } },
+              bottom: { style: 'medium', color: { rgb: '000000' } },
+              left: { style: 'thin', color: { rgb: '000000' } },
+              right: { style: 'thin', color: { rgb: '000000' } }
+            }
+          };
+          // Format amount
+          if (C === materialHeaders.length - 2) {
+            ws4[cellAddress].z = '#,##0.00';
+          }
+        } else {
+          // Regular data row styling
+          ws4[cellAddress].s = {
+            alignment: { horizontal: C === 0 || C === materialRange.e.c ? 'left' : 'right', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+              bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+              left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+              right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+            }
+          };
+          // Format numeric columns
+          if (C > 0 && C < materialHeaders.length - 1) {
+            ws4[cellAddress].z = '#,##0.00';
+          }
+        }
+      }
+      dataRowIndex++;
+    });
+    
+    XLSX.utils.book_append_sheet(wb, ws4, 'Material Details');
+    
     // Write the file
     XLSX.writeFile(wb, `Cost_Report_${reportData?.projectDetails?.projectName || 'Report'}.xlsx`, { cellStyles: true });
   };
@@ -1163,7 +1569,17 @@ function Reports() {
             <Card className="mb-4 report-phase-table-section card-style">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <h4 className="mb-0 section-heading">Cost Tracking</h4>
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 align-items-center">
+                  {isDataReady && processedDetailedData.length > 0 && (
+                    <Form.Check 
+                      type="checkbox"
+                      id="include-material-details"
+                      label="Include Material Details"
+                      checked={includeMaterialDetails}
+                      onChange={(e) => setIncludeMaterialDetails(e.target.checked)}
+                      className="me-2"
+                    />
+                  )}
                   {isDataReady ? (
                     <>
                       <Button 
@@ -1175,7 +1591,15 @@ function Reports() {
                         View PDF
                       </Button>
                       <PDFDownloadLink 
-                        document={<CostReportPDF reportData={reportData} categoryWiseData={categoryWiseData} floorWiseData={floorWiseData} />} 
+                        document={<CostReportPDF 
+                          reportData={reportData} 
+                          categoryWiseData={categoryWiseData} 
+                          floorWiseData={floorWiseData}
+                          includeMaterialDetails={includeMaterialDetails}
+                          processedDetailedData={processedDetailedData}
+                          detailedFloors={detailedFloors}
+                          currencySymbol={currencySymbol}
+                        />} 
                         fileName={`Cost_Report_${reportData?.projectDetails?.projectName || 'Report'}.pdf`}
                         style={{ textDecoration: 'none' }}
                       >
@@ -1431,8 +1855,150 @@ function Reports() {
                       />
                     </div>
                   </Tab>
-                  <Tab eventKey="detailed" title="Detailed">
-                    <p className="text-muted">Detailed cost breakdown will be displayed here.</p>
+                  <Tab eventKey="detailed" title="Detailed Material">
+                    <div style={{ overflow: 'auto' }}>
+                      {processedDetailedData.length > 0 ? (
+                        <HotTable
+                          ref={detailedTableRef}
+                          data={processedDetailedData}
+                          colHeaders={[
+                            'Item',
+                            ...detailedFloors,
+                            'Total',
+                            'Unit',
+                            'Rate',
+                            `Amount (${currencySymbol})`,
+                            'Remarks'
+                          ]}
+                          columns={[
+                            { data: 'item', type: 'text', readOnly: true, width: 250 },
+                            ...detailedFloors.map(floor => ({
+                              data: floor,
+                              type: 'numeric',
+                              numericFormat: { pattern: '0,0.00' },
+                              readOnly: true,
+                              width: 100
+                            })),
+                            { 
+                              data: 'total', 
+                              type: 'numeric', 
+                              numericFormat: { pattern: '0,0.00' },
+                              readOnly: true,
+                              width: 100,
+                              className: 'htRight fw-bold'
+                            },
+                            { data: 'unit', type: 'text', readOnly: true, width: 80 },
+                            { 
+                              data: 'rate', 
+                              type: 'numeric', 
+                              numericFormat: { pattern: '0,0.00' },
+                              readOnly: true,
+                              width: 80
+                            },
+                            { 
+                              data: 'amount', 
+                              type: 'numeric', 
+                              numericFormat: { pattern: '0,0.00' },
+                              readOnly: true,
+                              width: 120,
+                              className: 'htRight fw-bold'
+                            },
+                            { data: 'remarks', type: 'text', readOnly: true, width: 120 }
+                          ]}
+                          rowHeaders={true}
+                          width="100%"
+                          height={processedDetailedData.length * 40 + 50}
+                          autoRowSize={false}
+                          autoColumnSize={true}
+                          licenseKey="non-commercial-and-evaluation"
+                          stretchH="all"
+                          className="htMiddle"
+                          filters={true}
+                          dropdownMenu={true}
+                          beforeOnCellMouseDown={(event, coords) => {
+                            // Only allow dropdown menu for first column (0)
+                            if (coords.col > 0) {
+                              event.stopImmediatePropagation();
+                            }
+                          }}
+                          afterGetColHeader={(col, TH) => {
+                            // Remove dropdown button from columns after the first one
+                            if (col > 0) {
+                              const button = TH.querySelector('.changeType');
+                              if (button) {
+                                button.parentElement.removeChild(button);
+                              }
+                            }
+                          }}
+                          cells={(row, col) => {
+                            const cellProperties = {};
+                            
+                            // Style for group headers (category names)
+                            if (processedDetailedData[row]?.isGroupHeader) {
+                              cellProperties.className = 'htCenter htMiddle fw-bold bg-light';
+                              cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                if (col === 0) {
+                                  td.innerHTML = `<strong>${processedDetailedData[row].category}</strong>`;
+                                  td.style.backgroundColor = '#4a5568';
+                                  td.style.color = '#ffffff';
+                                  td.style.fontWeight = 'bold';
+                                  td.style.padding = '10px 8px';
+                                } else {
+                                  td.innerHTML = '';
+                                  td.style.backgroundColor = '#4a5568';
+                                }
+                                return td;
+                              };
+                            }
+                            
+                            // Style for subtotal rows
+                            if (processedDetailedData[row]?.isSubtotal) {
+                              cellProperties.className = 'htRight htMiddle fw-bold';
+                              cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                td.style.backgroundColor = '#e9ecef';
+                                td.style.fontWeight = 'bold';
+                                if (col === 0) {
+                                  td.innerHTML = '<strong>Subtotal</strong>';
+                                  td.style.textAlign = 'left';
+                                } else if (value && typeof value === 'number') {
+                                  const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                  td.innerHTML = formattedValue;
+                                  td.style.textAlign = 'right';
+                                } else {
+                                  td.innerHTML = '';
+                                }
+                                return td;
+                              };
+                            }
+                            
+                            // Style for grand total row
+                            if (processedDetailedData[row]?.isGrandTotal) {
+                              cellProperties.className = 'htRight htMiddle fw-bold';
+                              cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                td.style.backgroundColor = '#dee2e6';
+                                td.style.fontWeight = 'bold';
+                                td.style.fontSize = '1.05em';
+                                if (col === 0) {
+                                  td.innerHTML = '<strong>Grand Total</strong>';
+                                  td.style.textAlign = 'left';
+                                } else if (value && typeof value === 'number') {
+                                  const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                  td.innerHTML = formattedValue;
+                                  td.style.textAlign = 'right';
+                                } else {
+                                  td.innerHTML = '';
+                                }
+                                return td;
+                              };
+                            }
+                            
+                            return cellProperties;
+                          }}
+                        />
+                      ) : (
+                        <p className="text-muted">No detailed material data available. Please select an estimation.</p>
+                      )}
+                    </div>
                   </Tab>
                 </Tabs>
               </Card.Body>
@@ -1454,7 +2020,15 @@ function Reports() {
         <Modal.Body style={{ height: '80vh', padding: 0 }}>
           {isDataReady ? (
             <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
-              <CostReportPDF reportData={reportData} categoryWiseData={categoryWiseData} floorWiseData={floorWiseData} />
+              <CostReportPDF 
+                reportData={reportData} 
+                categoryWiseData={categoryWiseData} 
+                floorWiseData={floorWiseData}
+                includeMaterialDetails={includeMaterialDetails}
+                processedDetailedData={processedDetailedData}
+                detailedFloors={detailedFloors}
+                currencySymbol={currencySymbol}
+              />
             </PDFViewer>
           ) : (
             <div className="d-flex align-items-center justify-content-center h-100">
