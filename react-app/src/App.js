@@ -322,7 +322,7 @@ function App() {
   );
 
   return (
-    <Router>
+    <Router basename="/SalmanWipro-directory">
       <div className="bg-light min-vh-100" style={{ padding: 0 }}>
         <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: themeColor, margin: 0}} expanded={expanded} onToggle={setExpanded}>
           <Container fluid style={{width: '100%'}}>
