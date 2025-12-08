@@ -39,6 +39,8 @@ jobs:
 
       - name: Build React app
         run: cd react-app && npm run build
+        env:
+          PUBLIC_URL: /SalmanWipro-directory
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
