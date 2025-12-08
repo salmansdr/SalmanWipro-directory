@@ -1567,9 +1567,9 @@ function Reports() {
 
           {reportData && (
             <Card className="mb-4 report-phase-table-section card-style">
-              <Card.Header className="d-flex justify-content-between align-items-center">
+              <Card.Header className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <h4 className="mb-0 section-heading">Cost Tracking</h4>
-                <div className="d-flex gap-2 align-items-center">
+                <div className="d-flex flex-wrap gap-2 align-items-center">
                   {isDataReady && processedDetailedData.length > 0 && (
                     <Form.Check 
                       type="checkbox"
@@ -1582,14 +1582,44 @@ function Reports() {
                   )}
                   {isDataReady ? (
                     <>
-                      <Button 
-                        variant="primary" 
-                        size="sm"
-                        onClick={() => setShowPdfModal(true)}
+                      <PDFDownloadLink 
+                        document={<CostReportPDF 
+                          reportData={reportData} 
+                          categoryWiseData={categoryWiseData} 
+                          floorWiseData={floorWiseData}
+                          includeMaterialDetails={includeMaterialDetails}
+                          processedDetailedData={processedDetailedData}
+                          detailedFloors={detailedFloors}
+                          currencySymbol={currencySymbol}
+                        />} 
+                        fileName={`Cost_Report_${reportData?.projectDetails?.projectName || 'Report'}.pdf`}
+                        style={{ textDecoration: 'none' }}
                       >
-                        <i className="bi bi-file-earmark-pdf me-2"></i>
-                        View PDF
-                      </Button>
+                        {({ loading, url, blob }) => (
+                          <Button 
+                            variant="primary" 
+                            size="sm"
+                            disabled={loading}
+                            onClick={(e) => {
+                              if (!loading && url) {
+                                // On mobile, open in new tab; on desktop, show modal
+                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                if (isMobile) {
+                                  // Let the PDFDownloadLink handle it
+                                  e.preventDefault();
+                                  window.open(url, '_blank');
+                                } else {
+                                  e.preventDefault();
+                                  setShowPdfModal(true);
+                                }
+                              }
+                            }}
+                          >
+                            <i className="bi bi-file-earmark-pdf me-2"></i>
+                            {loading ? 'Generating...' : 'View PDF'}
+                          </Button>
+                        )}
+                      </PDFDownloadLink>
                       <PDFDownloadLink 
                         document={<CostReportPDF 
                           reportData={reportData} 
@@ -1640,7 +1670,7 @@ function Reports() {
               <Card.Body>
                 <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
                   <Tab eventKey="summary" title="Summary">
-                    <div style={{ overflow: 'auto' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                       <HotTable
                         ref={summaryTableRef}
                         data={categoryWiseData}
@@ -1716,7 +1746,7 @@ function Reports() {
                     </div>
                   </Tab>
                   <Tab eventKey="floorwise" title="Floor-wise">
-                    <div style={{ overflow: 'auto' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                       <HotTable
                         ref={floorWiseTableRef}
                         data={floorWiseData}
@@ -1856,7 +1886,7 @@ function Reports() {
                     </div>
                   </Tab>
                   <Tab eventKey="detailed" title="Detailed Material">
-                    <div style={{ overflow: 'auto' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                       {processedDetailedData.length > 0 ? (
                         <HotTable
                           ref={detailedTableRef}
