@@ -138,6 +138,7 @@ const ItemMaster = () => {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [units, setUnits] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
@@ -211,7 +212,14 @@ const ItemMaster = () => {
   const currentSubCategories = useMemo(() => {
     if (!itemForm.category) return [];
     const selectedCategory = categories.find(cat => cat.categoryName === itemForm.category);
-    if (selectedCategory && selectedCategory.subCategories) {
+    console.log('currentSubCategories - Selected Category:', {
+      categoryName: itemForm.category,
+      selectedCategory,
+      hasSubCategories: !!selectedCategory?.subCategories,
+      subCategoriesLength: selectedCategory?.subCategories?.length
+    });
+    // Check if subCategories exists AND is an array (not null)
+    if (selectedCategory && Array.isArray(selectedCategory.subCategories) && selectedCategory.subCategories.length > 0) {
       return selectedCategory.subCategories
         .filter(sub => sub.isActive)
         .map(sub => sub.subCategoryName);
@@ -219,16 +227,49 @@ const ItemMaster = () => {
     return [];
   }, [categories, itemForm.category]);
 
-  // Common units
-  const units = [
-    'bag', 'cft', 'kg', 'pcs', 'litre', 'box', 'ft', 'sqft', 'meter', 'sq meter',
-    'running meter', 'nos', 'set', 'roll', 'sheet', 'cum'
-  ];
-
-  
-
   // User's selected location (set once)
   const [userLocation, setUserLocation] = useState('');
+
+  // Load units from API
+  const loadUnits = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+      const endpoint = `${apiUrl}/api/MaterialItems/units`;
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Units loaded from API:', data);
+      
+      // Handle different response formats and extract unit strings
+      let unitsArray = Array.isArray(data) ? data : (data.units || []);
+      
+      // If units are objects with 'unit' property, extract the unit strings
+      if (unitsArray.length > 0 && typeof unitsArray[0] === 'object' && unitsArray[0].unit) {
+        unitsArray = unitsArray.map(item => item.unit);
+      }
+      
+      setUnits(unitsArray);
+      
+    } catch (error) {
+      console.error('Error loading units from API:', error);
+      showAlertMessage('Error loading units: ' + error.message, 'warning');
+      // Fallback to default units if API fails
+      setUnits([
+        'bag', 'cft', 'kg', 'pcs', 'litre', 'box', 'ft', 'sqft', 'meter', 'sq meter',
+        'running meter', 'nos', 'set', 'roll', 'sheet', 'cum'
+      ]);
+    }
+  };
 
   // Load categories from API
   const loadCategories = async () => {
@@ -252,6 +293,8 @@ const ItemMaster = () => {
       
       // Ensure we have an array
       const categoriesArray = Array.isArray(data) ? data : (data.data || []);
+      console.log('Categories array after processing:', categoriesArray);
+      console.log('Sample category structure:', categoriesArray[0]);
       setCategories(categoriesArray);
       
     } catch (error) {
@@ -399,6 +442,7 @@ const ItemMaster = () => {
   // Load data on component mount
   useEffect(() => {
     const initializeComponent = async () => {
+      await loadUnits();
       await loadCategories();
       await loadItems();
       await loadUserLocation();
@@ -406,6 +450,17 @@ const ItemMaster = () => {
     initializeComponent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-select sub-category if only one exists
+  useEffect(() => {
+    if (currentSubCategories.length === 1 && !itemForm.sub_category) {
+      console.log('Auto-selecting single sub-category:', currentSubCategories[0]);
+      setItemForm(prev => ({
+        ...prev,
+        sub_category: currentSubCategories[0]
+      }));
+    }
+  }, [currentSubCategories, itemForm.sub_category]);
 
   // Filter items when filters change
   useEffect(() => {
@@ -451,6 +506,11 @@ const ItemMaster = () => {
         body: JSON.stringify(apiData)
       };
 
+      console.log('saveItemToAPI - Complete JSON being sent to API:', {
+        endpoint,
+        method: requestOptions.method,
+        fullPayload: JSON.parse(requestOptions.body)
+      });
 
       const response = await fetch(endpoint, requestOptions);
       
@@ -460,6 +520,11 @@ const ItemMaster = () => {
       }
       
       const result = await response.json();
+      console.log('saveItemToAPI - API Response:', {
+        success: true,
+        result_sub_category: result.sub_category,
+        result_categoryId: result.categoryId
+      });
       return result;
     } catch (error) {
       console.error('API Error:', error);
@@ -568,6 +633,11 @@ const ItemMaster = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Log sub_category changes
+    if (name === 'sub_category') {
+      console.log('handleInputChange - sub_category changed:', value);
+    }
     
     // Handle default_brand change - automatically set defaultRate
     if (name === 'default_brand') {
@@ -974,10 +1044,12 @@ const ItemMaster = () => {
         version: "1.0"
       };
 
-      console.log('Saving itemData with categoryId:', {
+      console.log('handleSubmit - Saving item with sub_category:', {
         material: itemData.material,
+        category: itemForm.category,
         categoryId: itemData.categoryId,
-        sub_category: itemData.sub_category
+        sub_category: itemData.sub_category,
+        itemForm_sub_category: itemForm.sub_category
       });
 
       if (editingItem) {
@@ -1465,16 +1537,29 @@ const ItemMaster = () => {
                     onChange={(e) => {
                       const selectedCategoryName = e.target.value;
                       const selectedCategory = categories.find(cat => cat.categoryName === selectedCategoryName);
+                      
+                      // Get subcategories for the selected category
+                      const subCats = selectedCategory?.subCategories 
+                        ? selectedCategory.subCategories
+                            .filter(sub => sub.isActive)
+                            .map(sub => sub.subCategoryName)
+                        : [];
+                      
+                      // Auto-select if only one subcategory
+                      const autoSelectedSubCategory = subCats.length === 1 ? subCats[0] : '';
+                      
                       console.log('Category changed:', {
                         categoryName: selectedCategoryName,
                         categoryId: selectedCategory?._id,
-                        selectedCategory
+                        subCategories: subCats,
+                        autoSelectedSubCategory
                       });
+                      
                       setItemForm(prev => ({
                         ...prev,
                         category: selectedCategoryName,
                         categoryId: selectedCategory?._id || '',
-                        sub_category: '', // Reset subcategory when category changes
+                        sub_category: autoSelectedSubCategory, // Auto-select if only one, else reset
                         // Ensure finishingCalculation is initialized for non-Civil categories
                         finishingCalculation: prev.finishingCalculation || {
                           enabled: false,

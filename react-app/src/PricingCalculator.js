@@ -1,18 +1,15 @@
 import React, { useState, useEffect,useCallback, useRef } from 'react';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaFilter, FaTimesCircle } from 'react-icons/fa';
+import { FaHome } from 'react-icons/fa';
 
 import { evaluate } from 'mathjs';
-import { Button, Form, Row, Col, Modal, Accordion } from 'react-bootstrap';
+import { Button, Form, Row, Col, Modal } from 'react-bootstrap';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
 import Handsontable from 'handsontable';
-import { FaInfoCircle } from 'react-icons/fa';
 import './Styles/WizardSteps.css';
-import FinishingMaterialGrid from './FinishingMaterialGrid';
-import BOQConsolidatedGrid from './BOQConsolidatedGrid';
 import BOQEstimation from './BOQEstimation';
 
 // Register Handsontable modules
@@ -34,12 +31,6 @@ const PricingCalculator = () => {
 
   // --- Beam & Column Section State (Step 1) ---
   const [beamColumnConfig, setBeamColumnConfig] = useState([]);
-  // Material filter state for Step 5 grid
-  const [materialFilter, setMaterialFilter] = useState('');
-  // Show/hide material filter dropdown
-  const [showMaterialFilter, setShowMaterialFilter] = useState(false);
-  // Group by state for Step 5 grid
-  const [groupBy, setGroupBy] = useState('Floor');
   // New state for Construction Perimeter (Ft)
   const [constructionPerimeter, setConstructionPerimeter] = useState("");
   // New state for Carpet Area (Sq Ft)
@@ -47,19 +38,6 @@ const PricingCalculator = () => {
   // Alert message state for success/error notifications
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
 const [step, setStep] = useState(1);
-  // At the top of your component, add:
-  const [step5Tab, setStep5Tab] = useState('Civil Material');
-  // Auto-select Civil Material tab when entering Step 4
-  React.useEffect(() => {
-    if (step === 4) {
-      setStep5Tab('Civil Material');
-    }
-  }, [step]);
-
-  // Handler for group by dropdown
-  const handleGroupByChange = (e) => {
-    setGroupBy(e.target.value);
-  };
 
    // --- Utility Defaults ---
     // Default BHKs array for use in Step 2 and elsewhere
@@ -84,6 +62,7 @@ const [step, setStep] = useState(1);
     const [lift, setLift] = useState(false);
     const [groundFloorHasRooms, setGroundFloorHasRooms] = useState(false);
     const [basementCount, setBasementCount] = useState(0);
+    const [flatsPerFloor, setFlatsPerFloor] = useState('');
     const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
     const [bhkRows, setBhkRows] = useState([
       { type: '', units: 1, area: '', rooms: '' },
@@ -141,26 +120,7 @@ const [step, setStep] = useState(1);
     });
   };
 
-// --- Totals for summary and FinishingMaterialGrid ---
-let totalBedrooms = 0, totalBathrooms = 0, totalKitchens = 0, totalDoors = 0, totalWindows = 0, totalRooms = 0;
-if (typeof floorBHKConfigs !== 'undefined' && typeof bhkRoomDetails !== 'undefined') {
-  Object.entries(floorBHKConfigs).forEach(([floorIdx, units]) => {
-    units.forEach((unit, unitIdx) => {
-      const key = `${floorIdx}-${unitIdx}`;
-      const details = bhkRoomDetails[key] || {};
-      // Count bedrooms, bathrooms, kitchens
-      Object.entries(details['Count'] || {}).forEach(([roomName, count]) => {
-        if (/bed\s*room/i.test(roomName)) totalBedrooms += Number(count) || 0;
-        if (/bath/i.test(roomName)) totalBathrooms += Number(count) || 0;
-        if (/kitchen/i.test(roomName)) totalKitchens += Number(count) || 0;
-        totalRooms += Number(count) || 0; // Sum all room types
-      });
-      // Count doors and windows
-      Object.values(details['Door'] || {}).forEach(val => { totalDoors += Number(val.count) || 0; });
-      Object.values(details['Window'] || {}).forEach(val => { totalWindows += Number(val.count) || 0; });
-    });
-  });
-}
+
 
   // Populate step3GridData with all floor/component calculation results whenever relevant inputs change
   useEffect(() => {
@@ -267,10 +227,7 @@ if (typeof floorBHKConfigs !== 'undefined' && typeof bhkRoomDetails !== 'undefin
   // eslint-disable-next-line no-unused-vars
   const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
 
-  // --- Step 4: Cost Estimation State ---
-  // Variables for Step 4 (Cost, summary, etc.)
-  const [costLevel, setCostLevel] = useState('basic');
-const [step5TextFilter, setStep5TextFilter] = useState('');
+  
   // --- Shared/Other State ---
   // Variables used across steps or for modals, navigation, etc.
 
@@ -281,13 +238,9 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
 
   // Step 5 variable
   const [materialConfig, setMaterialConfig] = useState(null);
-  const [materialRows, setMaterialRows] = useState([]);
-  const [wastageMap, setWastageMap] = useState({});
-  const [qtyMap, setQtyMap] = useState({}); // For editable Qty/Cuft column
+  const [wastageMap] = useState({});
+  const [qtyMap] = useState({}); // For editable Qty/Cuft column
   const [rateMap, ] = useState({});
-
-  // Step 5: Track current volume unit (cuft or cumt)
-  const [volumeUnit] = useState('cuft'); // 'cuft' or 'cumt'
 
 
   const [bcFloor, setBCFloor] = useState('Foundation'); // Dropdown: Foundation, Ground, Others
@@ -299,8 +252,6 @@ const [step5TextFilter, setStep5TextFilter] = useState('');
   const [bcColumnWidth, setBCColumnWidth] = useState(0);
   const [bcColumnDepth, setBCColumnDepth] = useState(0);
   const [bcColumnHeight, setBCColumnHeight] = useState(0);
-//Step for Labour Work Data
-  const [labourWorkData, setLabourWorkData] = useState({});
 
 // Memoized floors list for BOQEstimation (prevents unnecessary re-renders)
 const boqFloorsList = React.useMemo(() => [
@@ -310,17 +261,6 @@ const boqFloorsList = React.useMemo(() => [
     i === 0 ? 'Ground Floor' : i === 1 ? '1st Floor' : i === 2 ? '2nd Floor' : i === 3 ? '3rd Floor' : `${i}th Floor`
   ))
 ], [basementCount, floors]);
-
-const filteredMaterialRows = useMemo(() => {
-  if (!materialRows || !Array.isArray(materialRows)) return [];
-  if (!step5TextFilter) return materialRows;
-  const filter = step5TextFilter.toLowerCase();
-  return materialRows.filter(row =>
-    Object.values(row).some(val =>
-      val && val.toString().toLowerCase().includes(filter)
-    )
-  );
-}, [materialRows, step5TextFilter]);
 
   // Memoize defaultBHKs to stabilize reference
   const defaultBHKs = React.useMemo(() => [
@@ -797,19 +737,6 @@ const filteredMaterialRows = useMemo(() => {
     }
   };
 
-  const handleSaveStep4 = () => {
-    const step4Data = {
-      costLevel: costLevel,
-      step5Tab: step5Tab,
-      materialFilter: materialFilter,
-      groupBy: groupBy,
-      // areaCalculationLogic: areaCalculationLogic // Excluded from save
-    };
-    
-    localStorage.setItem('step4Data', JSON.stringify(step4Data));
-    alert('Step 4 data saved successfully!');
-  };
-
   // Load functions to restore saved data
   // eslint-disable-next-line no-unused-vars
   const handleLoadStep1 = () => {
@@ -855,27 +782,6 @@ const filteredMaterialRows = useMemo(() => {
       }
     } else {
       alert('No saved Step 2 data found!');
-    }
-  };
-
-  const handleLoadStep4 = () => {
-    const savedData = localStorage.getItem('step4Data');
-    if (savedData) {
-      try {
-        const step4Data = JSON.parse(savedData);
-        setCostLevel(step4Data.costLevel || 'basic');
-        setStep5Tab(step4Data.step5Tab || 'Civil Material');
-        setMaterialFilter(step4Data.materialFilter || '');
-        setGroupBy(step4Data.groupBy || 'Floor');
-        if (step4Data.areaCalculationLogic) {
-          setAreaCalculationLogic(step4Data.areaCalculationLogic);
-        }
-        alert('Step 4 data loaded successfully!');
-      } catch (error) {
-        alert('Error loading Step 4 data: ' + error.message);
-      }
-    } else {
-      alert('No saved Step 4 data found!');
     }
   };
 
@@ -1127,6 +1033,7 @@ const filteredMaterialRows = useMemo(() => {
                 
                 setFloors(project.floors || project.numberOfFloors || 1);
                 setBasementCount(project.basementCount || 0);
+                setFlatsPerFloor(project.flatsPerFloor || project.flats_per_floor || '');
                 console.log('Project data loaded for estimation:', project);
               }
             } catch (error) {
@@ -1214,10 +1121,6 @@ const filteredMaterialRows = useMemo(() => {
             });
           }
           
-          // Set cost level if available
-          if (projectData.costEstimation?.costLevel) {
-            setCostLevel(projectData.costEstimation.costLevel);
-          }
         } catch (error) {
           console.error('Error loading project data:', error);
           alert('Error loading project data: ' + error.message);
@@ -1306,6 +1209,7 @@ const filteredMaterialRows = useMemo(() => {
         
         setFloors(project.floors || project.numberOfFloors || 1);
         setBasementCount(project.basementCount || 0);
+        setFlatsPerFloor(project.flatsPerFloor || project.flats_per_floor || '');
         console.log('Project selected:', project);
         console.log('Construction Area set to:', constructionArea);
       }
@@ -1350,37 +1254,7 @@ useEffect(() => {
     });
 }, []);
 
-//Step 5: Load Labour Work Data from JSON
-useEffect(() => {
-  fetch(process.env.PUBLIC_URL + "/LabourWork.Json")
-    .then((res) => res.json())
-    .then((data) => setLabourWorkData(data));
-}, []);
-
-const [finishingMaterialData, setFinishingMaterialData] = useState(null);
-useEffect(() => {
-  fetch(process.env.PUBLIC_URL + '/FinsishingMaterialCalculation.json')
-    .then(res => res.json())
-    .then(json => setFinishingMaterialData(json));
-}, []);
 // Dynamically generate activityMap from labourWorkData
-const activityMap = React.useMemo(() => {
-  if (!labourWorkData || typeof labourWorkData !== 'object') return [];
-  return Object.entries(labourWorkData).map(([key, value]) => {
-    // Try to use a label property if present, else fallback to key
-    let label = value && value.label ? value.label : key;
-    // For backward compatibility, map known keys to pretty labels
-    if (key === 'Earthwork') label = 'Excavation';
-    if (key === 'Backfilling') label = 'Backfilling';
-    if (key === 'RCC') label = 'RCC Work';
-    if (key === 'Ceiling Plaster') label = 'Ceiling Plaster';
-    if (key === 'Wall') label = 'Wall Foundation';
-    return { key, label };
-  });
-}, [labourWorkData]);
-
-
-
 // --- Update form fields when floor changes ---
 useEffect(() => {
   if (!beamColumnConfig || !Array.isArray(beamColumnConfig) || beamColumnConfig.length === 0) return;
@@ -2946,70 +2820,6 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
       // allFloorsComponents[floorIdx] gives the components for that floor
   }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, carpetAreaSqFt, constructionPerimeter, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows, beamColumnConfig]);
 
-  // Get total quantity for a category, by unit ("cuft" or "sqft")
-const getTotalVolume = React.useCallback((key, unit = 'cuft') => {
-  const flatComponents = allFloorsComponents.flat();
-  const Barea = (Number(width) * Number(depth) * (buildupPercent / 100));
-
-  if (!flatComponents.length) return 0;
-  if (key.toLowerCase() === 'electrical work' || key.toLowerCase() === 'plumbing') {
-    // Always return Barea (built-up area) for Electrical Work and Plumbing, regardless of unit
-    return Barea;
-  }
-
-  // Special handling for Flooring and Painting from 1st floor onwards (skip Foundation and Ground Floor)
-  if (key.toLowerCase() === 'flooring') {
-    // Use Slabvolume from 1st floor onwards
-    return flatComponents
-      .filter((comp, idx) =>
-        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
-        (comp.component?.toLowerCase() === 'slab_area' || comp.Category?.toLowerCase() === 'slabvolume')
-      )
-      .reduce((sum, comp) => {
-        if (unit === 'sqft') {
-          return sum + (Number(comp.area) || Number(comp.Area) || 0);
-        } else {
-          return sum + (Number(comp.volume_cuft) || 0);
-        }
-      }, 0);
-  }
-  if (key.toLowerCase() === 'painting') {
-    // Use Wall and Ceiling Plaster area or volume from 1st floor onwards
-    return flatComponents
-      .filter((comp, idx) =>
-        idx >= 2 && // skip Foundation (0) and Ground Floor (1)
-        (
-          comp.component?.toLowerCase().includes('wall') ||
-          comp.Category?.toLowerCase().includes('wall') ||
-          comp.component?.toLowerCase().includes('ceiling plaster') ||
-          comp.Category?.toLowerCase().includes('ceiling plaster')
-        )
-      )
-      .reduce((sum, comp) => {
-        if (unit === 'sqft') {
-          return sum + (Number(comp.area) || Number(comp.Area) || 0);
-        } else {
-          return sum + (Number(comp.volume_cuft) || 0);
-        }
-      }, 0);
-  }
-  // Default logic
-  return flatComponents
-    .filter((comp) =>
-      typeof comp.Category === 'string' &&
-      typeof key === 'string' &&
-      comp.Category.toLowerCase() === key.toLowerCase()
-    )
-    .reduce((sum, comp) => {
-      if (unit === 'sqft') {
-        // Use area if present, else fallback to 0
-        return sum + (Number(comp.area) || Number(comp.Area) || 0);
-      } else {
-        // Default: use volume_cuft
-        return sum + (Number(comp.volume_cuft) || 0);
-      }
-    }, 0);
-}, [allFloorsComponents, width, depth, buildupPercent]);
   // Debug: Log allFloorsComponents after calculation
   //console.log('allFloorsComponents:', allFloorsComponents);
 
@@ -3059,51 +2869,7 @@ const [materialRateConfig, setMaterialRateConfig] = useState(null);
 
 
 // Helper: Plural to singular (basic, extend as needed)
-function pluralToSingular(unit) {
-  if (!unit) return unit;
-  const irregulars = {
-    feet: 'foot',
-    men: 'man',
-    children: 'child',
-    geese: 'goose',
-    mice: 'mouse',
-    teeth: 'tooth',
-    // Add more irregulars as needed
-  };
-  const lower = unit.trim().toLowerCase();
-  if (irregulars[lower]) return irregulars[lower];
-  if (lower.endsWith('ies')) return lower.slice(0, -3) + 'y';
-  if (lower.endsWith('ves')) return lower.slice(0, -3) + 'f';
-  if (lower.endsWith('es') && !lower.endsWith('ses') && !lower.endsWith('xes')) return lower.slice(0, -2);
-  if (lower.endsWith('s') && lower.length > 3) return lower.slice(0, -1);
-  return lower;
-}
-
 // Build a map: { 'cement__bag': [ { brand_name, rate_per_unit }, ... ], ... }
-const brandRateMap = useMemo(() => {
-  if (!materialRateConfig) return {};
-  const map = {};
-  // Loop all top-level arrays in MaterialRate.json (e.g., Core Materials, Painting, etc.)
-  Object.values(materialRateConfig).forEach(section => {
-    if (Array.isArray(section)) {
-      section.forEach(item => {
-        if (item.material && item.unit && Array.isArray(item.brands)) {
-          const materialNorm = `${item.material}`.trim().toLowerCase();
-          const unitNorm = pluralToSingular(`${item.unit}`.trim().toLowerCase());
-          const key = materialNorm + '__' + unitNorm;
-          map[key] = {
-            brands: item.brands,
-            default_brand: item.default_brand || null
-          };
-        }
-      });
-    }
-  });
-  return map;
-}, [materialRateConfig]);
-
-
-
 useEffect(() => {
   fetch(process.env.PUBLIC_URL + '/MaterialRate.json')
     .then(res => res.json())
@@ -3212,116 +2978,7 @@ useEffect(() => {
       });
     });
   });
-  setMaterialRows(rows);
 }, [materialConfig, allFloorsComponents, wastageMap, qtyMap, rateMap, getMaterialRate]);
-
-const handleWastageChange = (key, value) => {
-  setWastageMap(prev => ({ ...prev, [key]: Number(value) }));
-};
-
-const handleQtyChange = (key, value) => {
-  setQtyMap(prev => ({ ...prev, [key]: Number(value) }));
-};
-
-// Update rate and totalValue directly in materialRows for DB persistence
-
-
-
-// 1. Prepare the consolidated BOQ items array
-const boqItems = useMemo(() => {
-  // Group all civil material items by material name and unit, summing totalQty
-  const civilSums = {};
-  (materialRows || []).forEach(row => {
-    if (!row.material || !row.unit) return;
-  // Normalize for robust brand/rate lookup, including plural-to-singular for unit
-  const materialNorm = `${row.material}`.trim().toLowerCase();
-  const unitNorm = pluralToSingular(`${row.unit}`.trim().toLowerCase());
-  const key = `${materialNorm}__${unitNorm}`;
-    if (!civilSums[key]) {
-      civilSums[key] = {
-        material: row.material, // original for display
-        materialNorm,
-        unit: row.unit, // original for display
-        unitNorm,
-        totalQty: 0,
-        category: 'Civil Works'
-      };
-    }
-    civilSums[key].totalQty += Number(row.totalQty) || 0;
-  });
-  const civilItems = Object.values(civilSums);
-
-  // Finishing Material Items (unchanged, but you can also sum if needed)
-  // --- Compute totalQty for each finishing item using formula evaluation and wastage ---
-  // Import or define evaluateFinishingFormula and summaryContext as in FinishingMaterialGrid
-  function evaluateFinishingFormula(formula, context, item = {}) {
-    try {
-      const expr = formula.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
-        if (Object.prototype.hasOwnProperty.call(context, match)) {
-          return context[match];
-        }
-        if (Object.prototype.hasOwnProperty.call(item, match)) {
-          return item[match];
-        }
-        return 0;
-      });
-      return evaluate(expr);
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  // Build summaryContext as in FinishingMaterialGrid usage
-  const summaryContext = {
-    built_up_area_sqft: Number(buildupPercent) || 0,
-    perimeter_ft: Number(constructionPerimeter) || 0,
-    tile_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0,
-    painting_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
-    room_count: typeof totalRooms !== 'undefined' ? totalRooms : 0,
-    toilet_count: typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0,
-    kitchen_count: typeof totalKitchens !== 'undefined' ? totalKitchens : 0,
-    wet_points_count: (typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0) + (typeof totalKitchens !== 'undefined' ? totalKitchens : 0),
-    plastering_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
-    open_area_sqft: 0,
-    landscape_area_sqft: 0,
-    window_frame_area_sqft: 0,
-    door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-    Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-    window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-    Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-    floor_count: Number(floors)
-  };
-
-  const finishingItems = [];
-  if (finishingMaterialData) {
-    Object.entries(finishingMaterialData).forEach(([category, items]) => {
-      items.forEach(item => {
-        // Check for manual base quantity first, then use formula evaluation
-        // This ensures that user's manual edits are reflected in the cost summary
-        const baseQty = item.manual_base_qty !== undefined ? 
-          item.manual_base_qty : 
-          (item.quantity_formula ? evaluateFinishingFormula(item.quantity_formula, summaryContext, item) : 0);
-        const wastage = item.wastage_percent || 0;
-        const totalQty = baseQty * (1 + wastage / 100);
-        // Add normalized fields for brand/rate lookup
-        const materialNorm = `${item.material}`.trim().toLowerCase();
-        const unitNorm = pluralToSingular(`${item.unit}`.trim().toLowerCase());
-        finishingItems.push({
-          material: item.material,
-          materialNorm,
-          totalQty,
-          unit: item.unit,
-          unitNorm,
-          category
-        });
-      });
-    });
-  }
-
-  return [...civilItems, ...finishingItems];
-}, [materialRows, finishingMaterialData, buildupPercent, constructionPerimeter, floors, getTotalVolume, totalBathrooms, totalDoors, totalKitchens, totalRooms, totalWindows]);
-
-
 
   // Move all rendering code inside the PricingCalculator function
   return (
@@ -3422,7 +3079,7 @@ const boqItems = useMemo(() => {
       {/* Removed bhkExtracted, bhkLoading, bhkError references */}
       {/* Step Indicator */}
       <div className="wizard-indicator">
-        {[1,2,3,4].map(s => (
+        {[1,2,3].map(s => (
           <span key={s} style={{ position: 'relative', display: 'inline-block' }}>
             <span
               className={`wizard-circle${step === s ? ' active' : ''}`}
@@ -3447,9 +3104,8 @@ const boqItems = useMemo(() => {
             >
               {
                 s === 1 ? 'Project Details' :
-                s === 2 ? 'BHK Layout' :
-                s === 3 ? 'Component Calc' :
-                s === 4 ? 'Pricing Summary' : ''
+                s === 2 ? 'Floor Layout' :
+                s === 3 ? 'Pricing' : ''
               }
             </span>
           </span>
@@ -3629,7 +3285,7 @@ const boqItems = useMemo(() => {
                       <option value="">Select Project</option>
                       {projects.map(project => (
                         <option key={project._id} value={project._id}>
-                          {project.name} - {project.location}
+                          {project.name}
                         </option>
                       ))}
                     </Form.Select>
@@ -3725,6 +3381,35 @@ const boqItems = useMemo(() => {
                 </Col>
               </Row>
               <Row>
+                <Col md={3} sm={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label style={{
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      color: '#495057',
+                      marginBottom: '0.5rem',
+                      display: 'block'
+                    }}>
+                      Flats Per Floor
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={flatsPerFloor}
+                      readOnly
+                      disabled
+                      style={{
+                        borderRadius: '6px',
+                        border: '1px solid #ced4da',
+                        padding: '0.75rem',
+                        fontSize: '0.9rem',
+                        width: '100%',
+                        height: '42px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#6c757d'
+                      }}
+                    />
+                  </Form.Group>
+                </Col>
                 <Col md={3} sm={6} className="mb-3">
                   <Form.Group>
                     <Form.Label style={{
@@ -3958,7 +3643,7 @@ const boqItems = useMemo(() => {
             </div>
             {/* Top summary section for area values */}
             <div className="d-flex justify-content-center" style={{ marginBottom: '2rem' }}>
-              <div className="row w-100" style={{ maxWidth: 600 }}>
+              <div className="row w-100" style={{ maxWidth: 900 }}>
                 <div className="col-12 col-md-6 mb-3 mb-md-0">
                   <div style={{ background: '#e8f5e9', borderRadius: 6, padding: '0.55rem', textAlign: 'center', boxShadow: '0 1px 4px rgba(76,175,80,0.07)', minWidth: 0, fontWeight: 400 }}>
                     <div style={{ fontWeight: 400, color: '#388e3c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25em', fontFamily: 'inherit' }}>
@@ -3992,7 +3677,7 @@ const boqItems = useMemo(() => {
 
             {/* Controls section */}
             <div className="d-flex justify-content-center">
-              <div style={{ width: '100%', maxWidth: 600, padding: '0 16px' }}>
+              <div style={{ width: '100%', maxWidth: 900, padding: '0 16px' }}>
                 <Form>
                   {/* Dynamic Section Rendering for Floors */}
                   <div style={{ marginBottom: '2rem' }}>
@@ -4004,15 +3689,14 @@ const boqItems = useMemo(() => {
                         border: '1px solid #e0e0e0',
                         padding: '18px 8px',
                         marginBottom: '1.5rem',
-                        maxWidth: '100%',
-                        overflowX: 'auto'
+                        maxWidth: '100%'
                       }}>
                         {(floorIdx === 0 && !groundFloorHasRooms) ? (
                           <>
                             <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: 12, color: '#388e3c' }}>
                               Ground Floor
                             </div>
-                            <div style={{ width: '100%', overflowX: 'auto' }}>
+                            <div style={{ width: '100%' }}>
                               <table style={{ minWidth: 320, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
                                 <thead>
                                   <tr style={{ background: '#f5f5f5' }}>
@@ -4032,12 +3716,12 @@ const boqItems = useMemo(() => {
                             </div>
                           </>
                         ) : (
-                          <div style={{ marginTop: 0, width: '100%', overflowX: 'auto' }}>
+                          <div style={{ marginTop: 0, width: '100%' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                               <div style={{ fontWeight: 600, fontSize: '1.05rem', color: '#388e3c' }}>
                                 {floorIdx === 0 ? 'Ground Floor' : `${floorIdx === 1 ? '1st' : floorIdx === 2 ? '2nd' : floorIdx === 3 ? '3rd' : floorIdx + 'th'} Floor`}
                                 <span style={{ fontWeight: 500, fontSize: '0.98rem', margin: '0 8px' }}>-</span>
-                                BHK Configuration
+                                Flat Configuration
                               </div>
                               {(floorIdx === 1 || (floorIdx === 0 && groundFloorHasRooms)) && (
                                 <button
@@ -4072,12 +3756,12 @@ const boqItems = useMemo(() => {
                             <table style={{ minWidth: 480, width: '100%', borderCollapse: 'collapse', fontSize: '0.97rem' }}>
                               <thead>
                                 <tr style={{ background: '#f5f5f5' }}>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>BHK Type</th>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}># of Units</th>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Carpet Area (Sq ft)</th>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Total Area</th>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}>Typical Rooms</th>
-                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0' }}></th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '15%' }}>Flat Type</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '8%' }}># of Units</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '15%' }}>Carpet Area (Sq ft)</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '12%' }}>Actual Area (Sq ft)</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '35%' }}>Typical Rooms</th>
+                                  <th style={{ padding: '8px', border: '1px solid #e0e0e0', width: '15%' }}></th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -4166,8 +3850,24 @@ const boqItems = useMemo(() => {
                                         ))}
                                       </Form.Select>
                                     </td>
-                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
-                                      {(row.units * (parseInt(row.area) || 0)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'right' }}>
+                                      {(() => {
+                                        const key = `${floorIdx}-${idx}`;
+                                        const details = bhkRoomDetails[key];
+                                        if (!details || !details['Count'] || !details['Length (ft)'] || !details['Width (ft)']) {
+                                          return '-';
+                                        }
+                                        // Calculate grand total from all rooms
+                                        let grandTotal = 0;
+                                        Object.keys(details['Count']).forEach(roomName => {
+                                          const count = Number(details['Count'][roomName]) || 0;
+                                          const length = Number(details['Length (ft)'][roomName]) || 0;
+                                          const width = Number(details['Width (ft)'][roomName]) || 0;
+                                          const roomArea = length * width;
+                                          grandTotal += count * roomArea;
+                                        });
+                                        return grandTotal > 0 ? (grandTotal * row.units).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '-';
+                                      })()}
                                     </td>
                                     <td style={{ padding: '8px', border: '1px solid #e0e0e0' }}>
                                       <Form.Control type="text" value={row.rooms} size="sm" onChange={e => handleFloorCellChange(floorIdx, idx, 'rooms', e.target.value)} />
@@ -4179,28 +3879,54 @@ const boqItems = useMemo(() => {
                                 ))}
                               </tbody>
                             </table>
-                            <div className="d-flex justify-content-between align-items-center mt-3">
+                            <div className="d-flex align-items-center mt-3" style={{ position: 'relative' }}>
                               <Button variant="outline-primary" size="sm" onClick={() => handleFloorAddRow(floorIdx)}>Add Row</Button>
-                              <div style={{ fontWeight: 600, color: (() => {
-                                const rows = getFloorRows(floorIdx);
-                                const gridTotalArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
-                                const actualCarpetArea = Number(carpetAreaSqFt) || 0;
-                                return gridTotalArea === actualCarpetArea ? '#388e3c' : '#d81b60';
-                              })() }}>
+                              <div style={{ 
+                                position: 'absolute',
+                                left: 'calc(15% + 8% + 15%)',
+                                width: '12%',
+                                textAlign: 'right',
+                                fontWeight: 600, 
+                                color: (() => {
+                                  const rows = getFloorRows(floorIdx);
+                                  const gridTotalArea = rows.reduce((sum, row) => {
+                                    const key = `${floorIdx}-${(() => rows.indexOf(row))()}`;
+                                    const details = bhkRoomDetails[key];
+                                    if (!details || !details['Count'] || !details['Length (ft)'] || !details['Width (ft)']) {
+                                      return sum;
+                                    }
+                                    let grandTotal = 0;
+                                    Object.keys(details['Count']).forEach(roomName => {
+                                      const count = Number(details['Count'][roomName]) || 0;
+                                      const length = Number(details['Length (ft)'][roomName]) || 0;
+                                      const width = Number(details['Width (ft)'][roomName]) || 0;
+                                      grandTotal += count * length * width;
+                                    });
+                                    return sum + (grandTotal * row.units);
+                                  }, 0);
+                                  const actualCarpetArea = Number(carpetAreaSqFt) || 0;
+                                  return gridTotalArea === actualCarpetArea ? '#388e3c' : '#d81b60';
+                                })() 
+                              }}>
                                 Total Area: {(() => {
                                   const rows = getFloorRows(floorIdx);
-                                  return rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+                                  const totalArea = rows.reduce((sum, row) => {
+                                    const key = `${floorIdx}-${(() => rows.indexOf(row))()}`;
+                                    const details = bhkRoomDetails[key];
+                                    if (!details || !details['Count'] || !details['Length (ft)'] || !details['Width (ft)']) {
+                                      return sum;
+                                    }
+                                    let grandTotal = 0;
+                                    Object.keys(details['Count']).forEach(roomName => {
+                                      const count = Number(details['Count'][roomName]) || 0;
+                                      const length = Number(details['Length (ft)'][roomName]) || 0;
+                                      const width = Number(details['Width (ft)'][roomName]) || 0;
+                                      grandTotal += count * length * width;
+                                    });
+                                    return sum + (grandTotal * row.units);
+                                  }, 0);
+                                  return totalArea > 0 ? totalArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '0';
                                 })()} sq ft
-                                {(() => {
-                                  const rows = getFloorRows(floorIdx);
-                                  const gridTotalArea = rows.reduce((sum, row) => sum + (row.units * (parseInt(row.area) || 0)), 0);
-                                  const actualCarpetArea = Number(carpetAreaSqFt) || 0;
-                                  return actualCarpetArea > 0 && gridTotalArea !== actualCarpetArea ? (
-                                    <span style={{ marginLeft: 8, color: '#d81b60', fontWeight: 500 }}>
-                                      (Carpet Area: {actualCarpetArea.toLocaleString('en-IN', { maximumFractionDigits: 2 })})
-                                    </span>
-                                  ) : null;
-                                })()}
                               </div>
                             </div>
                           </div>
@@ -4229,684 +3955,11 @@ const boqItems = useMemo(() => {
             />
           </div>
         )}
-       
-{step === 4 && (
 
-
-  <div>
-    
-    <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
-      <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Pricing Details</h5>
-    </div>
-    {/* Apartment Summary Card - Compact, just below Pricing Details heading */}
-    <Accordion defaultActiveKey="0" style={{ marginBottom: 8 }}>
-      <Accordion.Item eventKey="0">
-        <Accordion.Header style={{
-          background: 'linear-gradient(90deg, #e3f2fd 80%, #fafdff 100%)',
-          minHeight: 0,
-          padding: '2px 8px',
-          borderRadius: '12px 12px 0 0',
-          alignItems: 'center',
-          fontSize: '0.98em',
-          fontWeight: 500,
-          color: '#174a7c',
-          letterSpacing: 0.1,
-          border: 'none',
-        }}>
-          <span style={{
-            fontSize: '0.98em',
-            fontWeight: 500,
-            color: '#174a7c',
-            letterSpacing: 0.1,
-            marginLeft: 2,
-            marginRight: 6,
-            lineHeight: .5,
-            padding: 0,
-            display: 'inline-block',
-            verticalAlign: 'middle',
-          }}>Apartment Summary</span>
-        </Accordion.Header>
-        <Accordion.Body style={{ padding: 0 }}>
-          <div
-            className="apartment-summary-card-responsive"
-            style={{
-              maxWidth: 1100,
-              margin: '0 auto 8px auto',
-              background: 'linear-gradient(90deg, #fafdff 80%, #e3f2fd 100%)',
-              border: '1px solid #e0e7ef',
-              borderRadius: 14,
-              boxShadow: '0 2px 12px #e3eafc',
-              padding: '4px 0 2px 0',
-              fontSize: '0.72em',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'stretch',
-              justifyContent: 'center',
-              gap: 0,
-              minHeight: 36,
-            }}
-          >
-            {(() => {
-              // Use already calculated totals from top-level
-              const builtupArea = Number(buildupPercent) || 0;
-              const perimeter = Number(constructionPerimeter) || 0;
-              // Calculate Tiles Area and Painting Area using getTotalVolume
-              const tilesArea = typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0;
-              const paintingArea = typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0;
-              // Format in 3 columns per row, compact
-              const summaryItems = [
-                { label: 'Built-up Area', value: builtupArea ? Math.round(builtupArea).toLocaleString('en-IN') + ' sqft' : '-' },
-                { label: 'Perimeter', value: perimeter ? Math.round(perimeter).toLocaleString('en-IN') + ' ft' : '-' },
-                { label: 'Tiles Area', value: tilesArea ? Math.round(tilesArea).toLocaleString('en-IN') + ' sqft' : '-' },
-                { label: 'Painting Area', value: paintingArea ? Math.round(paintingArea).toLocaleString('en-IN') + ' sqft' : '-' },
-                { label: 'Bedrooms', value: totalBedrooms },
-                { label: 'Bathrooms', value: totalBathrooms },
-                { label: 'Kitchens', value: totalKitchens },
-                { label: 'Doors', value: totalDoors },
-                { label: 'Windows', value: totalWindows }
-              ];
-              return summaryItems.map((item, idx) => (
-                <div key={item.label} style={{
-                  flex: '1 1 80px',
-                  minWidth: 60,
-                  padding: '1px 0 0 0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  borderRight: (idx !== summaryItems.length - 1) ? '1px solid #e3eafc' : 'none',
-                  margin: 0,
-                  justifyContent: 'center',
-                  position: 'relative',
-                  boxSizing: 'border-box',
-                }}>
-                  <span style={{
-                    color: '#1976d2',
-                    fontWeight: 600,
-                    fontSize: '0.82em',
-                    marginBottom: 0,
-                    letterSpacing: 0.05,
-                    textShadow: '0 1px 0 #fafdff',
-                    textAlign: 'center',
-                    lineHeight: 1.02,
-                    textTransform: idx < 3 ? 'none' : 'uppercase',
-                    wordBreak: 'break-word',
-                  }}>{item.label}</span>
-                  <span style={{
-                    fontWeight: 700,
-                    fontSize: '1.04em',
-                    color: idx < 3 ? '#222' : '#1565c0',
-                    letterSpacing: 0.13,
-                    marginBottom: idx < 3 ? 0 : 1,
-                    textAlign: 'center',
-                    lineHeight: 1.1,
-                    wordBreak: 'break-word',
-                  }}>{item.value}</span>
-                </div>
-              ));
-            })()}
-            {/* Responsive styles for mobile/tablet */}
-            <style>{`
-              @media (max-width: 900px) {
-                .apartment-summary-card-responsive {
-                  font-size: 0.85em !important;
-                  padding: 2px 0 2px 0 !important;
-                }
-                .apartment-summary-card-responsive > div {
-                  min-width: 120px !important;
-                  flex: 1 1 45% !important;
-                  margin-bottom: 2px !important;
-                }
-              }
-              @media (max-width: 600px) {
-                .apartment-summary-card-responsive {
-                  font-size: 0.98em !important;
-                  flex-direction: column !important;
-                  padding: 2px 0 2px 0 !important;
-                }
-                .apartment-summary-card-responsive > div {
-                  min-width: 90px !important;
-                  flex: 1 1 100% !important;
-                  border-right: none !important;
-                  border-bottom: 1px solid #e3eafc !important;
-                  margin-bottom: 2px !important;
-                }
-                .apartment-summary-card-responsive > div:last-child {
-                  border-bottom: none !important;
-                }
-              }
-            `}</style>
-          </div>
-        </Accordion.Body>
-      </Accordion.Item>
-    </Accordion>
-    <div style={{
-      display: 'flex',
-      borderBottom: '2px solid #e3e3e3',
-      marginBottom: 18,
-      overflowX: 'auto',
-      WebkitOverflowScrolling: 'touch',
-      scrollbarWidth: 'thin',
-      scrollbarColor: '#b3e5fc #fafdff',
-      msOverflowStyle: 'auto',
-    }}>
-      {['Civil Material', 'Finishing Material', 'Man Power', 'Cost Summary'].map(tab => (
-        <div
-          key={tab}
-          onClick={() => setStep5Tab(tab)}
-          style={{
-            flex: '0 0 auto',
-            padding: '10px 28px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            color: step5Tab === tab ? '#1976d2' : '#888',
-            borderBottom: step5Tab === tab ? '3px solid #1976d2' : '3px solid transparent',
-            background: step5Tab === tab ? '#f5faff' : 'transparent',
-            borderTopLeftRadius: 8,
-            borderTopRightRadius: 8,
-            marginRight: 8,
-            transition: 'all 0.18s',
-            fontSize: '1.08em',
-            letterSpacing: '0.5px',
-            minWidth: 120,
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            boxSizing: 'border-box',
-          }}
-        >
-          {tab}
-        </div>
-      ))}
-    </div>
-
- {/* Tab Content */}
-  <div style={{ minHeight: 200 }}>
-    {step5Tab === 'Civil Material' && (
-      <div>
-        {/* Group By Dropdown */}
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: '12px 24px',
-        marginBottom: 12,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-  <label htmlFor="groupByDropdown" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Group by:</label>
-        <select
-          id="groupByDropdown"
-          value={groupBy}
-          onChange={handleGroupByChange}
-          style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14, minWidth: 90 }}
-        >
-          <option value="Floor">Floor</option>
-          <option value="Category">Category</option>
-          <option value="Material">Material</option>
-        </select>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
-  <label htmlFor="step5TextFilter" style={{ fontWeight: 400, marginRight: 4, whiteSpace: 'nowrap' }}>Filter:</label>
-        <input
-          id="step5TextFilter"
-          type="text"
-          value={step5TextFilter}
-          onChange={e => setStep5TextFilter(e.target.value)}
-          placeholder="Type to filter..."
-          style={{ minWidth: 120, width: '40%', padding: '7px 12px', borderRadius: 4, border: '1px solid #bdbdbd', fontSize: '1em' }}
-        />
-      </div>
-    </div>
-    {/* ...existing code for filter and table... */}
-    {(() => {
-      // Get unique material names
-      const allMaterials = Array.from(new Set(filteredMaterialRows.map(row => row.material)));
-
-      // Dynamic grouping logic
-      const getGroupKey = (row) => {
-        if (groupBy === 'Floor') return row.floor;
-        if (groupBy === 'Category') return row.category;
-        if (groupBy === 'Material') return row.material;
-        return row.floor;
-      };
-      // Group rows by selected groupBy, using filteredMaterialRows
-      const grouped = filteredMaterialRows.reduce((acc, row) => {
-        if (materialFilter && row.material !== materialFilter) return acc;
-        const key = getGroupKey(row) || 'Other';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(row);
-        return acc;
-      }, {});
-
-      // Render group header label
-      const getGroupHeader = (groupKey) => {
-        if (groupBy === 'Floor') return groupKey;
-        if (groupBy === 'Category') return `Category: ${groupKey}`;
-        if (groupBy === 'Material') return `Material: ${groupKey}`;
-        return groupKey;
-      };
-
-    return (
-  <div className="step5-table-responsive" style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'visible', position: 'relative' }}>
-    <table className="table table-bordered step5-material-table" style={{ fontSize: '0.89em', width: '100%' }}>
-            <thead style={{ background: '#eaf4fb', position: 'sticky', top: 0, zIndex: 2 }}>
-              <tr style={{ position: 'sticky', top: 0, background: '#eaf4fb', zIndex: 2 }}>
-                {/* Show Floor column if grouping by Category or Material */}
-                {groupBy !== 'Floor' && (
-                  <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Floor</th>
-                )}
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Category</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', position: 'relative', whiteSpace: 'nowrap' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    Material
-                    <span style={{ display: 'flex', alignItems: 'center', marginLeft: 4 }}>
-                      <span
-                        style={{
-                          cursor: 'pointer',
-                          color: materialFilter ? '#d81b60' : '#1976d2',
-                          transition: 'color 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                        title={materialFilter ? `Filtered: ${materialFilter}` : 'Filter'}
-                        onClick={e => { e.stopPropagation(); setShowMaterialFilter(v => !v); }}
-                      >
-                        <FaFilter />
-                      </span>
-                      {materialFilter && (
-                        <span
-                          style={{
-                            cursor: 'pointer',
-                            color: '#888',
-                            marginLeft: 2,
-                            fontSize: '1.1em',
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}
-                          title="Clear filter"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setMaterialFilter('');
-                          }}
-                        >
-                          {/* You may need to import FaTimesCircle from 'react-icons/fa' at the top if not already */}
-                          <FaTimesCircle />
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  {showMaterialFilter && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        right: 0,
-                        background: '#fff',
-                        border: '1px solid #ccc',
-                        borderRadius: 4,
-                        zIndex: 10,
-                        minWidth: 120,
-                        padding: 4,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <select
-                        value={materialFilter}
-                        onChange={e => { setMaterialFilter(e.target.value); setShowMaterialFilter(false); }}
-                        style={{ width: '100%', fontSize: '0.95em' }}
-                      >
-                        <option value="">All</option>
-                        {allMaterials.map(mat => (
-                          <option key={mat} value={mat}>{mat}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>
-                  Volume<br/>({volumeUnit === 'cuft' ? 'cuft' : 'cumt'})
-                </th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>
-                  Qty/{volumeUnit === 'cuft' ? 'Cuft' : 'Cumt'}
-                </th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Wastage<br/>(%)</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Total Qty</th>
-                <th style={{ verticalAlign: 'middle', padding: '10px 8px', fontWeight: 600, color: '#1976d2', whiteSpace: 'nowrap' }}>Unit</th>
-                {/* Removed Rate and Total Value columns */}
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(grouped).map(([groupKey, rows]) => (
-                <React.Fragment key={groupKey}>
-                  <tr style={{ background: '#f0f0f0', fontWeight: 'bold' }}>
-                    <td colSpan={groupBy !== 'Floor' ? 10 : 9}>{getGroupHeader(groupKey)}</td>
-                  </tr>
-                  {rows.map((row, idx) => {
-                    const key = `${row.category}_${row.material}_${row.floor || ''}`;
-                    // Conversion constants
-                    const CUFT_PER_CUMT = 35.3147;
-                    // Convert volume and qty based on selected unit
-                    const displayVolume = volumeUnit === 'cuft'
-                      ? row.volume
-                      : row.volume / CUFT_PER_CUMT;
-                   // const displayQtyPerUnit = volumeUnit === 'cuft'
-                    //  ? row.qty
-                     // : row.qty * CUFT_PER_CUMT;
-                    // Get the original qty per unit from the material config for this row
-                    const originalQtyPerUnit = volumeUnit === 'cuft' 
-                      ? (qtyMap[key] !== undefined ? qtyMap[key] : row.qty)
-                      : (qtyMap[key] !== undefined ? qtyMap[key] : row.qty) * CUFT_PER_CUMT;
-                    return (
-                      <tr key={key}>
-                        {/* Show Floor value if grouping by Category or Material */}
-                        {groupBy !== 'Floor' && (
-                          <td style={{ whiteSpace: 'nowrap' }}>{row.floor}</td>
-                        )}
-                        <td style={{ whiteSpace: 'nowrap' }}>{row.category}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{row.material}</td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{volumeUnit === 'cuft' ? displayVolume.toFixed(0) : displayVolume.toFixed(2)}</td>
-                        <td>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={originalQtyPerUnit !== undefined ? (volumeUnit === 'cuft' ? originalQtyPerUnit.toFixed(2) : originalQtyPerUnit.toFixed(4)) : ''}
-                            onChange={e => handleQtyChange(key, e.target.value)}
-                            style={{ width: 80, minWidth: 60, textAlign: 'right' }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            value={wastageMap[key] !== undefined ? wastageMap[key] : row.wastage}
-                            onChange={e => handleWastageChange(key, e.target.value)}
-                            style={{ width: 60, minWidth: 50 }}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{row.totalQty.toFixed(0)}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{row.unit}</td>
-                        {/* Removed Rate and Total Value columns */}
-                      </tr>
-                    );
-                  })}
-                  {/* Subtotal row for this group */}
-                  {/* Removed Subtotal Total Value cell */}
-                </React.Fragment>
-              ))}
-            </tbody>
-            {/* Grand Total row at the bottom */}
-            {/* Removed Grand Total row for Total Value */}
-          </table>
-        </div>
-      );
-    })()}
-
-      </div>
-    )}
-    {step5Tab === 'Man Power' && (
-      <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0 }}>
-        
-        <table className="step5-material-table" style={{ width: '100%', fontSize: '0.89em', background: '#fff', borderCollapse: 'collapse', borderSpacing: 0, boxShadow: '0 2px 8px rgba(33,150,243,0.07)', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-          <thead>
-            <tr style={{ background: '#e3f2fd' }}>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Activity</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Productivity<br/>(cuft or Sq ft/day)</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Labour Rate<br/>(₹/day)</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Volume /<br/>Area</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Unit</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>No of People</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Duration<br/>(days)</th>
-              <th style={{ verticalAlign: 'middle', padding: '8px 6px', fontWeight: 400, color: '#1976d2', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.98em', letterSpacing: 0.1, border: '1px solid #e0e7ef', background: '#e3f2fd' }}>Cost<br/>(₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activityMap.map(({ key, label }) => {
-              const labour = labourWorkData[key] || labourWorkData[label] || {};
-              const productivity =
-                labour.Productivity_cuft_per_day ||
-                labour.Productivity_sqft_per_day ||
-                "";
-              const rate = labour.Rate || "";
-              const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
-              const totalVolume = getTotalVolume(key, unit);
-              // Editable number of people per activity
-              const people = (labour.NoOfPeople !== undefined && labour.NoOfPeople !== null && labour.NoOfPeople !== "") ? Number(labour.NoOfPeople) : 1;
-              // Labour Days is duration (total workdays divided by people)
-              const baseLabourDays = productivity && totalVolume ? totalVolume / productivity : 0;
-              const labourDays = people > 0 ? baseLabourDays / people : 0;
-              // Labour Cost should be based on total workdays (not reduced by people)
-              const labourCost = Math.round(baseLabourDays * rate);
-
-              return (
-                <tr key={label}>
-                  <td style={{ padding: '8px 8px', fontWeight: 400, textAlign: 'left', border: '1px solid #e0e7ef', background: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {label === 'Wall Foundation' ? (
-                      <>
-                        <span
-                          title="Wall Foundation = Brickwork, Internal Plastering, External Plastering."
-                         
-                          
-                        >
-                          {label}
-                        </span>
-                        <FaInfoCircle
-                          title="Wall Foundation = Brickwork, Internal Plastering, External Plastering."
-                          style={{ color: '#1976d2', marginLeft: 4, fontSize: '1em', verticalAlign: 'middle', cursor: 'pointer' }}
-                          tabIndex={0}
-                          aria-label="Wall Foundation: Brickwork, Internal Plastering, External Plastering."
-                        />
-                      </>
-                    ) : label}
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    <input
-                      type="number"
-                      value={productivity || ''}
-                      min={1}
-                      onChange={e => {
-                        const newProd = e.target.value;
-                        if (typeof setLabourWorkData === 'function') {
-                          setLabourWorkData(prev => ({
-                            ...prev,
-                            [key]: {
-                              ...prev[key],
-                              // Update the correct productivity field
-                              ...(labour.Productivity_cuft_per_day !== undefined
-                                ? { Productivity_cuft_per_day: newProd }
-                                : { Productivity_sqft_per_day: newProd })
-                            }
-                          }));
-                        }
-                      }}
-                      style={{ width: 60, minWidth: 48, maxWidth: 72, textAlign: 'right', padding: '2px 4px', border: '1px solid #bdbdbd', borderRadius: 4 }}
-                    />
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    <input
-                      type="number"
-                      value={rate || ''}
-                      min={0}
-                      onChange={e => {
-                        const newRate = e.target.value;
-                        if (typeof setLabourWorkData === 'function') {
-                          setLabourWorkData(prev => ({
-                            ...prev,
-                            [key]: {
-                              ...prev[key],
-                              Rate: newRate
-                            }
-                          }));
-                        }
-                      }}
-                      style={{ width: 60, minWidth: 48, maxWidth: 72, textAlign: 'right', padding: '2px 4px', border: '1px solid #bdbdbd', borderRadius: 4 }}
-                    />
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    {totalVolume ? Math.round(totalVolume).toLocaleString('en-IN') : "-"}
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    {/* Show unit from JSON's 'Applicable unit' property, fallback to '-' if not present */}
-                    {labour['Applicable unit'] ? labour['Applicable unit'] : '-'}
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    <input
-                      type="number"
-                      min={1}
-                      value={people}
-                      onChange={e => {
-                        const newPeople = e.target.value;
-                        if (typeof setLabourWorkData === 'function') {
-                          setLabourWorkData(prev => ({
-                            ...prev,
-                            [key]: {
-                              ...prev[key],
-                              NoOfPeople: newPeople
-                            }
-                          }));
-                        }
-                      }}
-                      style={{ width: 48, minWidth: 36, maxWidth: 60, textAlign: 'right', padding: '2px 4px', border: '1px solid #bdbdbd', borderRadius: 4 }}
-                    />
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    {labourDays ? Math.round(labourDays).toLocaleString('en-IN') : "-"}
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '8px 8px', border: '1px solid #e0e7ef', background: '#fff' }}>
-                    {labourCost ? labourCost.toLocaleString('en-IN') : "-"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: '#e3f2fd', fontWeight: 800, borderTop: '3px solid #1976d2', color: '#0d47a1' }}>
-              <td colSpan={6} style={{
-                textAlign: 'right',
-                fontWeight: 800,
-                fontSize: '1.12em',
-                borderTop: '3px solid #1976d2',
-                background: '#e3f2fd',
-                color: '#0d47a1',
-                padding: '10px 8px',
-                letterSpacing: 0.2
-              }}>
-                Grand Total
-              </td>
-              <td style={{
-                textAlign: 'right',
-                fontWeight: 800,
-                fontSize: '1.12em',
-                borderTop: '3px solid #1976d2',
-                background: '#e3f2fd',
-                color: '#0d47a1',
-                padding: '10px 8px',
-                letterSpacing: 0.2
-              }}>
-                {/* Sum of durations (labourDays) */}
-                {
-                  (() => {
-                    const totalDuration = activityMap.reduce((sum, { key, label }) => {
-                      const labour = labourWorkData[key] || labourWorkData[label] || {};
-                      const productivity =
-                        labour.Productivity_cuft_per_day ||
-                        labour.Productivity_sqft_per_day ||
-                        0;
-                      const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
-                      const totalVolume = getTotalVolume(key, unit);
-                      const people = (labour.NoOfPeople !== undefined && labour.NoOfPeople !== null && labour.NoOfPeople !== "") ? Number(labour.NoOfPeople) : 1;
-                      const baseLabourDays = productivity && totalVolume ? totalVolume / productivity : 0;
-                      const labourDays = people > 0 ? baseLabourDays / people : 0;
-                      return sum + labourDays;
-                    }, 0);
-                    return totalDuration ? Math.round(totalDuration).toLocaleString('en-IN') : "-";
-                  })()
-                }
-              </td>
-              <td style={{
-                textAlign: 'right',
-                fontWeight: 800,
-                fontSize: '1.12em',
-                borderTop: '3px solid #1976d2',
-                background: '#e3f2fd',
-                color: '#0d47a1',
-                padding: '10px 8px',
-                letterSpacing: 0.2
-              }}>
-                {
-                  (() => {
-                    const total = activityMap.reduce((sum, { key, label }) => {
-                      const labour = labourWorkData[key] || labourWorkData[label] || {};
-                      const productivity =
-                        labour.Productivity_cuft_per_day ||
-                        labour.Productivity_sqft_per_day ||
-                        0;
-                      const rate = labour.Rate || 0;
-                      const unit = labour['Applicable unit'] ? labour['Applicable unit'].toLowerCase() : 'cuft';
-                      const totalVolume = getTotalVolume(key, unit);
-                      // Use baseLabourDays (not divided by people)
-                      const baseLabourDays = productivity && totalVolume ? totalVolume / productivity : 0;
-                      return sum + Math.round(baseLabourDays * rate);
-                    }, 0);
-                    return `₹${total.toLocaleString('en-IN')}`;
-                  })()
-                }
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    )}
-   {step5Tab === 'Finishing Material' && (
-    <div className="step5-table-responsive" style={{ margin: '2rem 0', background: '#fff', padding: 0 }}>
-  <FinishingMaterialGrid
-    summaryContext={{
-      built_up_area_sqft: Number(buildupPercent) || 0,
-      perimeter_ft: Number(constructionPerimeter) || 0,
-      tile_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Flooring', 'sqft') : 0,
-      painting_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
-      room_count: typeof totalRooms !== 'undefined' ? totalRooms : 0,
-      toilet_count: typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0,
-      kitchen_count: typeof totalKitchens !== 'undefined' ? totalKitchens : 0,
-      wet_points_count: (typeof totalBathrooms !== 'undefined' ? totalBathrooms : 0) + (typeof totalKitchens !== 'undefined' ? totalKitchens : 0),
-      plastering_area_sqft: typeof getTotalVolume === 'function' ? getTotalVolume('Painting', 'sqft') : 0,
-      open_area_sqft: 0, // TODO: derive if available
-      landscape_area_sqft: 0, // TODO: derive if available
-      window_frame_area_sqft: 0, // TODO: derive if available
-      door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-      Door_count: typeof totalDoors !== 'undefined' ? totalDoors : 0,
-      window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-      Window_count: typeof totalWindows !== 'undefined' ? totalWindows : 0,
-      floor_count: Number(floors)
-    }}
-    data={finishingMaterialData}
-    onDataChange={setFinishingMaterialData}
-    materialRateConfig={materialRateConfig}
-  />
-
-</div>
-
-
-)}
-
-{step5Tab === 'Cost Summary' && (
-  <div>
-    
-  <BOQConsolidatedGrid data={boqItems} brandRateMap={brandRateMap} />
-  </div>
-)}
-
-
-  </div>
-
-
-    
-  </div>
-)}
-      </div>
       {/* Navigation Buttons */}
       <div className="wizard-nav-btns mt-4">
         <Button disabled={step === 1} onClick={() => setStep(step-1)} className="me-2">Back</Button>
-        <Button disabled={step === 4} onClick={() => setStep(step+1)} className="me-2">Next</Button>
+        <Button disabled={step === 3} onClick={() => setStep(step+1)} className="me-2">Next</Button>
         
         {/* Individual Save and Load Buttons for Each Step */}
         {!isViewMode && (
@@ -4932,18 +3985,9 @@ const boqItems = useMemo(() => {
                 </Button>
               </>
             )}
-            {step === 4 && (
-              <>
-                <Button variant="primary" onClick={handleSaveStep4} className="me-2" style={{ fontWeight: 600 }}>
-                  Save Step 4
-                </Button>
-                <Button variant="outline-primary" onClick={handleLoadStep4} className="me-2" style={{ fontWeight: 600 }}>
-                  Load Step 4
-                </Button>
-              </>
-            )}
           </>
         )}
+      </div>
       </div>
 
       {/* BHK Details Modal */}

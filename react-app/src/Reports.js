@@ -339,7 +339,7 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
       </Page>
 
       {/* Page 3: Material Details (conditional) */}
-      {includeMaterialDetails && processedDetailedData && processedDetailedData.length > 0 && (
+      {processedDetailedData && processedDetailedData.length > 0 && (
         <Page size="A4" orientation="landscape" style={pdfStyles.page}>
           <View style={pdfStyles.header}>
             <Text style={pdfStyles.companyName}>{reportData?.companyDetails?.companyName || 'N/A'}</Text>
@@ -499,7 +499,7 @@ function Reports() {
   const [processedDetailedData, setProcessedDetailedData] = useState([]);
   
   useEffect(() => {
-    if (detailedMaterialData && detailedMaterialData.length > 0) {
+    if (detailedMaterialData && detailedMaterialData.length > 0 && Array.isArray(detailedFloors) && detailedFloors.length > 0) {
       const grouped = [];
       let currentCategory = null;
       let categorySubtotal = 0;
@@ -1260,23 +1260,24 @@ function Reports() {
     XLSX.utils.book_append_sheet(wb, ws3, 'Floor-wise Details');
     
     // ===== SHEET 4: Material Details =====
-    const ws4Data = [];
-    
-    // Add title and headers
-    ws4Data.push(['Material Details Report']);
-    ws4Data.push([]);
-    
-    // Add column headers
-    const materialHeaders = [
-      'Item',
-      ...detailedFloors,
-      'Total',
-      'Unit',
-      'Rate',
-      `Amount (${currencySymbol})`,
-      'Remarks'
-    ];
-    ws4Data.push(materialHeaders);
+    if (includeMaterialDetails && processedDetailedData && processedDetailedData.length > 0 && detailedFloors && detailedFloors.length > 0) {
+      const ws4Data = [];
+      
+      // Add title and headers
+      ws4Data.push(['Material Details Report']);
+      ws4Data.push([]);
+      
+      // Add column headers
+      const materialHeaders = [
+        'Item',
+        ...detailedFloors,
+        'Total',
+        'Unit',
+        'Rate',
+        `Amount (${currencySymbol})`,
+        'Remarks'
+      ];
+      ws4Data.push(materialHeaders);
     
     // Add data rows with category grouping
     processedDetailedData.forEach(row => {
@@ -1290,7 +1291,9 @@ function Reports() {
       } else if (row.isSubtotal) {
         // Subtotal row
         const subtotalRow = ['Subtotal'];
-        detailedFloors.forEach(() => subtotalRow.push(''));
+        if (Array.isArray(detailedFloors)) {
+          detailedFloors.forEach(() => subtotalRow.push(''));
+        }
         subtotalRow.push(''); // Total
         subtotalRow.push(''); // Unit
         subtotalRow.push(''); // Rate
@@ -1300,7 +1303,9 @@ function Reports() {
       } else if (row.isGrandTotal) {
         // Grand total row
         const grandTotalRow = ['Grand Total'];
-        detailedFloors.forEach(() => grandTotalRow.push(''));
+        if (Array.isArray(detailedFloors)) {
+          detailedFloors.forEach(() => grandTotalRow.push(''));
+        }
         grandTotalRow.push(''); // Total
         grandTotalRow.push(''); // Unit
         grandTotalRow.push(''); // Rate
@@ -1310,7 +1315,9 @@ function Reports() {
       } else {
         // Regular data row
         const dataRow = [row.item];
-        detailedFloors.forEach(floor => dataRow.push(row[floor] || 0));
+        if (Array.isArray(detailedFloors)) {
+          detailedFloors.forEach(floor => dataRow.push(row[floor] || 0));
+        }
         dataRow.push(row.total);
         dataRow.push(row.unit);
         dataRow.push(row.rate);
@@ -1325,7 +1332,7 @@ function Reports() {
     // Set column widths
     ws4['!cols'] = [
       { wch: 30 }, // Item
-      ...detailedFloors.map(() => ({ wch: 15 })),
+      ...(Array.isArray(detailedFloors) ? detailedFloors.map(() => ({ wch: 15 })) : []),
       { wch: 15 }, // Total
       { wch: 10 }, // Unit
       { wch: 12 }, // Rate
@@ -1442,6 +1449,7 @@ function Reports() {
     });
     
     XLSX.utils.book_append_sheet(wb, ws4, 'Material Details');
+    }
     
     // Write the file
     XLSX.writeFile(wb, `Cost_Report_${reportData?.projectDetails?.projectName || 'Report'}.xlsx`, { cellStyles: true });
@@ -1617,30 +1625,6 @@ function Reports() {
                           >
                             <i className="bi bi-file-earmark-pdf me-2"></i>
                             {loading ? 'Generating...' : 'View PDF'}
-                          </Button>
-                        )}
-                      </PDFDownloadLink>
-                      <PDFDownloadLink 
-                        document={<CostReportPDF 
-                          reportData={reportData} 
-                          categoryWiseData={categoryWiseData} 
-                          floorWiseData={floorWiseData}
-                          includeMaterialDetails={includeMaterialDetails}
-                          processedDetailedData={processedDetailedData}
-                          detailedFloors={detailedFloors}
-                          currencySymbol={currencySymbol}
-                        />} 
-                        fileName={`Cost_Report_${reportData?.projectDetails?.projectName || 'Report'}.pdf`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        {({ loading }) => (
-                          <Button 
-                            variant="danger" 
-                            size="sm"
-                            disabled={loading}
-                          >
-                            <i className="bi bi-download me-2"></i>
-                            {loading ? 'Generating...' : 'Download PDF'}
                           </Button>
                         )}
                       </PDFDownloadLink>
@@ -1887,13 +1871,13 @@ function Reports() {
                   </Tab>
                   <Tab eventKey="detailed" title="Detailed Material">
                     <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
-                      {processedDetailedData.length > 0 ? (
+                      {Array.isArray(processedDetailedData) && processedDetailedData.length > 0 ? (
                         <HotTable
                           ref={detailedTableRef}
                           data={processedDetailedData}
                           colHeaders={[
                             'Item',
-                            ...detailedFloors,
+                            ...(Array.isArray(detailedFloors) ? detailedFloors : []),
                             'Total',
                             'Unit',
                             'Rate',
@@ -1902,13 +1886,13 @@ function Reports() {
                           ]}
                           columns={[
                             { data: 'item', type: 'text', readOnly: true, width: 250 },
-                            ...detailedFloors.map(floor => ({
+                            ...(Array.isArray(detailedFloors) ? detailedFloors.map(floor => ({
                               data: floor,
                               type: 'numeric',
                               numericFormat: { pattern: '0,0.00' },
                               readOnly: true,
                               width: 100
-                            })),
+                            })) : []),
                             { 
                               data: 'total', 
                               type: 'numeric', 

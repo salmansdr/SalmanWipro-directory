@@ -19,8 +19,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const [activeTab, setActiveTab] = useState('quantity');
   const [quantityData, setQuantityData] = useState(null);
   const [materialData, setMaterialData] = useState(null);
-  const [tableKey, setTableKey] = useState(0);
-  const [tableReady, setTableReady] = useState(false);
   const [gradeOptions, setGradeOptions] = useState([]);
   const [rccConfigData, setRccConfigData] = useState([]);
   const [showAddComponentModal, setShowAddComponentModal] = useState(false);
@@ -42,7 +40,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const previousTabRef = useRef('quantity'); // Track previous tab for saving material data
   const allComponentsRef = useRef({}); // Store all components from AreaCalculation
   const materialEditedFlags = useRef({}); // Track which floors have edited material data
-  const tableReadyTimer = useRef(null); // Track timeout for cleanup
 
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
 
@@ -142,7 +139,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           material: value.Material || 'no',
           mixture: value.Mixture || '',
           unit: value.Unit || 'cu m',
-          labourRate: parseFloat(value.PricePerUnit) || 0
+          labourRate: parseFloat(value.PricePerUnit) || 0,
+          instruction: value.Instruction || ''
         });
       }
     });
@@ -195,7 +193,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                     material: value.Material || 'no',
                     mixture: value.Mixture || '',
                     unit: value.Unit || 'cu m',
-                    labourRate: pricePerUnit
+                    labourRate: pricePerUnit,
+                    instruction: value.Instruction || ''
                   });
                 }
               });
@@ -249,12 +248,15 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                   
                   // Use PricePerUnit from EstimationMaterialFloorWise if available, otherwise from AreaCalculation
                   const labourRate = parseFloat(comp.PricePerUnit) || categoryPrices[compName] || 0;
+                  const instruction = comp.Instruction || componentInfo?.instruction || '';
+                  
                   return {
                     component: compName,
                     unit: comp.Unit || 'cu m',
                     mixture: comp.Mixture || '',
                     labourRate: labourRate,
-                    category: category // Include category
+                    category: category, // Include category
+                    instruction: instruction // Include instruction
                   };
                 });
                 
@@ -273,6 +275,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                     // Use Category from database first, fallback to allComponentsRef
                     const componentInfo = allComponentsRef.current[floorCategory]?.find(c => c.component === compName);
                     const category = comp.Category || componentInfo?.category || null;
+                    const instruction = comp.Instruction || componentInfo?.instruction || '';
                     
                     // Add group header with total quantity
                     gridData.push({
@@ -283,6 +286,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                       mixture: comp.Mixture || '',
                       labourRate: labourRate,
                       category: category, // Include category from DB or fallback
+                      instruction: instruction, // Include instruction
                       isGroupHeader: true,
                       groupIndex: index
                     });
@@ -383,12 +387,12 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       const response = await fetch(url);
       
       if (!response.ok) {
-        console.log('No saved material data found');
+
         return;
       }
       
       const data = await response.json();
-      console.log('Loaded material data:', data);
+
       
       let floorsArray = null;
       
@@ -472,11 +476,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         if (Object.keys(materialDataCache.current).length > 0) {
           setMaterialCacheVersion(prev => prev + 1);
         }
-        
-        console.log('Material data cached for floors:', Object.keys(materialDataCache.current));
       }
     } catch (error) {
-      console.log('Error loading material data:', error);
+      // Error loading material data
     }
   }, [apiBaseUrl, mapFloorName]);
 
@@ -525,6 +527,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         mixture: comp.mixture || '',
         labourRate: comp.labourRate || 0,
         category: comp.category || null, // Include category from AreaCalculation
+        instruction: comp.instruction || '', // Include instruction from AreaCalculation
         isGroupHeader: true,
         isDeduction: false,
         groupIndex: index
@@ -548,9 +551,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       });
     });
     
-    // Create completely new array reference and update key
+    // Create completely new array reference
     const newData = JSON.parse(JSON.stringify(initialData)); // Deep clone
-    setTableKey(Date.now());
     setQuantityData(newData);
     
     // Calculate totals after data is loaded
@@ -660,6 +662,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       mixture: componentToAdd.mixture || '',
       labourRate: componentToAdd.labourRate || 0,
       category: componentToAdd.category || null, // Include category
+      instruction: componentToAdd.instruction || '', // Include instruction
       isGroupHeader: true,
       isDeduction: false,
       groupIndex: newGroupIndex
@@ -704,7 +707,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     });
     
     // Update state
-    setTableKey(Date.now());
     setQuantityData(currentData);
     
     // Update cache
@@ -838,7 +840,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
 
     // If we're copying to the current floor, refresh the display
     if (copyTargetFloor === localSelectedFloor) {
-      setTableKey(Date.now());
       setQuantityData(sourceGridData);
       setMaterialCacheVersion(prev => prev + 1); // Refresh material grid if on Tab 2
     }
@@ -861,31 +862,18 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       if (floorDataCache.current[floor]) {
         const cachedData = floorDataCache.current[floor];
         
-        // Clear any pending timer
-        if (tableReadyTimer.current) {
-          clearTimeout(tableReadyTimer.current);
-        }
-        
         // Check if cached data has gridData (user modified) or just components (fresh from DB)
         if (cachedData.gridData && Array.isArray(cachedData.gridData) && cachedData.gridData.length > 0) {
           const gridData = JSON.parse(JSON.stringify(cachedData.gridData));
-          setTableReady(false);
-          setTableKey(Date.now());
           setQuantityData(gridData);
-          tableReadyTimer.current = setTimeout(() => setTableReady(true), 100);
         } else if (cachedData.components) {
-          setTableReady(false);
           initializeQuantityData(cachedData.components);
-          tableReadyTimer.current = setTimeout(() => setTableReady(true), 100);
         } else if (Array.isArray(cachedData)) {
           // Old format - just component list
-          setTableReady(false);
           initializeQuantityData(cachedData);
-          tableReadyTimer.current = setTimeout(() => setTableReady(true), 100);
         } else {
           // No valid data - set to null to prevent rendering
           setQuantityData(null);
-          setTableReady(false);
         }
         
         setLoadingData(false);
@@ -940,15 +928,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     loadGradeOptions();
     loadMaterialItems();
   }, [loadEstimations, loadGradeOptions, loadMaterialItems]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (tableReadyTimer.current) {
-        clearTimeout(tableReadyTimer.current);
-      }
-    };
-  }, []);
 
   // Load all floors data on initial mount when estimationMasterId is available
   useEffect(() => {
@@ -1073,10 +1052,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
 
   // Function to get all cached material data for saving
   const getAllMaterialDataForSave = useCallback(() => {
-    console.log('getAllMaterialDataForSave called');
-    console.log('materialDataCache keys:', Object.keys(materialDataCache.current));
-    console.log('floorDataCache keys:', Object.keys(floorDataCache.current));
-    console.log('rccConfigData:', rccConfigData);
     
     // Save current floor material data first
     if (localSelectedFloor && localSelectedFloor !== '') {
@@ -1094,11 +1069,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     ]);
     
     floorsToProcess.forEach(floorName => {
-      console.log(`Processing floor: ${floorName}`);
+
       
       // Check if we have edited material data for this floor
       if (materialDataCache.current[floorName] && materialDataCache.current[floorName].length > 0) {
-        console.log(`Using cached material data for ${floorName}`);
+
         const materialGridData = materialDataCache.current[floorName];
         
         // Convert grid data to API format
@@ -1149,13 +1124,13 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       // If no edited material data, generate from quantity data
       const floorCache = floorDataCache.current[floorName];
       if (!floorCache) {
-        console.log(`No cache found for ${floorName}`);
+
         return;
       }
       
       const gridData = floorCache.gridData || [];
       
-      console.log(`${floorName} gridData length:`, gridData.length);
+
       
       if (gridData.length === 0) return;
       
@@ -1164,7 +1139,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       
       gridData.forEach((row) => {
         if (row.isGroupHeader) {
-          console.log(`Processing group header: ${row.component}, quantity: ${row.quantity}, mixture: ${row.mixture}`);
+
           const volumeQty = parseFloat(row.quantity) || 0;
           
           // Skip if volume is 0 or less
@@ -1289,9 +1264,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         components: materialComponents
       });
     });
-    
-    console.log('Total floors with material data:', allFloorsMaterialData.length);
-    console.log('Material data to save:', JSON.stringify(allFloorsMaterialData, null, 2));
     
     return allFloorsMaterialData;
   }, [localSelectedFloor, estimationMasterId, saveCurrentMaterialDataToCache, rccConfigData]);
@@ -1472,7 +1444,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     });
     
     // Update state
-    setTableKey(Date.now());
     setQuantityData(updatedData);
     
     // Update cache
@@ -1674,10 +1645,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       return;
     }
     
-    console.log('Updating material cache from quantity changes for:', localSelectedFloor);
-    console.log('Existing material data length:', existingMaterialData.length);
-    console.log('Material group headers:', existingMaterialData.filter(m => m.isGroupHeader).map(m => m.component));
-    
+
     // Always update volumes from quantity data changes
     // User edits to rates/wastage are preserved
     const updatedMaterialData = JSON.parse(JSON.stringify(existingMaterialData));
@@ -1685,20 +1653,20 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     // Process each quantity group header
     currentQuantityData.forEach(qtyRow => {
       if (qtyRow.isGroupHeader) {
-        console.log('Processing quantity row:', qtyRow.component, 'qty:', qtyRow.quantity);
+
         
         // Find matching material group header
         const matGroupIndex = updatedMaterialData.findIndex(
           m => m.isGroupHeader && m.component === qtyRow.component
         );
         
-        console.log('Found material group at index:', matGroupIndex, 'for:', qtyRow.component);
+
         
         if (matGroupIndex >= 0) {
           // Existing component - update volume and recalculate amounts
           const volumeQty = parseFloat(qtyRow.quantity) || 0;
           
-          console.log('Updating volume for', qtyRow.component, 'from', updatedMaterialData[matGroupIndex].volume, 'to', volumeQty);
+
           
           // Update volume
           updatedMaterialData[matGroupIndex].volume = parseFloat(volumeQty.toFixed(2));
@@ -1781,11 +1749,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     // Update cache with modified data
     materialDataCache.current[localSelectedFloor] = updatedMaterialData;
     
-    console.log('Material cache updated, activeTab:', activeTab);
+
     
     // If material tab is active, update display immediately
     if (activeTab === 'material') {
-      console.log('Updating material display with new data');
+
       setMaterialData(updatedMaterialData);
     }
   }, [localSelectedFloor, rccConfigData, activeTab, generateMaterialDataForFloor]);
@@ -1852,7 +1820,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   useEffect(() => {
     // If we're switching away from material tab, save the current data
     if (previousTabRef.current === 'material' && activeTab !== 'material' && localSelectedFloor) {
-      console.log('Switching away from material tab, saving data for:', localSelectedFloor);
+
       saveCurrentMaterialDataToCache(localSelectedFloor);
     }
     
@@ -2072,9 +2040,142 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     {
       data: 'component',
       title: 'Component',
-      width: 220,
+      width: 280,
       type: 'text',
-      readOnly: false
+      readOnly: false,
+      renderer: function(instance, td, row, col, prop, value, cellProperties) {
+        const rowData = instance.getSourceDataAtRow(row);
+        
+        // Detect group header by checking if srNo is a number (group headers have numeric srNo)
+        const isGroupHeader = rowData && typeof rowData.srNo === 'number' && rowData.srNo > 0;
+        
+        if (isGroupHeader) {
+          // Group header with instruction info icon
+          td.innerHTML = '';
+          td.style.padding = '8px 6px';
+          td.style.background = '#f1f5f9';
+          td.style.borderLeft = '3px solid #3b82f6';
+          td.style.position = 'relative';
+          
+          // Create container
+          const container = document.createElement('div');
+          container.style.display = 'flex';
+          container.style.alignItems = 'center';
+          container.style.gap = '8px';
+          
+          // Component name
+          const componentSpan = document.createElement('span');
+          componentSpan.textContent = rowData.component || value || '';
+          componentSpan.style.fontSize = '13px';
+          componentSpan.style.fontWeight = '600';
+          componentSpan.style.color = '#1e293b';
+          componentSpan.style.flex = '1';
+          
+          container.appendChild(componentSpan);
+          
+          // Add instruction info icon (if available)
+          if (rowData.instruction && rowData.instruction.trim() !== '') {
+            const infoIcon = document.createElement('span');
+            infoIcon.innerHTML = '&#9432;';
+            infoIcon.className = 'instruction-info-icon';
+            infoIcon.style.cssText = `
+              color: #3b82f6;
+              cursor: pointer;
+              font-size: 16px;
+              font-weight: bold;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              width: 20px;
+              height: 20px;
+              border-radius: 50%;
+              background: #dbeafe;
+              flex-shrink: 0;
+            `;
+            infoIcon.title = 'Click to view instruction';
+            
+            // Create tooltip div
+            const tooltipDiv = document.createElement('div');
+            tooltipDiv.className = 'boq-instruction-tooltip';
+            tooltipDiv.style.cssText = `
+              position: absolute;
+              background: #1e293b;
+              color: white;
+              padding: 12px 16px;
+              border-radius: 6px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              z-index: 10000;
+              max-width: 350px;
+              font-size: 12px;
+              line-height: 1.5;
+              display: none;
+              top: 100%;
+              left: 0;
+              margin-top: 8px;
+              white-space: normal;
+              word-wrap: break-word;
+            `;
+            
+            // Instruction content
+            const instructionText = document.createElement('div');
+            instructionText.textContent = rowData.instruction;
+            instructionText.style.fontWeight = 'normal';
+            tooltipDiv.appendChild(instructionText);
+            
+            // Arrow
+            const arrow = document.createElement('div');
+            arrow.style.cssText = `
+              position: absolute;
+              bottom: 100%;
+              left: 20px;
+              width: 0;
+              height: 0;
+              border-left: 6px solid transparent;
+              border-right: 6px solid transparent;
+              border-bottom: 6px solid #1e293b;
+            `;
+            tooltipDiv.appendChild(arrow);
+            
+            // Show/hide tooltip on hover
+            infoIcon.addEventListener('mouseenter', function(e) {
+              tooltipDiv.style.display = 'block';
+              
+              // Position tooltip
+              const iconRect = infoIcon.getBoundingClientRect();
+              const tdRect = td.getBoundingClientRect();
+              tooltipDiv.style.left = (iconRect.left - tdRect.left - 10) + 'px';
+            });
+            
+            infoIcon.addEventListener('mouseleave', function(e) {
+              // Delay hiding to allow moving to tooltip
+              setTimeout(() => {
+                if (!tooltipDiv.matches(':hover') && !infoIcon.matches(':hover')) {
+                  tooltipDiv.style.display = 'none';
+                }
+              }, 100);
+            });
+            
+            tooltipDiv.addEventListener('mouseenter', function() {
+              tooltipDiv.style.display = 'block';
+            });
+            
+            tooltipDiv.addEventListener('mouseleave', function() {
+              tooltipDiv.style.display = 'none';
+            });
+            
+            container.appendChild(infoIcon);
+            td.appendChild(tooltipDiv);
+          }
+          
+          td.appendChild(container);
+        } else {
+          // Regular cell
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          td.style.background = 'white';
+        }
+        
+        return td;
+      }
     },
     {
       data: 'no',
@@ -2258,8 +2359,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'action',
-      title: 'Action',
-      width: 100,
+      title: 'Action<br/><small style="font-size:9px;color:#666;">🟢Add 🔴Del 🟠No.Column 🔵Mix</small>',
+      width: 150,
       type: 'text',
       readOnly: true,
       className: 'htCenter',
@@ -2354,7 +2455,85 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           
           buttonContainer.appendChild(deleteButton);
           
-          // Info icon for material composition (if config found) - placed AFTER + button
+          // Instruction info icon (if instruction exists) - ORANGE/AMBER color
+          if (rowData.instruction && rowData.instruction.trim() !== '') {
+            const instructionButton = document.createElement('button');
+            instructionButton.innerHTML = '&#9432;';
+            instructionButton.style.border = 'none';
+            instructionButton.style.background = '#f59e0b'; // Amber/orange color
+            instructionButton.style.color = 'white';
+            instructionButton.style.padding = '2px 4px';
+            instructionButton.style.borderRadius = '3px';
+            instructionButton.style.cursor = 'pointer';
+            instructionButton.style.fontSize = '14px';
+            instructionButton.style.fontWeight = 'bold';
+            instructionButton.style.height = '26px';
+            instructionButton.style.width = '26px';
+            instructionButton.style.display = 'inline-flex';
+            instructionButton.style.alignItems = 'center';
+            instructionButton.style.justifyContent = 'center';
+            instructionButton.title = 'View Instruction';
+            
+            // Create tooltip div for instruction
+            td.style.position = 'relative';
+            td.style.overflow = 'visible';
+            const instructionTooltip = document.createElement('div');
+            instructionTooltip.className = 'boq-instruction-tooltip';
+            instructionTooltip.style.cssText = `
+              position: fixed;
+              background: #1e293b;
+              color: white;
+              padding: 12px 16px;
+              border-radius: 6px;
+              font-size: 12px;
+              z-index: 999999;
+              max-width: 400px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+              display: none;
+              white-space: normal;
+              word-wrap: break-word;
+            `;
+            
+            instructionTooltip.innerHTML = `
+              <div style="font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 6px; color: #fbbf24;">
+                📋 Instruction
+              </div>
+              <div style="line-height: 1.6;">
+                ${rowData.instruction}
+              </div>
+              <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #475569; font-size: 10px; color: #94a3b8; text-align: center;">
+                Click outside to close
+              </div>
+            `;
+            
+            instructionButton.onclick = (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const isVisible = instructionTooltip.style.display === 'block';
+              
+              if (!isVisible) {
+                // Position tooltip near the button
+                const rect = instructionButton.getBoundingClientRect();
+                instructionTooltip.style.top = (rect.bottom + 5) + 'px';
+                instructionTooltip.style.left = Math.max(10, rect.left - 150) + 'px';
+                instructionTooltip.style.display = 'block';
+              } else {
+                instructionTooltip.style.display = 'none';
+              }
+            };
+            
+            buttonContainer.appendChild(instructionButton);
+            td.appendChild(instructionTooltip);
+            
+            // Close tooltip when clicking outside
+            document.addEventListener('click', function(e) {
+              if (!instructionButton.contains(e.target) && !instructionTooltip.contains(e.target)) {
+                instructionTooltip.style.display = 'none';
+              }
+            });
+          }
+          
+          // Info icon for material composition (if config found) - placed AFTER instruction button
           if (matchingConfig) {
             const infoButton = document.createElement('button');
             infoButton.innerHTML = '&#9432;';
@@ -2621,14 +2800,13 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                           
                           {/* Quantity Sheet Table */}
                           <div style={{ border: '2px solid #ddd', borderRadius: '4px' }}>
-                            {loadingData || !tableReady ? (
+                            {loadingData ? (
                               <div style={{ padding: '40px', textAlign: 'center' }}>
                                 <Spinner animation="border" size="sm" /> Loading...
                               </div>
                             ) : (
                               quantityData && quantityData.length > 0 && (
                                 <HotTable
-                                  key={`quantity-table-${tableKey}-${quantityData.length}-${localSelectedFloor || 'none'}-${loadingData ? 'loading' : 'ready'}`}
                                   ref={quantityTableRef}
                                   data={quantityData}
                                   columns={getQuantityColumns}
@@ -2661,7 +2839,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 }
                               }}
                               width="100%"
-                              height="auto"
+                              height="600px"
                               autoRowSize={true}
                               autoColumnSize={true}
                               licenseKey="non-commercial-and-evaluation"
@@ -2671,6 +2849,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               contextMenu={true}
                               manualColumnResize={true}
                               fixedColumnsLeft={1}
+                              fixedRowsTop={1}
                               beforeOnCellContextMenu={(event, coords) => {
                                 if (!quantityData || !Array.isArray(quantityData) || coords.row >= quantityData.length) {
                                   return;
@@ -2964,6 +3143,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               contextMenu={true}
                               manualColumnResize={true}
                               fixedColumnsLeft={1}
+                              fixedRowsTop={1}
                               autoWrapCol={true}
                               autoWrapRow={true}
                               afterChange={(changes, source) => {

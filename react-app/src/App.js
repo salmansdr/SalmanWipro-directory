@@ -1,5 +1,10 @@
 import ProjectEstimation from './ProjectEstimation';
 import TestApiPage from './TestApiPage';
+import SupplierMaster from './SupplierMaster';
+import EnquiryDetails from './EnquiryDetails';
+import PurchaseOrders from './PurchaseOrders';
+import MaterialReceived from './MaterialReceived';
+import StoreRequisition from './StoreRequisition';
 
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -321,8 +326,11 @@ function App() {
     </NavDropdown>
   );
 
+  // Use basename only in production (GitHub Pages), not in development
+  const basename = process.env.NODE_ENV === 'production' ? '/SalmanWipro-directory' : '/';
+
   return (
-    <Router basename="/SalmanWipro-directory">
+    <Router basename={basename}>
       <div className="bg-light min-vh-100" style={{ padding: 0 }}>
         <Navbar expand="lg" className="shadow-sm" style={{width: '100%', backgroundColor: themeColor, margin: 0}} expanded={expanded} onToggle={setExpanded}>
           <Container fluid style={{width: '100%'}}>
@@ -372,11 +380,16 @@ function App() {
               {isAuthenticated && <Route path="/project-management" element={<ProjectManagement />} />}
               {isAuthenticated && <Route path="/ProjectManagementEntryForm" element={<ProjectManagementEntryForm />} />}
               {isAuthenticated && <Route path="/project-estimation" element={<ProjectEstimation />} />}
+              {isAuthenticated && <Route path="/enquiry-details" element={<EnquiryDetails />} />}
               {isAuthenticated && <Route path="/boq-estimation" element={<BOQEstimation />} />}
               {isAuthenticated && <Route path="/pricing-calculator" element={<PricingCalculator />} />}
+              {isAuthenticated && <Route path="/purchase-orders" element={<PurchaseOrders />} />}
+              {isAuthenticated && <Route path="/material-received" element={<MaterialReceived />} />}
+              {isAuthenticated && <Route path="/store-requisition" element={<StoreRequisition />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
               {isAuthenticated && <Route path="/item-master" element={<ItemMaster />} />}
+              {isAuthenticated && <Route path="/supplier-master" element={<SupplierMaster />} />}
               {isAuthenticated && <Route path="/rcc-configuration" element={<RccConfiguration />} />}
               {isAuthenticated && <Route path="/bhk-configuration" element={<BHKConfiguration />} />}
               {isAuthenticated && <Route path="/area-calculation" element={<AreaCalculation />} />}

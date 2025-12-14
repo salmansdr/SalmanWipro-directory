@@ -116,7 +116,8 @@ const AreaCalculationHandsontable = () => {
           PricePerUnit: details.PricePerUnit || '',
           Material: details.Material || 'no',
           Category: details.Category || '',
-          Mixture: details.Mixture || ''
+          Mixture: details.Mixture || '',
+          Instruction: details.Instruction || ''
         };
       }
       return null;
@@ -174,6 +175,12 @@ const AreaCalculationHandsontable = () => {
       width: 120,
       type: 'dropdown',
       source: gradeOptions
+    },
+    {
+      data: 'Instruction',
+      title: 'Instruction',
+      width: 200,
+      type: 'text'
     }
   ];
 

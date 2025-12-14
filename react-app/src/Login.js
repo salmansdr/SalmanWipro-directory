@@ -27,6 +27,7 @@ function Login({ onLogin, isAuthenticated }) {
     // Store user data in localStorage
     localStorage.setItem('userId', userData._id);
     localStorage.setItem('username', userData.username);
+    localStorage.setItem('fullName', userData.fullName || userData.username);
     localStorage.setItem('userRole', userData.roleName);
     localStorage.setItem('userPermissions', JSON.stringify(userData.rolePermissions || []));
     
@@ -38,6 +39,11 @@ function Login({ onLogin, isAuthenticated }) {
       localStorage.setItem('companyLogo', companyData.branding?.logo?.base64Data || '');
       localStorage.setItem('companyThemeColor', companyData.branding?.themeColor || '#2563eb');
       localStorage.setItem('companyFontColor', companyData.branding?.fontColor || '#000000');
+      localStorage.setItem('companyCurrency', companyData.currency || 'INR');
+      // Store address as JSON string
+      localStorage.setItem('companyAddress', JSON.stringify(companyData.address || {}));
+      // Store contact as JSON string
+      localStorage.setItem('companyContact', JSON.stringify(companyData.contact || {}));
     }
     
     // Call parent onLogin handler

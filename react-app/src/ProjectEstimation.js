@@ -127,7 +127,7 @@ function ProjectEstimation() {
     if (window.confirm(`Are you sure you want to delete estimation ${ref}?`)) {
       try {
         const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-        const endpoint = `${apiUrl}/api/ProjectEstimation/${id}`;
+        const endpoint = `${apiUrl}/api/ProjectEstimation/by-estimation-ref/${ref}`;
         const response = await fetch(endpoint, {
           method: 'DELETE'
         });
@@ -224,9 +224,24 @@ function ProjectEstimation() {
                       <td>{row.modificationDate}</td>
                       <td>{row.createdBy}</td>
                       <td>{row.modifiedBy}</td>
-                      <td className="d-flex gap-2">
-                        <Button variant="outline-primary" size="sm" onClick={() => handleEditClick(row._id)}>Edit</Button>
-                        <Button variant="outline-danger" size="sm" onClick={() => handleDelete(row._id, row.ref)}>Delete</Button>
+                      <td>
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          className="me-2"
+                          onClick={() => handleEditClick(row._id)}
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                        <Button 
+                          variant="outline-danger" 
+                          size="sm"
+                          onClick={() => handleDelete(row._id, row.ref)}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </Button>
                       </td>
                     </tr>
                   ))}

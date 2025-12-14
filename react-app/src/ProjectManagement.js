@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Table, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectDetails() {
@@ -105,14 +105,23 @@ function ProjectDetails() {
                   <td>{project.startDate}</td>
                   <td>{project.endDate}</td>
                   <td className="text-center">
-                    <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-2">
-                      <Button variant="outline-primary" size="sm" onClick={() => handleEdit(project)} title="Edit">
-                        <FaEdit />
-                      </Button>
-                      <Button variant="outline-danger" size="sm" onClick={() => handleDelete(project._id)} title="Delete">
-                        <FaTrash />
-                      </Button>
-                    </div>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm" 
+                      className="me-2"
+                      onClick={() => handleEdit(project)}
+                      title="Edit"
+                    >
+                      <i className="bi bi-pencil"></i>
+                    </Button>
+                    <Button 
+                      variant="outline-danger" 
+                      size="sm"
+                      onClick={() => handleDelete(project._id)}
+                      title="Delete"
+                    >
+                      <i className="bi bi-trash"></i>
+                    </Button>
                   </td>
                 </tr>
               ))}

@@ -77,6 +77,7 @@ function Home() {
   const [enqMessage, setEnqMessage] = useState('');
   const [enqError, setEnqError] = useState('');
   const [enqSuccess, setEnqSuccess] = useState('');
+  const [enqLoading, setEnqLoading] = useState(false);
 
   const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
   let tabProjects = [];
@@ -239,15 +240,101 @@ function Home() {
       setEnqError('Please fill all fields with valid email and 10-digit phone number.');
       return;
     }
-    // Send email using mailto
-    const subject = encodeURIComponent(`Enquiry for ${enqProject}`);
-    const body = encodeURIComponent(`Name: ${enqName}\nEmail: ${enqEmail}\nPhone: ${enqPhone}\nProject: ${enqProject}\nMessage: ${enqMessage}`);
-    window.location.href = `mailto:${enqEmail}?subject=${subject}&body=${body}`;
-    // Send WhatsApp message
-    const whatsappMsg = encodeURIComponent(`Enquiry for ${enqProject}:\n${enqMessage}\nName: ${enqName}, Phone: ${enqPhone}, Email: ${enqEmail}`);
-    window.open(`https://wa.me/${enqPhone}?text=${whatsappMsg}`, '_blank');
-    setEnqSuccess('Your enquiry has been sent!');
-    setEnqName(''); setEnqEmail(''); setEnqProject(''); setEnqPhone(''); setEnqMessage('');
+    
+    setEnqLoading(true);
+    const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+    
+    // First, check if record already exists
+    const searchUrl = `${apiBaseUrl}/api/Home/search?projectName=${encodeURIComponent(enqProject)}&email=${encodeURIComponent(enqEmail)}`;
+    console.log('Checking existing enquiry:', searchUrl);
+    
+    fetch(searchUrl)
+      .then(response => {
+        console.log('Search response status:', response.status);
+        // If 404, treat as no record found and proceed with POST
+        if (response.status === 404) {
+          console.log('No existing record found (404), proceeding with POST');
+          return null;
+        }
+        // If other error status
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(existingData => {
+        console.log('Search result:', existingData);
+        
+        if (existingData) {
+          // Record already exists
+          const enquiryDate = existingData.enquiryDate || existingData[0]?.enquiryDate;
+          const formattedDate = enquiryDate ? new Date(enquiryDate).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }) : '';
+          
+          setEnqLoading(false);
+          setEnqSuccess(`Your enquiry information about this project is saved in our database on ${formattedDate}. Team will contact you.`);
+          setEnqName(''); 
+          setEnqEmail(''); 
+          setEnqProject(''); 
+          setEnqPhone(''); 
+          setEnqMessage('');
+        } else {
+          // No existing record, proceed with POST
+          // Prepare enquiry data as JSON with all columns
+          const enquiryData = {
+            name: enqName,
+            Email: enqEmail,
+            ProjectName: enqProject,
+            phoneNo: enqPhone,
+            message: enqMessage,
+            enquiryDate: new Date().toISOString()
+          };
+          
+          const requestPayload = {
+            subject: `New Enquiry for ${enqProject}`,
+            enquiryData: enquiryData
+          };
+          
+          console.log('Sending to backend API:', `${apiBaseUrl}/api/Home`);
+          console.log('Request Payload:', JSON.stringify(requestPayload, null, 2));
+          
+          fetch(`${apiBaseUrl}/api/Home`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestPayload)
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            setEnqLoading(false);
+            setEnqSuccess('Your enquiry has been sent!');
+            setEnqName(''); 
+            setEnqEmail(''); 
+            setEnqProject(''); 
+            setEnqPhone(''); 
+            setEnqMessage('');
+          })
+          .catch(error => {
+            setEnqLoading(false);
+            console.error('Error sending email:', error);
+            setEnqError('Failed to send enquiry. Please try again.');
+          });
+        }
+      })
+      .catch(error => {
+        setEnqLoading(false);
+        console.error('Error checking existing enquiry:', error);
+        setEnqError('Failed to process enquiry. Please try again.');
+      });
   }
 
   return (
@@ -335,6 +422,14 @@ function Home() {
               <div className="col-12">
                 <textarea className="form-control" id="enq-message" placeholder="Message" rows="3" style={{resize: 'vertical'}} required value={enqMessage} onChange={e => setEnqMessage(e.target.value)}></textarea>
               </div>
+              {enqLoading && (
+                <div className="col-12">
+                  <div className="alert alert-info py-2 mb-0 d-flex align-items-center">
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Sending message, might take some time...
+                  </div>
+                </div>
+              )}
               {enqError && (
                 <div className="col-12">
                   <div className="alert alert-danger py-2 mb-0">{enqError}</div>
@@ -346,7 +441,9 @@ function Home() {
                 </div>
               )}
               <div className="col-12 d-flex justify-content-end">
-                <button type="submit" className="btn btn-success px-4">Submit</button>
+                <button type="submit" className="btn btn-success px-4" disabled={enqLoading}>
+                  {enqLoading ? 'Sending...' : 'Submit'}
+                </button>
               </div>
             </form>
           </div>
