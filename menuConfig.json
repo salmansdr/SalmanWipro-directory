@@ -21,6 +21,34 @@
           "label": "Project Estimation",
           "path": "/project-estimation",
           "icon": "fas fa-calculator"
+        },
+        {
+          "label": "Enquiry Details",
+          "path": "/enquiry-details",
+          "icon": "fas fa-clipboard-list"
+        }
+      ]
+    },
+    {
+      "label": "Supply Chain",
+      "type": "dropdown",
+      "icon": "🚚",
+      "requireAuth": true,
+      "submenu": [
+        {
+          "label": "Purchase Orders",
+          "path": "/purchase-orders",
+          "icon": "fas fa-file-invoice"
+        },
+        {
+          "label": "Material Received",
+          "path": "/material-received",
+          "icon": "fas fa-box-open"
+        },
+        {
+          "label": "Store Requisition",
+          "path": "/store-requisition",
+          "icon": "fas fa-clipboard-check"
         }
       ]
     },
@@ -49,6 +77,11 @@
           "icon": "fas fa-boxes"
         },
         {
+          "label": "Supplier Master",
+          "path": "/supplier-master",
+          "icon": "fas fa-truck"
+        },
+        {
           "label": "RCC Configuration",
           "path": "/rcc-configuration",
           "icon": "fas fa-cubes"
@@ -59,7 +92,7 @@
           "icon": "fas fa-home"
         },
         {
-          "label": "Area Calculation (Excel)",
+          "label": "Area Calculation",
           "path": "/area-calculation-excel",
           "icon": "fas fa-table"
         }
