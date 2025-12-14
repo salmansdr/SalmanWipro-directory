@@ -178,20 +178,12 @@ function ProjectEstimation() {
 
   return (
     <Container className="py-4">
-      <div className="d-flex justify-content-end mb-2">
-        <Button
-          style={{ backgroundColor: '#199e60', borderColor: '#199e60', color: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, fontSize: '1.1rem', padding: '0.5rem 1.5rem' }}
-          onClick={handleNewEntry}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16" style={{marginRight: '4px'}}>
-            <path d="M8 1a.5.5 0 0 1 .5.5v6h6a.5.5 0 0 1 0 1h-6v6a.5.5 0 0 1-1 0v-6h-6a.5.5 0 0 1 0-1h6v-6A.5.5 0 0 1 8 1z"/>
-          </svg>
-          New Entry
-        </Button>
-      </div>
       <Card className="mb-4 shadow-sm">
-        <Card.Header as="h3" className="bg-primary text-white">
-          Project Estimation
+        <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+          <h3 className="mb-0">Project Estimation</h3>
+          <Button variant="light" onClick={handleNewEntry}>
+            New Entry
+          </Button>
         </Card.Header>
         <Card.Body>
           <Card className="mb-4">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Table, Button } from 'react-bootstrap';
+import { Container, Card, Table, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -73,17 +73,15 @@ function ProjectDetails() {
 
   return (
     <Container className="py-4">
-      <Row className="mb-3">
-        <Col className="d-flex justify-content-end">
-          <Button variant="success" onClick={handleNewEntry} title="New Entry">
-            <FaPlus /> New Entry
-          </Button>
-        </Col>
-      </Row>
       <Card className="shadow-sm">
-        <Card.Header as="h3" className="bg-primary text-white">Project Details</Card.Header>
+        <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+          <h3 className="mb-0">Project Details</h3>
+          <Button variant="light" onClick={handleNewEntry}>
+            <FaPlus className="me-2" />New Entry
+          </Button>
+        </Card.Header>
         <Card.Body>
-          <Table striped bordered hover responsive className="align-middle">
+          <Table striped bordered hover responsive className="align-middle" style={{ fontSize: '0.875rem' }}>
             <thead className="table-info">
               <tr>
                 <th>Project Name</th>
@@ -97,13 +95,13 @@ function ProjectDetails() {
               {projects.map((project) => (
                 <tr key={project._id}>
                   <td>
-                    <Link to="/ProjectManagementEntryForm" state={{ project }} className="fw-bold text-decoration-underline">
+                    <Link to="/ProjectManagementEntryForm" state={{ project }} className="text-decoration-underline">
                       {project.name}
                     </Link>
                   </td>
                   <td>{project.location}</td>
-                  <td>{project.startDate}</td>
-                  <td>{project.endDate}</td>
+                  <td>{project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB') : ''}</td>
+                  <td>{project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB') : ''}</td>
                   <td className="text-center">
                     <Button 
                       variant="outline-primary" 

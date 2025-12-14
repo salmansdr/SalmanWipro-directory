@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal } from 'react-bootstrap';
+import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
@@ -1880,6 +1881,9 @@ const PurchaseOrders = () => {
                       // Amount column - ensure right alignment and format
                       td.style.textAlign = 'right';
                       td.style.color = '#0d6efd';
+                      // Format the total amount with thousand separators
+                      const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                      td.innerHTML = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     }
                   }
                 }}
@@ -1960,17 +1964,27 @@ const PurchaseOrders = () => {
             </div>
 
             {/* Remarks and Terms & Condition - Collapsible */}
-            <Card className="mb-4">
-              <Card.Header 
+            <Card className="mb-4" style={{ border: 'none' }}>
+              <div 
                 onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
-                style={{ cursor: 'pointer', backgroundColor: '#f8f9fa' }}
-                className="d-flex justify-content-between align-items-center"
+                style={{
+                  background: '#6c757d',
+                  color: 'white',
+                  padding: '0.75rem 1rem',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  borderRadius: '4px 4px 0 0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
               >
-                <h5 className="mb-0">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {showAdditionalInfo ? <FaChevronDown /> : <FaChevronRight />}
                   Additional Information
-                </h5>
-                <i className={`bi bi-chevron-${showAdditionalInfo ? 'up' : 'down'}`} style={{ fontSize: '1.2rem' }}></i>
-              </Card.Header>
+                </span>
+              </div>
               {showAdditionalInfo && (
                 <Card.Body>
                   <Row>
@@ -2008,18 +2022,28 @@ const PurchaseOrders = () => {
             </Card>
 
             {/* Approver Details Panel */}
-            <Card className="mb-4">
-              <Card.Header 
+            <Card className="mb-4" style={{ border: 'none' }}>
+              <div 
                 onClick={() => setShowApproverDetails(!showApproverDetails)}
-                style={{ cursor: 'pointer', backgroundColor: '#e7f3ff' }}
-                className="d-flex justify-content-between align-items-center"
+                style={{
+                  background: '#6c757d',
+                  color: 'white',
+                  padding: '0.75rem 1rem',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  borderRadius: '4px 4px 0 0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}
               >
-                <h5 className="mb-0">
-                  <i className="bi bi-person-check me-2"></i>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {showApproverDetails ? <FaChevronDown /> : <FaChevronRight />}
+                  <i className="bi bi-person-check"></i>
                   Approver Details
-                </h5>
-                <i className={`bi bi-chevron-${showApproverDetails ? 'up' : 'down'}`} style={{ fontSize: '1.2rem' }}></i>
-              </Card.Header>
+                </span>
+              </div>
               {showApproverDetails && (
               <Card.Body>
                 <Row>

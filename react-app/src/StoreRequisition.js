@@ -30,6 +30,7 @@ const StoreRequisition = () => {
     if (viewMode === 'list') {
       loadRequisitions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
   useEffect(() => {
