@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Card, Table, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaPlus } from 'react-icons/fa';
+
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectDetails() {
@@ -77,7 +77,7 @@ function ProjectDetails() {
         <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
           <h3 className="mb-0">Project Details</h3>
           <Button variant="light" onClick={handleNewEntry}>
-            <FaPlus className="me-2" />New Entry
+           New Project
           </Button>
         </Card.Header>
         <Card.Body>

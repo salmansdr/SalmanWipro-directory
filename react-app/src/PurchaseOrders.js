@@ -331,7 +331,7 @@ const PurchaseOrders = () => {
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
-  const [showApproverDetails, setShowApproverDetails] = useState(true);
+  const [showApproverDetails, setShowApproverDetails] = useState(false);
   const [approverDetails, setApproverDetails] = useState({
     approverId: '',
     approverName: '',
@@ -1630,17 +1630,18 @@ const PurchaseOrders = () => {
                     amount: ''
                   }]),
                   {
-                  itemCode: 'Total:',
-                  description: '',
-                  brand: '',
-                  unit: '',
-                  boqQty: '',
-                  purchaseQty: '',
-                  rate: '',
-                  amount: (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
-                  action: '',
-                  isTotalRow: true
-                }]}
+                    itemCode: 'Total:',
+                    description: '',
+                    brand: '',
+                    unit: '',
+                    boqQty: '',
+                    purchaseQty: '',
+                    rate: '',
+                    amount: (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
+                    action: '',
+                    isTotalRow: true
+                  }
+                ]}
                 colHeaders={isViewMode 
                   ? ['Material', 'Brand', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
                   : ['Material', 'Brand', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
@@ -2040,9 +2041,13 @@ const PurchaseOrders = () => {
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {showApproverDetails ? <FaChevronDown /> : <FaChevronRight />}
-                  <i className="bi bi-person-check"></i>
+                 
                   Approver Details
                 </span>
+
+
+
+
               </div>
               {showApproverDetails && (
               <Card.Body>

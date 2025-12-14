@@ -200,6 +200,9 @@ function ProjectManagement() {
     if (!file) return; // Ignore if no file selected (user cancelled)
     setDocs(docs.map((d, i) => i === idx ? { ...d, file } : d));
   };
+  const handleRemoveDoc = (idx) => {
+    setDocs(docs.map((d, i) => i === idx ? { ...d, file: null } : d));
+  };
   const handleIndoorSelect = (item) => {
     setSelectedIndoor(selectedIndoor.includes(item)
       ? selectedIndoor.filter(i => i !== item)
@@ -481,9 +484,18 @@ function ProjectManagement() {
                                       download={doc.file.name}
                                       className="btn btn-sm btn-outline-primary"
                                       title="Download"
+                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       Download
                                     </a>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() => handleRemoveDoc(idx)}
+                                      title="Remove file"
+                                    >
+                                      ✕
+                                    </Button>
                                   </div>
                                 )}
                               </>
@@ -499,14 +511,24 @@ function ProjectManagement() {
                                     title="Click to view fullscreen"
                                   />
                                 ) : (
-                                  <Button
-                                    variant="link"
-                                    className="text-secondary p-0"
-                                    onClick={() => handleViewDocument(doc.file)}
-                                    style={{ textDecoration: 'none' }}
-                                  >
-                                    {doc.file.name}
-                                  </Button>
+                                  <div className="d-flex align-items-center gap-2">
+                                    <Button
+                                      variant="link"
+                                      className="text-secondary p-0"
+                                      onClick={() => handleViewDocument(doc.file)}
+                                      style={{ textDecoration: 'none' }}
+                                    >
+                                      {doc.file.name}
+                                    </Button>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() => handleRemoveDoc(idx)}
+                                      title="Remove file"
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
                                 )}
                               </>
                             )}

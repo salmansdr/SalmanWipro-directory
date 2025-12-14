@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Form, Button, Row, Col, Alert, Table, Modal, Badge, InputGroup, Pagination } from 'react-bootstrap';
+import { Card, Form, Button, Row, Col, Alert, Table, Badge, InputGroup, Pagination } from 'react-bootstrap';
 
 // Migration: Convert old formats to new component-grouped structure
 function migrateMaterialCalculation(materialCalc) {
@@ -139,7 +139,7 @@ const ItemMaster = () => {
   const [filteredItems, setFilteredItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [editingItem, setEditingItem] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
@@ -918,11 +918,11 @@ const ItemMaster = () => {
       setDuplicateError('');
       setMaterialValidated(false);
     }
-    setShowModal(true);
+    setViewMode('form');
   };
 
   const closeModal = () => {
-    setShowModal(false);
+    setViewMode('list');
     setEditingItem(null);
     setItemForm({
       id: null,
@@ -1157,7 +1157,9 @@ const ItemMaster = () => {
 
   return (
     <div className="container-fluid py-4">
-      <div className="row">
+      {viewMode === 'list' ? (
+        // List View
+        <div className="row">
         <div className="col-12">
           <Card className="shadow">
             <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center flex-wrap">
@@ -1202,8 +1204,8 @@ const ItemMaster = () => {
               {/* Items Table */}
               {!loading && (
                 <div className="table-responsive">
-                <Table striped hover>
-                  <thead className="table-dark">
+                <Table striped bordered hover responsive className="align-middle" style={{ fontSize: '0.875rem' }}>
+                  <thead className="table-light">
                     <tr>
                       <th>
                         <div className="d-flex flex-column">
@@ -1317,14 +1319,10 @@ const ItemMaster = () => {
                             )}
                           </td>
                           <td>
-                            <Badge bg="info">{item.categoryName || item.category}</Badge>
+                            {item.categoryName || item.category}
                           </td>
                           <td>
-                            {item.sub_category ? (
-                              <Badge bg="secondary">{item.sub_category}</Badge>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
+                            {item.sub_category || '-'}
                           </td>
                           <td>
                             {item.unit}
@@ -1372,12 +1370,10 @@ const ItemMaster = () => {
                             </div>
                           </td>
                           <td>
-                            <Badge bg="secondary">{item.location}</Badge>
+                            {item.location}
                           </td>
                           <td>
-                            <Badge bg={item.isActive ? 'success' : 'danger'}>
-                              {item.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
+                            {item.isActive ? 'Active' : 'Inactive'}
                           </td>
                           <td>
                             <div className="d-flex gap-2">
@@ -1473,18 +1469,21 @@ const ItemMaster = () => {
           </Card>
         </div>
       </div>
-
-      {/* Add/Edit Item Modal */}
-      <Modal show={showModal} onHide={closeModal} size="xl">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <i className="fas fa-box me-2"></i>
-            {editingItem ? 'Edit Item' : 'Add New Item'}
-          </Modal.Title>
-        </Modal.Header>
+      ) : (
+        // Form View - Add/Edit Item
+        <Card className="shadow">
+          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 className="mb-0">
+              <i className="fas fa-box me-2"></i>
+              {editingItem ? 'Edit Item' : 'Add New Item'}
+            </h4>
+            <Button variant="light" onClick={closeModal}>
+              <i className="bi bi-arrow-left me-2"></i>Back to List
+            </Button>
+          </Card.Header>
+          <Card.Body>
         <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            {/* Alert inside Modal */}
+            {/* Alert inside Form */}
             {showAlert && (
               <Alert variant={alertVariant} dismissible onClose={() => setShowAlert(false)} className="mb-3">
                 {alertMessage}
@@ -1934,31 +1933,36 @@ const ItemMaster = () => {
                 />
               </Col>
             </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={closeModal}>
-              Cancel
-            </Button>
-            <Button 
-              variant="success" 
-              type="submit" 
-              disabled={duplicateError || (!materialValidated && !editingItem) || saving}
-            >
-              {saving ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-save me-2"></i>
-                  {editingItem ? 'Update Item' : 'Save Item'}
-                </>
-              )}
-            </Button>
-          </Modal.Footer>
+
+            {/* Form Actions */}
+            <Row className="mt-4">
+              <Col className="d-flex justify-content-end gap-2">
+                <Button variant="secondary" onClick={closeModal}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="success" 
+                  type="submit" 
+                  disabled={duplicateError || (!materialValidated && !editingItem) || saving}
+                >
+                  {saving ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-save me-2"></i>
+                      {editingItem ? 'Update Item' : 'Save Item'}
+                    </>
+                  )}
+                </Button>
+              </Col>
+            </Row>
         </Form>
-      </Modal>
+          </Card.Body>
+        </Card>
+      )}
     </div>
   );
 };

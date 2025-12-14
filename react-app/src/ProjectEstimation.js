@@ -182,12 +182,12 @@ function ProjectEstimation() {
         <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
           <h3 className="mb-0">Project Estimation</h3>
           <Button variant="light" onClick={handleNewEntry}>
-            New Entry
+            New Estimation
           </Button>
         </Card.Header>
         <Card.Body>
           <Card className="mb-4">
-            <Card.Header as="h5" className="bg-info text-white">Estimation List</Card.Header>
+           
             <Card.Body>
               <Table bordered hover responsive size="sm">
                 <thead className="table-light">

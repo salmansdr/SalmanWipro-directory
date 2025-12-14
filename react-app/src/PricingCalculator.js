@@ -3908,7 +3908,7 @@ useEffect(() => {
                                   return gridTotalArea === actualCarpetArea ? '#388e3c' : '#d81b60';
                                 })() 
                               }}>
-                                Total Area: {(() => {
+                                Total: {(() => {
                                   const rows = getFloorRows(floorIdx);
                                   const totalArea = rows.reduce((sum, row) => {
                                     const key = `${floorIdx}-${(() => rows.indexOf(row))()}`;
@@ -3926,7 +3926,7 @@ useEffect(() => {
                                     return sum + (grandTotal * row.units);
                                   }, 0);
                                   return totalArea > 0 ? totalArea.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '0';
-                                })()} sq ft
+                                })()}
                               </div>
                             </div>
                           </div>
