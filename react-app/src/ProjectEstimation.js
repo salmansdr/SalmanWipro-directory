@@ -47,6 +47,8 @@ function ProjectEstimation() {
           modificationDate: formatDate(project.modifiedDate),
           createdBy: project.createdBy || 'Unknown',
           modifiedBy: project.modifiedBy || 'Unknown',
+          createdByUserName: project.createdByUserName || 'Unknown',
+          modifiedByUserName: project.modifiedByUserName || 'Unknown',
           action: 'Edit',
          
         }));
@@ -214,8 +216,8 @@ function ProjectEstimation() {
                       <td>{row.location}</td>
                       <td>{row.creationDate}</td>
                       <td>{row.modificationDate}</td>
-                      <td>{row.createdBy}</td>
-                      <td>{row.modifiedBy}</td>
+                      <td>{row.createdByUserName}</td>
+                      <td>{row.modifiedByUserName}</td>
                       <td>
                         <Button 
                           variant="outline-primary" 

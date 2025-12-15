@@ -296,10 +296,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                   <Text style={pdfStyles.colF2}></Text>
                   <Text style={pdfStyles.colF3}></Text>
                   <Text style={pdfStyles.colF4}></Text>
-                  <Text style={pdfStyles.colF5}>{row.materialCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF6}>{row.labourCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF7}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF5}>{row.materialCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF6}>{row.labourCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF7}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
                   <Text style={pdfStyles.colF9}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
                 </View>
               );
@@ -311,11 +311,11 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                   <Text style={pdfStyles.colF2}></Text>
                   <Text style={pdfStyles.colF3}></Text>
                   <Text style={pdfStyles.colF4}></Text>
-                  <Text style={pdfStyles.colF5}>{row.materialCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF6}>{row.labourCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF7}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF9}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
+                  <Text style={pdfStyles.colF5}>{row.materialCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF6}>{row.labourCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF7}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF9}>{Math.round(row.percentileCost || 0)}%</Text>
                 </View>
               );
             }
@@ -375,7 +375,7 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                     <Text style={{ width: '8%' }}></Text>
                     <Text style={{ width: '6%' }}></Text>
                     <Text style={{ width: '8%' }}></Text>
-                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toFixed(2) || '0.00'}</Text>
+                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
                   </View>
                 );
               }
@@ -389,7 +389,7 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                     <Text style={{ width: '8%' }}></Text>
                     <Text style={{ width: '6%' }}></Text>
                     <Text style={{ width: '8%' }}></Text>
-                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toFixed(2) || '0.00'}</Text>
+                    <Text style={{ width: '10%', textAlign: 'right', paddingRight: 5 }}>{row.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
                   </View>
                 );
               }
@@ -1227,7 +1227,11 @@ function Reports() {
             ...grandTotalStyle,
             alignment: { horizontal: (col === 'A' || col === 'B' || col === 'C' || col === 'D') ? 'left' : 'right', vertical: 'center' }
           };
-          if (col !== 'A' && col !== 'B' && col !== 'C' && col !== 'D' && ws3[cellRef].v != null) {
+          if (col === 'I' && ws3[cellRef].v != null) {
+            // Round percentage in grandTotal row
+            ws3[cellRef].v = Math.round(ws3[cellRef].v);
+            ws3[cellRef].z = '0';
+          } else if (col !== 'A' && col !== 'B' && col !== 'C' && col !== 'D' && ws3[cellRef].v != null) {
             ws3[cellRef].z = '#,##0.00';
           }
         });

@@ -323,15 +323,15 @@ const PurchaseOrders = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [currency, setCurrency] = useState('');
-  const [userName] = useState(localStorage.getItem('username') || 'Admin User');
-  const [userFullName] = useState(localStorage.getItem('fullName') || 'Admin User');
+  const [userName] = useState(localStorage.getItem('username') || '');
+  const [userFullName] = useState(localStorage.getItem('fullName') || '');
   const [userId] = useState(localStorage.getItem('userId') || '');
   const [companyId] = useState(localStorage.getItem('selectedCompanyId') || '');
   const [showPDFModal, setShowPDFModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
-  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
-  const [showApproverDetails, setShowApproverDetails] = useState(false);
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(true);
+  const [showApproverDetails, setShowApproverDetails] = useState(true);
   const [approverDetails, setApproverDetails] = useState({
     approverId: '',
     approverName: '',
@@ -1352,7 +1352,12 @@ const PurchaseOrders = () => {
               <div>
                 <h4 className="mb-0">
                   <i className="bi bi-file-earmark-text me-2"></i>
-                  {editMode ? 'Edit Purchase Order' : 'New Purchase Order'}
+                  {isViewMode 
+                    ? `Purchase Order - ${formData.status || 'Draft'}` 
+                    : editMode 
+                      ? 'Edit Purchase Order' 
+                      : 'New Purchase Order'
+                  }
                 </h4>
               </div>
               <div>

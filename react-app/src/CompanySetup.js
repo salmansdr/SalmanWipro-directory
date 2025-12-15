@@ -612,12 +612,11 @@ const CompanySetup = () => {
                     type="text"
                     name="currency"
                     value={companyData.currency}
-                    readOnly
-                    placeholder="Auto-filled"
-                    className="bg-light"
+                    onChange={handleInputChange}
+                    placeholder="Enter currency (e.g., INR, USD)"
                   />
                   <Form.Text className="text-muted">
-                    <small>Based on country</small>
+                    <small>Auto-filled based on country, but can be edited</small>
                   </Form.Text>
                 </Form.Group>
               </Col>

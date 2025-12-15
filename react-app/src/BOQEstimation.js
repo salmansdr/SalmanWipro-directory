@@ -32,7 +32,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   
   const quantityTableRef = useRef(null);
   const materialTableRef = useRef(null);
-  const floorInitializedRef = useRef(false);
+  
   const floorDataCache = useRef({});
   const materialDataCache = useRef({}); // Cache for material grid data
   const initialLoadDone = useRef(false);
@@ -416,6 +416,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             const materialGridData = [];
             
             Object.keys(floorData.components).forEach(compName => {
+              // Skip GRAND TOTAL component from database
+              if (compName === 'GRAND TOTAL') return;
+              
               const comp = floorData.components[compName];
               
               // Find category from allComponentsRef (AreaCalculationLogic)
@@ -444,6 +447,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               // Add material child rows
               if (comp.materials && comp.materials.length > 0) {
                 comp.materials.forEach(mat => {
+                  // Skip GRAND TOTAL material rows from database
+                  if (mat.material === 'GRAND TOTAL') return;
+                  
                   materialGridData.push({
                     component: mat.material || '',
                     materialId: mat.materialId || '',
@@ -465,9 +471,12 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               }
             });
             
+            // Filter out any grand total rows from API data (double check)
+            const cleanedData = materialGridData.filter(row => !row.isGrandTotal && row.component !== 'GRAND TOTAL');
+            
             // Only cache if there's actual data - don't cache empty arrays
-            if (materialGridData.length > 0) {
-              materialDataCache.current[floorName] = materialGridData;
+            if (cleanedData.length > 0) {
+              materialDataCache.current[floorName] = cleanedData;
             }
           }
         });
@@ -735,7 +744,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     
     const currentMaterialData = materialHotInstance.getSourceData();
     if (currentMaterialData && currentMaterialData.length > 0) {
-      materialDataCache.current[floorName] = JSON.parse(JSON.stringify(currentMaterialData));
+      // Filter out grand total row before saving to cache
+      const dataToCache = currentMaterialData.filter(row => !row.isGrandTotal);
+      materialDataCache.current[floorName] = JSON.parse(JSON.stringify(dataToCache));
       // Mark this floor as having edited material data
       materialEditedFlags.current[floorName] = true;
     }
@@ -938,11 +949,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         // After loading quantity data, also load material data
         loadMaterialDataFromAPI(estimationMasterId);
         
-        // Set Foundation as default floor after data is loaded
-        if (!floorInitializedRef.current) {
-          setLocalSelectedFloor('Foundation');
-          floorInitializedRef.current = true;
-        }
+        // Don't auto-select floor - let user choose manually
+        // if (!floorInitializedRef.current) {
+        //   setLocalSelectedFloor('Foundation');
+        //   floorInitializedRef.current = true;
+        // }
       });
     }
   }, [estimationMasterId, floorsList, loadAllFloorsData, loadMaterialDataFromAPI]);
@@ -1080,6 +1091,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         const materialComponents = {};
         
         materialGridData.forEach(row => {
+          // Skip grand total rows
+          if (row.isGrandTotal) return;
+          
           if (row.isGroupHeader) {
             materialComponents[row.component] = {
               volume: row.volume || 0,
@@ -1243,6 +1257,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       const materialComponents = {};
       
       floorMaterialData.forEach(row => {
+        // Skip grand total rows
+        if (row.isGrandTotal) return;
+        
         if (row.isGroupHeader) {
           materialComponents[row.component] = {
             volume: row.volume || 0,
@@ -1648,7 +1665,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
 
     // Always update volumes from quantity data changes
     // User edits to rates/wastage are preserved
-    const updatedMaterialData = JSON.parse(JSON.stringify(existingMaterialData));
+    // Remove any existing grand total rows first
+    const updatedMaterialData = JSON.parse(JSON.stringify(existingMaterialData)).filter(row => !row.isGrandTotal);
     
     // Process each quantity group header
     currentQuantityData.forEach(qtyRow => {
@@ -1740,9 +1758,24 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           const newMaterialRows = generateMaterialDataForFloor([qtyRow]);
           if (newMaterialRows.length > 0) {
             // Insert after last material group
-            updatedMaterialData.push(...newMaterialRows);
+            // Remove grand total from new rows before adding
+            const newRowsWithoutGrandTotal = newMaterialRows.filter(row => !row.isGrandTotal);
+            updatedMaterialData.push(...newRowsWithoutGrandTotal);
           }
         }
+      }
+    });
+    
+    // Calculate and add grand total at the end
+    let grandMaterialAmt = 0;
+    let grandLabourAmt = 0;
+    let grandTotalAmt = 0;
+    
+    updatedMaterialData.forEach(row => {
+      if (row.isGroupHeader) {
+        grandMaterialAmt += parseFloat(row.materialAmount) || 0;
+        grandLabourAmt += parseFloat(row.labourAmount) || 0;
+        grandTotalAmt += parseFloat(row.totalAmount) || 0;
       }
     });
     
@@ -1784,9 +1817,13 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       // Check if we have cached material data for this floor
       const cachedMaterial = materialDataCache.current[localSelectedFloor];
       if (cachedMaterial && Array.isArray(cachedMaterial) && cachedMaterial.length > 0) {
+        
+        // Filter out any grand total rows from cached data
+        const dataWithoutGrandTotal = cachedMaterial.filter(row => !row.isGrandTotal);
+        
         // Migrate old cached data to add materialId if missing
-        const migratedData = cachedMaterial.map(row => {
-          if (!row.isGroupHeader && row.component && !row.materialId && materialItems) {
+        const migratedData = dataWithoutGrandTotal.map(row => {
+          if (!row.isGroupHeader && !row.isGrandTotal && row.component && !row.materialId && materialItems) {
             // Find material by name and populate materialId
             const foundMaterial = materialItems.find(item => item.material === row.component);
             if (foundMaterial) {
@@ -1799,15 +1836,59 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           return row;
         });
         
-        // Update cache with migrated data
+        // Update cache with migrated data (without grand total)
         materialDataCache.current[localSelectedFloor] = migratedData;
-        setMaterialData(migratedData);
+        
+        // Add grand total row for display
+        const dataWithGrandTotal = [
+          ...migratedData,
+          {
+            component: 'GRAND TOTAL',
+            volume: '',
+            unit: '',
+            materialQty: '',
+            wastage: '',
+            totalQty: '',
+            uom: '',
+            materialRate: '',
+            labourRate: '',
+            materialAmount: 0,
+            labourAmount: 0,
+            totalAmount: 0,
+            remarks: '',
+            isGrandTotal: true
+          }
+        ];
+        
+        setMaterialData(dataWithGrandTotal);
       } else {
         // No cache or invalid cache - generate from quantityData
         const materials = generateMaterialData();
         if (materials && Array.isArray(materials) && materials.length > 0) {
           materialDataCache.current[localSelectedFloor] = materials;
-          setMaterialData(materials);
+          
+          // Add grand total row for display
+          const dataWithGrandTotal = [
+            ...materials,
+            {
+              component: 'GRAND TOTAL',
+              volume: '',
+              unit: '',
+              materialQty: '',
+              wastage: '',
+              totalQty: '',
+              uom: '',
+              materialRate: '',
+              labourRate: '',
+              materialAmount: 0,
+              labourAmount: 0,
+              totalAmount: 0,
+              remarks: '',
+              isGrandTotal: true
+            }
+          ];
+          
+          setMaterialData(dataWithGrandTotal);
         } else {
           // Generated material is null or empty - don't set it
           setMaterialData(null);
@@ -1905,13 +1986,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         // Group headers are read-only, child rows are editable
         return rowData && rowData.isGroupHeader;
       }
-    },
-    {
-      data: 'category',
-      title: 'Category',
-      width: 120,
-      type: 'text',
-      readOnly: true
     },
     {
       data: 'volume',
@@ -2192,7 +2266,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       width: 100,
       type: 'numeric',
       numericFormat: {
-        pattern: '0.000'
+        pattern: '0.00'
       }
     },
     {
@@ -2201,7 +2275,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       width: 130,
       type: 'numeric',
       numericFormat: {
-        pattern: '0.000'
+        pattern: '0.00'
       }
     },
     {
@@ -2210,7 +2284,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       width: 130,
       type: 'numeric',
       numericFormat: {
-        pattern: '0.000'
+        pattern: '0.00'
       }
     },
     {
@@ -2683,7 +2757,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                         onChange={(e) => setLocalSelectedFloor(e.target.value)}
                         disabled={loading}
                       >
-                         
+                          <option value="">Select Floor</option>
                           {floors.map((floor, index) => (
                             <option key={index} value={floor}>
                               {floor}
@@ -2717,6 +2791,10 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                   {!localSelectedFloor ? (
                     <div style={{ padding: '60px 20px', textAlign: 'center', color: '#666', fontSize: '1.1rem' }}>
                       Please select a floor to view BOQ data
+                    </div>
+                  ) : loading ? (
+                    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                      <Spinner animation="border" /> Loading floor data...
                     </div>
                   ) : (
                   <Tabs
@@ -2804,12 +2882,38 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               <div style={{ padding: '40px', textAlign: 'center' }}>
                                 <Spinner animation="border" size="sm" /> Loading...
                               </div>
+                            ) : !quantityData || !Array.isArray(quantityData) || quantityData.length === 0 ? (
+                              <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                                No quantity data available for this floor. Click "Add Component" to get started.
+                              </div>
                             ) : (
-                              quantityData && quantityData.length > 0 && (
-                                <HotTable
-                                  ref={quantityTableRef}
-                                  data={quantityData}
-                                  columns={getQuantityColumns}
+                              (() => {
+                                // Additional validation before rendering table
+                                try {
+                                  const columns = getQuantityColumns;
+                                  if (!columns || !Array.isArray(columns) || columns.length === 0) {
+                                    return (
+                                      <div style={{ padding: '40px', textAlign: 'center', color: '#d32f2f' }}>
+                                        Table configuration error. Please refresh the page.
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  // Validate data structure
+                                  if (!quantityData.every(row => row && typeof row === 'object')) {
+                                    return (
+                                      <div style={{ padding: '40px', textAlign: 'center', color: '#d32f2f' }}>
+                                        Invalid data structure. Please refresh the page.
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <HotTable
+                                      key={`quantity-${localSelectedFloor}-${quantityData.length}`}
+                                      ref={quantityTableRef}
+                                      data={quantityData}
+                                      columns={columns}
                               colHeaders={true}
                               rowHeaders={(index) => {
                                 if (!quantityData || !Array.isArray(quantityData) || index >= quantityData.length) {
@@ -3038,7 +3142,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 return cellProperties;
                               }}
                             />
-                              )
+                                  );
+                                } catch (error) {
+                                  console.error('Error rendering quantity table:', error);
+                                  return (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#d32f2f' }}>
+                                      Error rendering table. Please refresh the page or contact support.
+                                    </div>
+                                  );
+                                }
+                              })()
                             )}
                           </div>
                           </div>
@@ -3086,6 +3199,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               
                               return (
                               <HotTable
+                                key={`material-${localSelectedFloor}-${materialData.length}`}
                                 ref={materialTableRef}
                                 data={materialData}
                                 columns={getMaterialColumns}
@@ -3207,6 +3321,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 // Update all affected group headers
                                 if (groupsToUpdate.size > 0) {
                                   setTimeout(() => {
+                                    if (!hotInstance || hotInstance.isDestroyed) return;
                                     const allData = hotInstance.getSourceData();
                                     groupsToUpdate.forEach(groupHeaderRow => {
                                       updateGroupHeader(hotInstance, allData, groupHeaderRow);
@@ -3222,6 +3337,57 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   const rowData = this.instance.getSourceDataAtRow(row);
                                   
                                   if (rowData) {
+                                    // Style grand total row
+                                    if (rowData.isGrandTotal) {
+                                      cellProperties.readOnly = true;
+                                      if (prop === 'component') {
+                                        cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                          td.style.backgroundColor = '#e8f4f8';
+                                          td.style.color = '#1e4d6b';
+                                          td.style.fontWeight = '700';
+                                          td.style.padding = '14px 8px';
+                                          td.style.fontSize = '15px';
+                                          td.style.textAlign = 'right';
+                                          td.style.borderTop = '2px solid #64b5f6';
+                                          td.style.borderBottom = '2px solid #64b5f6';
+                                          td.innerHTML = value || '';
+                                          return td;
+                                        };
+                                      } else if (prop === 'materialAmount' || prop === 'labourAmount' || prop === 'totalAmount') {
+                                        cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                          // Recalculate grand total from current data
+                                          const allData = instance.getSourceData();
+                                          let sum = 0;
+                                          allData.forEach((dataRow, idx) => {
+                                            if (dataRow.isGroupHeader && idx < row) {
+                                              sum += parseFloat(dataRow[prop]) || 0;
+                                            }
+                                          });
+                                          
+                                          td.style.backgroundColor = '#e8f4f8';
+                                          td.style.color = '#1e4d6b';
+                                          td.style.fontWeight = '700';
+                                          td.style.padding = '14px 8px';
+                                          td.style.fontSize = '12px';
+                                          td.style.textAlign = 'right';
+                                          td.style.borderTop = '2px solid #64b5f6';
+                                          td.style.borderBottom = '2px solid #64b5f6';
+                                          td.innerHTML = sum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                          return td;
+                                        };
+                                      } else {
+                                        cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                                          td.style.backgroundColor = '#e8f4f8';
+                                          td.style.color = '#1e4d6b';
+                                          td.style.borderTop = '2px solid #64b5f6';
+                                          td.style.borderBottom = '2px solid #64b5f6';
+                                          td.innerHTML = '';
+                                          return td;
+                                        };
+                                      }
+                                      return cellProperties;
+                                    }
+                                    
                                     // For component dropdown in child rows
                                     if (prop === 'component' && !rowData.isGroupHeader) {
                                       // Find parent group header to get category

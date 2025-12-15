@@ -65,9 +65,8 @@ const [step, setStep] = useState(1);
     const [flatsPerFloor, setFlatsPerFloor] = useState('');
     const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
     const [bhkRows, setBhkRows] = useState([
-      { type: '', units: 1, area: '', rooms: '' },
-      { type: '', units: 1, area: '', rooms: '' },
       { type: '', units: 1, area: '', rooms: '' }
+      
     ]);
     const [bhkRoomDetails, setBhkRoomDetails] = useState({});
     const [showBHKModal, setShowBHKModal] = useState(false);
@@ -264,8 +263,6 @@ const boqFloorsList = React.useMemo(() => [
 
   // Memoize defaultBHKs to stabilize reference
   const defaultBHKs = React.useMemo(() => [
-    { type: '', units: 1, area: '', rooms: '' },
-    { type: '', units: 1, area: '', rooms: '' },
     { type: '', units: 1, area: '', rooms: '' }
   ], []);
 
@@ -320,7 +317,7 @@ const boqFloorsList = React.useMemo(() => [
     
     // Get user and company info from localStorage
     const companyId = localStorage.getItem('selectedCompanyId');
-    const username = localStorage.getItem('username');
+    const username = localStorage.getItem('userId');
     
     // Comprehensive MongoDB document including Step 1 + Step 2 + Beam/Column data
     const mongoDocument = {
@@ -431,12 +428,6 @@ const boqFloorsList = React.useMemo(() => [
       }
     };
 
-    // Create formatted JSON string for display
-    const jsonString = JSON.stringify(mongoDocument, null, 2);
-    
-    // Save to localStorage (backup)
-    localStorage.setItem('mongoDocument_step1', jsonString);
-    
     // Save to MongoDB via API
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
@@ -457,7 +448,7 @@ const boqFloorsList = React.useMemo(() => [
         headers: {
           'Content-Type': 'application/json'
         },
-        body: jsonString
+        body: JSON.stringify(mongoDocument)
       });
       
       if (!response.ok) {
@@ -785,109 +776,7 @@ const boqFloorsList = React.useMemo(() => [
     }
   };
 
-  // Function to set default BHK configurations (first row of each type from JSON)
-  async function setDefaultBHKConfiguration() {
-    try {
-      // Ensure data is loaded
-      let configs = allBhkConfigs;
-      if (!configs || configs.length === 0) {
-        await loadBHKConfigurations();
-        configs = allBhkConfigs;
-      }
-      // Get first configuration for each BHK type
-      const defaultConfigs = [];
-      const defaultModalDetails = {};
-      const seenTypes = new Set();
-      for (const config of configs) {
-        if (!seenTypes.has(config.type)) {
-          defaultConfigs.push({
-            type: config.type,
-            units: 1,
-            area: config.total_carpet_area_sqft.toString(),
-            rooms: config.rooms.map(r => r.name).join(', ')
-          });
-          // Build modal grid child data for this config
-          const key = `default-${config.type}`;
-          const roomDetails = {
-            'Count': {},
-            'Length (ft)': {},
-            'Width (ft)': {}
-          };
-          // Group rooms by type and create numbered columns
-          const roomTypeMap = new Map();
-          config.rooms.forEach(room => {
-            let baseType;
-            const nameWords = room.name.split(' ');
-            if (nameWords.length > 1 && /^\d+$/.test(nameWords[nameWords.length - 1])) {
-              baseType = nameWords.slice(0, -1).join(' ');
-            } else {
-              baseType = room.name;
-            }
-            if (!roomTypeMap.has(baseType)) {
-              roomTypeMap.set(baseType, []);
-            }
-            roomTypeMap.get(baseType).push(room);
-          });
-          // Create dynamic column names with room numbering
-          const dynamicColumns = [];
-          roomTypeMap.forEach((rooms, baseType) => {
-            if (rooms.length === 1) {
-              dynamicColumns.push(baseType);
-            } else {
-              rooms.forEach((room, index) => {
-                dynamicColumns.push(`${baseType} ${index + 1}`);
-              });
-            }
-          });
-          // Add circulation space as the last column
-          //const columnsWithCirculation = [...dynamicColumns, 'Circulation Space'];
-          // Populate room data using the mapping
-         // let colIdx = 0;
-          roomTypeMap.forEach((rooms, baseType) => {
-            if (rooms.length === 1) {
-              const displayName = baseType;
-              const roomData = rooms[0];
-              roomDetails['Count'][displayName] = displayName.toLowerCase().includes('bathroom') ? config.bathroom_count || 1 : 1;
-              roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
-              roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
-             // colIdx++;
-            } else {
-              rooms.forEach((roomData, index) => {
-                const displayName = `${baseType} ${index + 1}`;
-                roomDetails['Count'][displayName] = displayName.toLowerCase().includes('bathroom') ? config.bathroom_count || 1 : 1;
-                roomDetails['Length (ft)'][displayName] = roomData.dimensions_ft.length;
-                roomDetails['Width (ft)'][displayName] = roomData.dimensions_ft.width;
-                //colIdx++;
-              });
-            }
-          });
-          // Add circulation space data
-          
-          defaultModalDetails[key] = roomDetails;
-          seenTypes.add(config.type);
-        }
-      }
-      // Update all floors with default configurations and modal grid child data
-      const updatedConfigs = { ...floorBHKConfigs };
-      const updatedModalDetails = { ...bhkRoomDetails };
-      for (let floorIdx = 1; floorIdx <= Number(floors); floorIdx++) {
-        updatedConfigs[floorIdx] = defaultConfigs.map(config => ({ ...config }));
-        // For each BHK row, set modal grid child data
-        defaultConfigs.forEach((config, idx) => {
-          // Shift modal grid keys for new floor order
-          const key = `${floorIdx}-${idx}`;
-          const modalKey = `default-${config.type}`;
-          updatedModalDetails[key] = defaultModalDetails[modalKey];
-        });
-      }
-      setFloorBHKConfigs(updatedConfigs);
-      setBhkRoomDetails(updatedModalDetails);
-      alert(`Default BHK configurations set for all floors with modal grid child data.\n${defaultConfigs.map(c => `${c.type}: ${c.area} sq ft`).join('\n')}`);
-    } catch (error) {
-      console.error('Error setting default BHK configuration:', error);
-      alert('Failed to set default configurations. Please try again.');
-    }
-  }
+  
   // Removed unused state: sitePlanFile
 
   // Update file and preview URL on upload
@@ -3721,29 +3610,9 @@ useEffect(() => {
                               <div style={{ fontWeight: 600, fontSize: '1.05rem', color: '#388e3c' }}>
                                 {floorIdx === 0 ? 'Ground Floor' : `${floorIdx === 1 ? '1st' : floorIdx === 2 ? '2nd' : floorIdx === 3 ? '3rd' : floorIdx + 'th'} Floor`}
                                 <span style={{ fontWeight: 500, fontSize: '0.98rem', margin: '0 8px' }}>-</span>
-                                Flat Configuration
+                                 Configuration
                               </div>
-                              {(floorIdx === 1 || (floorIdx === 0 && groundFloorHasRooms)) && (
-                                <button
-                                  type="button"
-                                  onClick={setDefaultBHKConfiguration}
-                                  style={{
-                                    padding: '4px 8px',
-                                    fontSize: '0.75rem',
-                                    border: '1px solid #1976d2',
-                                    backgroundColor: '#fff',
-                                    color: '#1976d2',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: 500
-                                  }}
-                                  onMouseOver={e => e.target.style.backgroundColor = '#f3f9ff'}
-                                  onMouseOut={e => e.target.style.backgroundColor = '#fff'}
-                                  disabled={bhkDataLoading}
-                                >
-                                  Set Default
-                                </button>
-                              )}
+                             
                             </div>
                             {(floorIdx > 1 || (floorIdx === 0 && groundFloorHasRooms && false)) && (
                               <Form.Select size="sm" style={{ maxWidth: 140, marginBottom: 8 }} onChange={e => copyFloorConfig(Number(e.target.value), floorIdx)} defaultValue="">
@@ -3943,16 +3812,32 @@ useEffect(() => {
         )}
 
         {/* BOQ Estimation Component - Render once and keep mounted */}
-        {id && (
+        {id && selectedProjectId && Number(floors) > 0 && (
           <div style={{ display: step === 3 ? 'block' : 'none' }}>
             <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
               <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
             </div>
-            
+            {/* BOQ Estimation Component */}
             <BOQEstimation 
               estimationMasterId={id} 
               floorsList={boqFloorsList}
             />
+            
+          </div>
+        )}
+        
+        {/* Show message when no project is selected or invalid floors */}
+        {id && step === 3 && (!selectedProjectId || Number(floors) <= 0) && (
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#d32f2f', fontSize: '1.1rem', background: '#fff3e0', borderRadius: '8px', margin: '2rem 0', border: '1px solid #ff9800' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
+              {!selectedProjectId ? 'No Project Selected' : 'Invalid Number of Floors'}
+            </div>
+            <div style={{ fontSize: '0.95rem', color: '#666' }}>
+              {!selectedProjectId 
+                ? 'Please go back to Step 1 and select a project before viewing the BOQ Estimation.'
+                : 'Please go back to Step 1 and enter a valid number of floors (greater than 0).'}
+            </div>
           </div>
         )}
 
