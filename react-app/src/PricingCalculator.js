@@ -904,30 +904,16 @@ const boqFloorsList = React.useMemo(() => [
             setSelectedProjectId(projectData.projectId);
             setSelectedProject(projectData.projectId);
             
-            // Fetch actual project data to populate fields
-            try {
-              const projectResponse = await fetch(`${apiBaseUrl}/api/Projects/${projectData.projectId}`);
-              if (projectResponse.ok) {
-                const project = await projectResponse.json();
-                // Populate fields from project data (same as handleProjectSelect)
-                const constructionArea = project.constructionAreaSqft || 
-                                          project.constructionArea || 
-                                          project.buildupArea || 
-                                          project.plotArea || 
-                                          '';
-                setWidth(constructionArea);
-                
-                const landArea = project.landAreaKatha || project.landArea || '';
-                setDepth(landArea);
-                
-                setFloors(project.floors || project.numberOfFloors || 1);
-                setBasementCount(project.basementCount || 0);
-                setFlatsPerFloor(project.flatsPerFloor || project.flats_per_floor || '');
-                console.log('Project data loaded for estimation:', project);
-              }
-            } catch (error) {
-              console.error('Error fetching project details:', error);
-            }
+            const constructionArea = projectData.constructionArea || '';
+            setWidth(constructionArea);
+            
+            const landArea = projectData.landArea || '';
+            setDepth(landArea);
+            
+            setFloors(projectData.floors  || 1);
+            setBasementCount(projectData.basementCount || 0);
+            setFlatsPerFloor(projectData.flatsPerFloor  || 0);
+
           }
           
           // Populate floor configuration if available

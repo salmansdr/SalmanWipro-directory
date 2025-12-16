@@ -1766,19 +1766,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       }
     });
     
-    // Calculate and add grand total at the end
-    let grandMaterialAmt = 0;
-    let grandLabourAmt = 0;
-    let grandTotalAmt = 0;
-    
-    updatedMaterialData.forEach(row => {
-      if (row.isGroupHeader) {
-        grandMaterialAmt += parseFloat(row.materialAmount) || 0;
-        grandLabourAmt += parseFloat(row.labourAmount) || 0;
-        grandTotalAmt += parseFloat(row.totalAmount) || 0;
-      }
-    });
-    
     // Update cache with modified data
     materialDataCache.current[localSelectedFloor] = updatedMaterialData;
     
