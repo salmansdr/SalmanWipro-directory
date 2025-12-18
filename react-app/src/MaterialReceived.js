@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Card, Form, Button, Row, Col, Table, Alert, InputGroup } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Table, Alert, InputGroup, Modal } from 'react-bootstrap';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
@@ -13,36 +13,91 @@ const MaterialReceived = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
+  const [showMovementTypeModal, setShowMovementTypeModal] = useState(false);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredPOs, setFilteredPOs] = useState([]);
   const [showPODropdown, setShowPODropdown] = useState(false);
   const [poSearchTerm, setPoSearchTerm] = useState('');
   const [materialItems, setMaterialItems] = useState([]);
   const [units, setUnits] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [floors, setFloors] = useState([]);
+  const [selectedFloor, setSelectedFloor] = useState('');
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState('');
+  const [locationInventory, setLocationInventory] = useState([]);
+  const [poItems, setPoItems] = useState([]); // Store original PO items for dropdown
   const hotTableRef = useRef(null);
   const poDropdownRef = useRef(null);
   const [formData, setFormData] = useState({
     _id: '',
-    grnNumber: '',
-    grnDate: '',
+    movementType: '',
+    referenceNumber: '',
+    referenceDate: '',
+    // Receipt fields
     poNumber: '',
     poId: '',
     supplierId: '',
     supplierName: '',
+    invoiceNumber: '',
+    invoiceDate: '',
+    receivingLocationId: '',
+    receivingLocationName: '',
     receivedBy: '',
     vehicleNumber: '',
     driverName: '',
     driverContact: '',
-    invoiceNumber: '',
-    invoiceDate: '',
+    // Only keep these location fields
+    sourceLocationId: '',
+    sourceLocationName: '',
+    destinationLocationId: '',
+    destinationLocationName: '',
+    transportReference: '',
+    // Other fields
+    projectId: '',
+    projectName: '',
+    mainPurpose: '',
+    originalGrnPo: '',
     remarks: '',
-    status: 'Pending',
     companyCode: '',
     companyName: '',
     createdBy: '',
     modifiedBy: '',
     items: []
   });
+
+  const movementTypes = [
+    { 
+      value: 'Receipt', 
+      label: 'Receipt', 
+      description: 'GRN from supplier against PO',
+      icon: 'bi bi-box-arrow-in-down',
+      color: '#28a745'
+    },
+    { 
+      value: 'Transfer', 
+      label: 'Transfer', 
+      description: 'Warehouse to site',
+      icon: 'bi bi-arrow-left-right',
+      color: '#17a2b8'
+    },
+    { 
+      value: 'Issue', 
+      label: 'Issue', 
+      description: 'Disbursement to project',
+      icon: 'bi bi-box-arrow-right',
+      color: '#ffc107'
+    },
+    { 
+      value: 'Return', 
+      label: 'Return', 
+      description: 'Return to supplier',
+      icon: 'bi bi-arrow-return-left',
+      color: '#dc3545'
+    }
+  ];
 
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
 
@@ -76,7 +131,7 @@ const MaterialReceived = () => {
       setFilteredGrns(grns);
     } else {
       const filtered = grns.filter(grn => 
-        grn.grnNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        grn.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,6 +160,26 @@ const MaterialReceived = () => {
     }
   }, [poSearchTerm, purchaseOrders]);
 
+  const loadInventoryByLocation = async (locationId) => {
+    if (!locationId) {
+      setLocationInventory([]);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/MaterialReceived/inventory-by-location?locationId=${locationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLocationInventory(data.inventory || []);
+      } else {
+        setLocationInventory([]);
+      }
+    } catch (error) {
+      console.error('Error loading location inventory:', error);
+      setLocationInventory([]);
+    }
+  };
+
   const loadDropdownData = async () => {
     try {
       // Load Material Items
@@ -127,6 +202,27 @@ const MaterialReceived = () => {
         const uniqueUnits = [...new Set(unitsArray.filter(u => u))];
         setUnits(uniqueUnits.length > 0 ? uniqueUnits : ['pcs', 'kg', 'bag', 'cft', 'sqm', 'cum', 'ltr', 'nos']);
       }
+
+      // Load Suppliers
+      const suppliersResponse = await fetch(`${apiBaseUrl}/api/Supplier`);
+      if (suppliersResponse.ok) {
+        const suppliersData = await suppliersResponse.json();
+        setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+      }
+
+      // Load Locations
+      const locationsResponse = await fetch(`${apiBaseUrl}/api/LocationMaster`);
+      if (locationsResponse.ok) {
+        const locationsData = await locationsResponse.json();
+        setLocations(Array.isArray(locationsData) ? locationsData : []);
+      }
+
+      // Load Projects
+      const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/running`);
+      if (projectsResponse.ok) {
+        const projectsData = await projectsResponse.json();
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+      }
     } catch (error) {
       console.error('Error loading dropdown data:', error);
       setUnits(['pcs', 'kg', 'bag', 'cft', 'sqm', 'cum', 'ltr', 'nos']);
@@ -148,23 +244,49 @@ const MaterialReceived = () => {
     }
   };
 
+  const loadPurchaseOrdersBySupplier = async (supplierId) => {
+    try {
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const response = await fetch(`${apiBaseUrl}/api/PurchaseOrder/supplier/${supplierId}?companyId=${companyId}`);
+      if (response.ok) {
+        const data = await response.json();
+        // API returns an object with 'orders' array
+        const ordersArray = data.orders || [];
+        // Filter only approved POs
+        const approvedPOs = ordersArray.filter(po => po.status === 'Approved');
+        setPurchaseOrders(approvedPOs);
+        setFilteredPOs(approvedPOs);
+      } else {
+        setPurchaseOrders([]);
+        setFilteredPOs([]);
+      }
+    } catch (error) {
+      console.error('Error loading purchase orders by supplier:', error);
+      setPurchaseOrders([]);
+      setFilteredPOs([]);
+    }
+  };
+
   const handlePOSelect = (po) => {
+    const mappedItems = po.items.map(item => ({
+      itemCode: item.itemName || item.itemCode || '',
+      itemId: item.itemCode || '',
+      itemName: item.itemName || '',
+      unit: item.unit || '',
+      orderedQty: item.purchaseQty || 0,
+      receivedQty: 0,
+      rate: item.rate || 0,
+      amount: 0
+    }));
+    
+    setPoItems(mappedItems); // Store original PO items
     setFormData(prev => ({
       ...prev,
       poNumber: po.poNumber,
       poId: po._id || '',
       supplierId: po.supplierId || '',
       supplierName: po.supplierName || '',
-      items: po.items.map(item => ({
-        itemCode: item.itemName || item.itemCode || '',
-        itemId: item.itemCode || '',
-        itemName: item.itemName || '',
-        unit: item.unit || '',
-        orderedQty: item.purchaseQty || 0,
-        receivedQty: 0,
-        rate: item.rate || 0,
-        amount: 0
-      }))
+      items: mappedItems
     }));
     setPoSearchTerm(po.poNumber);
     setShowPODropdown(false);
@@ -206,8 +328,6 @@ const MaterialReceived = () => {
       // Prepare data - exclude fields populated by backend
       const { 
         supplierName, 
-        status, 
-        poNumber,
         supplierEmail,
         createdByUserName,
         createdByEmail,
@@ -242,11 +362,11 @@ const MaterialReceived = () => {
       if (response.ok) {
         const responseData = await response.json();
         
-        // Update formData with the auto-generated GRN number from response
-        if (!editMode && responseData.grnNumber) {
+        // Update formData with the auto-generated reference number from response
+        if (!editMode && responseData.referenceNumber) {
           setFormData(prev => ({
             ...prev,
-            grnNumber: responseData.grnNumber
+            referenceNumber: responseData.referenceNumber
           }));
         }
         
@@ -270,22 +390,37 @@ const MaterialReceived = () => {
   };
 
   const handleReset = () => {
+    setPoItems([]);
     setFormData({
       _id: '',
-      grnNumber: '',
-      grnDate: '',
+      movementType: '',
+      referenceNumber: '',
+      referenceDate: '',
+      // Receipt fields
       poNumber: '',
       poId: '',
       supplierId: '',
       supplierName: '',
+      invoiceNumber: '',
+      invoiceDate: '',
+      receivingLocationId: '',
+      receivingLocationName: '',
       receivedBy: '',
       vehicleNumber: '',
       driverName: '',
       driverContact: '',
-      invoiceNumber: '',
-      invoiceDate: '',
+      // Only keep these location fields
+      sourceLocationId: '',
+      sourceLocationName: '',
+      destinationLocationId: '',
+      destinationLocationName: '',
+      transportReference: '',
+      // Other fields
+      projectId: '',
+      projectName: '',
+      mainPurpose: '',
+      originalGrnPo: '',
       remarks: '',
-      status: 'Pending',
       companyCode: '',
       companyName: '',
       createdBy: '',
@@ -298,6 +433,12 @@ const MaterialReceived = () => {
   const handleNewGrn = () => {
     handleReset();
     setPoSearchTerm('');
+    setShowMovementTypeModal(true);
+  };
+
+  const handleMovementTypeSelect = (movementType) => {
+    setFormData(prev => ({ ...prev, movementType }));
+    setShowMovementTypeModal(false);
     setViewMode('form');
   };
 
@@ -333,174 +474,54 @@ const MaterialReceived = () => {
     }
   };
 
-  return (
-    <Container fluid className="mt-3">
-      {alertMessage.show && (
-        <Alert 
-          variant={alertMessage.type} 
-          onClose={() => setAlertMessage({ show: false, type: '', message: '' })} 
-          dismissible
-        >
-          {alertMessage.message}
-        </Alert>
-      )}
+  // Dynamic header fields rendering based on movement type
+  const renderHeaderFields = () => {
+    const movementType = formData.movementType;
 
-      {viewMode === 'list' ? (
-        // List View - Display all GRNs
-        <Card>
-          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
-            <div>
-              <h4 className="mb-0">
-                <i className="bi bi-box-seam me-2"></i>
-                Material Received Notes (GRN)
-              </h4>
-              
-            </div>
-            <Button variant="light" onClick={handleNewGrn}>
-              <i className="bi bi-plus-circle me-2"></i>New GRN
-            </Button>
-          </Card.Header>
-          <Card.Body>
-            {/* Search Bar */}
-            <Row className="mb-3">
-              <Col md={6}>
-                <InputGroup>
-                  <InputGroup.Text>
-                    <i className="bi bi-search"></i>
-                  </InputGroup.Text>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search by GRN Number, PO Number, Supplier Name, or Invoice Number..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </InputGroup>
-              </Col>
-            </Row>
-
-            {/* GRN Table */}
-            <Table striped bordered hover responsive style={{ fontSize: '0.875rem' }}>
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: '12%' }}>GRN Number</th>
-                  <th style={{ width: '10%' }}>GRN Date</th>
-                  <th style={{ width: '14%' }}>PO Number</th>
-                  <th style={{ width: '16%' }}>Supplier Name</th>
-                  <th style={{ width: '12%' }}>Invoice Number</th>
-                  <th style={{ width: '10%' }}>Invoice Date</th>
-                  <th style={{ width: '12%' }}>Received By</th>
-                  <th style={{ width: '14%' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGrns.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center text-muted py-4">
-                      {searchTerm ? 'No GRNs found matching your search.' : 'No GRNs available. Click "New GRN" to create one.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredGrns.map((grn) => (
-                    <tr key={grn._id}>
-                      <td>
-                        <Button
-                          variant="link"
-                          className="p-0 text-decoration-none"
-                          onClick={() => handleViewGrn(grn)}
-                          style={{ fontSize: '0.875rem' }}
-                        >
-                          {grn.grnNumber}
-                        </Button>
-                      </td>
-                      <td>{grn.grnDate ? new Date(grn.grnDate).toLocaleDateString('en-GB') : ''}</td>
-                      <td>{grn.poNumber}</td>
-                      <td>{grn.supplierName}</td>
-                      <td>{grn.invoiceNumber}</td>
-                      <td>{grn.invoiceDate ? new Date(grn.invoiceDate).toLocaleDateString('en-GB') : ''}</td>
-                      <td>{grn.receivedBy}</td>
-                      <td>
-                        <Button 
-                          variant="outline-primary" 
-                          size="sm" 
-                          className="me-2"
-                          onClick={() => handleViewGrn(grn)}
-                          title="Edit"
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button 
-                          variant="outline-danger" 
-                          size="sm"
-                          onClick={() => handleDelete(grn._id)}
-                          title="Delete"
-                        >
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Card.Body>
-        </Card>
-      ) : (
-        // Form View - Create/Edit GRN
-        <Card>
-          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
-            <div>
-              <h4 className="mb-0">
-                <i className="bi bi-box-seam me-2"></i>
-                {editMode ? 'Edit Material Received Note' : 'New Material Received Note'}
-              </h4>
-              <p className="mb-0 mt-2" style={{ fontSize: '0.9rem' }}>
-                Record and track material receipts from suppliers at construction sites
-              </p>
-            </div>
-            <div className="d-flex gap-2">
-              <Button variant="light" onClick={() => setViewMode('list')}>
-                <i className="bi bi-arrow-left me-2"></i>Back to List
-              </Button>
-              <Button variant="light" type="submit" form="grnForm" className="border border-white">
-                <i className="bi bi-save me-2"></i>{editMode ? 'Update' : 'Save'} GRN
-              </Button>
-            </div>
-          </Card.Header>
-          <Card.Body>
-            <Form id="grnForm" onSubmit={handleSubmit}>
-            {/* GRN Header Information */}
+    switch (movementType) {
+      case 'Receipt':
+        return (
+          <>
+            {/* Supplier & PO Information */}
             <div className="mb-4">
-              <h5 className="border-bottom pb-2 mb-3">Receipt Details</h5>
+              <h5 className="border-bottom pb-2 mb-3">Supplier & PO Information</h5>
               <Row>
-                <Col md={2}>
+                <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>GRN Number <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="grnNumber"
-                      value={formData.grnNumber}
-                      readOnly
-                      style={{ backgroundColor: '#e9ecef' }}
-                      placeholder="Auto-generated"
-                    />
-                   
-                  </Form.Group>
-                </Col>
-                <Col md={2}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>GRN Date <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="date"
-                      name="grnDate"
-                      value={formData.grnDate}
-                      onChange={handleInputChange}
+                    <Form.Label>Supplier <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                      name="supplierId"
+                      value={formData.supplierId}
+                      onChange={(e) => {
+                        const selectedSupplier = suppliers.find(s => s._id === e.target.value);
+                        setFormData(prev => ({
+                          ...prev,
+                          supplierId: e.target.value,
+                          supplierName: selectedSupplier?.supplierName || '',
+                          poNumber: '',
+                          poId: '',
+                          items: []
+                        }));
+                        setPoSearchTerm('');
+                        if (e.target.value) {
+                          loadPurchaseOrdersBySupplier(e.target.value);
+                        } else {
+                          setPurchaseOrders([]);
+                          setFilteredPOs([]);
+                        }
+                      }}
                       required
-                    />
+                    >
+                      <option value="">Select Supplier</option>
+                      {suppliers.map(s => (
+                        <option key={s._id} value={s._id}>{s.supplierName}</option>
+                      ))}
+                    </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={3}>
+                <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>PO Number <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>Purchase Order # <span className="text-danger">*</span></Form.Label>
                     <div className="position-relative" ref={poDropdownRef}>
                       <Form.Control
                         type="text"
@@ -547,43 +568,9 @@ const MaterialReceived = () => {
                     </div>
                   </Form.Group>
                 </Col>
-                <Col md={2}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Received By <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="receivedBy"
-                      value={formData.receivedBy}
-                      onChange={handleInputChange}
-                      placeholder="Name of receiving person"
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </div>
-
-            {/* Supplier & Invoice Information */}
-            <div className="mb-4">
-              <h5 className="border-bottom pb-2 mb-3">Supplier & Invoice Information</h5>
-              <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Supplier Name <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="supplierName"
-                      value={formData.supplierName}
-                      readOnly
-                      style={{ backgroundColor: '#e9ecef' }}
-                      placeholder="Auto-filled from PO"
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Invoice Number <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>Challan/Invoice # <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="text"
                       name="invoiceNumber"
@@ -594,6 +581,8 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
+              </Row>
+              <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
                     <Form.Label>Invoice Date <span className="text-danger">*</span></Form.Label>
@@ -606,186 +595,555 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Receiving Location <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                      name="receivingLocationId"
+                      value={formData.receivingLocationId}
+                      onChange={(e) => {
+                        const selectedLocation = locations.find(l => l._id === e.target.value);
+                        setFormData(prev => ({
+                          ...prev,
+                          receivingLocationId: e.target.value,
+                          receivingLocationName: selectedLocation?.locationName || ''
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">Select Location</option>
+                      {locations.map(l => (
+                        <option key={l._id} value={l._id}>{l.locationName}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Received By <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="receivedBy"
+                      value={formData.receivedBy}
+                      onChange={handleInputChange}
+                      placeholder="Name of receiving person"
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Remarks</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="remarks"
+                      value={formData.remarks}
+                      onChange={handleInputChange}
+                      placeholder="Enter any additional notes"
+                    />
+                  </Form.Group>
+                </Col>
               </Row>
             </div>
+          </>
+        );
 
-            {/* Transport Information */}
+      case 'Transfer':
+        return (
+          <div className="mb-4">
+            <h5 className="border-bottom pb-2 mb-3">Transfer Information</h5>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="sourceLocationId"
+                    value={formData.sourceLocationId}
+                    onChange={(e) => {
+                      const selectedLocation = locations.find(l => l._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        sourceLocationId: e.target.value,
+                        sourceLocationName: selectedLocation?.locationName || '',
+                        items: [] // Clear items when location changes
+                      }));
+                      loadInventoryByLocation(e.target.value);
+                    }}
+                    required
+                  >
+                    <option value="">Select Source Location</option>
+                    {locations.map(l => (
+                      <option key={l._id} value={l._id}>{l.locationName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Destination Location <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="receivingLocationId"
+                    value={formData.receivingLocationId}
+                    onChange={(e) => {
+                      const selectedLocation = locations.find(l => l._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        receivingLocationId: e.target.value,
+                        receivingLocationName: selectedLocation?.locationName || ''
+                      }));
+                    }}
+                    required
+                  >
+                    <option value="">Select Destination Location</option>
+                    {locations
+                      .filter(l => l._id !== formData.sourceLocationId)
+                      .map(l => (
+                        <option key={l._id} value={l._id}>{l.locationName}</option>
+                      ))
+                    }
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Remarks</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleInputChange}
+                    placeholder="Enter any additional notes"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </div>
+        );
+
+      case 'Issue': // Disbursement to project
+        return (
+          <div className="mb-4">
+            <h5 className="border-bottom pb-2 mb-3">Issue Information</h5>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="sourceLocationId"
+                    value={formData.sourceLocationId}
+                    onChange={(e) => {
+                      const selectedLocation = locations.find(l => l._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        sourceLocationId: e.target.value,
+                        sourceLocationName: selectedLocation?.locationName || '',
+                        items: [] // Clear items when location changes
+                      }));
+                      loadInventoryByLocation(e.target.value);
+                    }}
+                    required
+                  >
+                    <option value="">Select Source Location</option>
+                    {locations.map(l => (
+                      <option key={l._id} value={l._id}>{l.locationName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Project <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="projectId"
+                    value={formData.projectId}
+                    onChange={async (e) => {
+                      const selectedProject = projects.find(p => p._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        projectId: e.target.value,
+                        projectName: selectedProject?.name || ''
+                      }));
+                      setSelectedFloor('');
+                      setEvents([]);
+                      setSelectedEvent('');
+                      setFloors([]);
+                      if (e.target.value) {
+                        try {
+                          const res = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${e.target.value}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            const floorList = (data.records && data.records[0] && data.records[0].floors) || [];
+                            setFloors(floorList);
+                          } else {
+                            setFloors([]);
+                          }
+                        } catch {
+                          setFloors([]);
+                        }
+                      }
+                    }}
+                    required
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map(p => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Floor <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="floor"
+                    value={selectedFloor}
+                    onChange={e => {
+                      setSelectedFloor(e.target.value);
+                      setSelectedEvent('');
+                      const floorObj = floors.find(f => f.floorName === e.target.value);
+                      if (floorObj && floorObj.components) {
+                        setEvents(Object.keys(floorObj.components));
+                      } else {
+                        setEvents([]);
+                      }
+                    }}
+                    required
+                    disabled={floors.length === 0}
+                  >
+                    <option value="">Select Floor</option>
+                    {floors.map(f => (
+                      <option key={f.floorName} value={f.floorName}>{f.floorName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Event <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="event"
+                    value={selectedEvent}
+                    onChange={e => setSelectedEvent(e.target.value)}
+                    required
+                    disabled={events.length === 0}
+                  >
+                    <option value="">Select Event</option>
+                    {events.map(ev => (
+                      <option key={ev} value={ev}>{ev}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Remarks</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleInputChange}
+                    placeholder="Enter any additional notes"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </div>
+        );
+
+      case 'Return': // Return to supplier
+        return (
+          <div className="mb-4">
+            <h5 className="border-bottom pb-2 mb-3">Return Information</h5>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="sourceLocationId"
+                    value={formData.sourceLocationId}
+                    onChange={(e) => {
+                      const selectedLocation = locations.find(l => l._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        sourceLocationId: e.target.value,
+                        sourceLocationName: selectedLocation?.locationName || '',
+                        items: [] // Clear items when location changes
+                      }));
+                      loadInventoryByLocation(e.target.value);
+                    }}
+                    required
+                  >
+                    <option value="">Select Source Location</option>
+                    {locations.map(l => (
+                      <option key={l._id} value={l._id}>{l.locationName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Supplier <span className="text-danger">*</span></Form.Label>
+                  <Form.Select
+                    name="supplierId"
+                    value={formData.supplierId}
+                    onChange={(e) => {
+                      const selectedSupplier = suppliers.find(s => s._id === e.target.value);
+                      setFormData(prev => ({
+                        ...prev,
+                        supplierId: e.target.value,
+                        supplierName: selectedSupplier?.supplierName || ''
+                      }));
+                      // Load POs for selected supplier for reference
+                      if (e.target.value) {
+                        loadPurchaseOrdersBySupplier(e.target.value);
+                      }
+                    }}
+                    required
+                  >
+                    <option value="">Select Supplier</option>
+                    {suppliers.map(s => (
+                      <option key={s._id} value={s._id}>{s.supplierName}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Remarks</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleInputChange}
+                    placeholder="Enter any additional notes"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="mb-4">
+            <p className="text-muted">Please select a movement type to continue.</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <Container fluid className="mt-3">
+      {alertMessage.show && (
+        <Alert 
+          variant={alertMessage.type} 
+          onClose={() => setAlertMessage({ show: false, type: '', message: '' })} 
+          dismissible
+        >
+          {alertMessage.message}
+        </Alert>
+      )}
+
+      {viewMode === 'list' ? (
+        // List View - Display all GRNs
+        <Card>
+          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+            <div>
+              <h4 className="mb-0">
+                <i className="bi bi-box-seam me-2"></i>
+                Inventory Movement
+              </h4>
+              
+            </div>
+            <Button variant="light" onClick={handleNewGrn}>
+              <i className="bi bi-plus-circle me-2"></i>New
+            </Button>
+          </Card.Header>
+          <Card.Body>
+            {/* Search Bar */}
+            <Row className="mb-3">
+              <Col md={6}>
+                <InputGroup>
+                  <InputGroup.Text>
+                    <i className="bi bi-search"></i>
+                  </InputGroup.Text>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by Reference Number, PO Number, Supplier Name, or Invoice Number..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </InputGroup>
+              </Col>
+            </Row>
+
+            {/* GRN Table */}
+            <Table striped bordered hover responsive style={{ fontSize: '0.875rem' }}>
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: '10%' }}>Movement Type</th>
+                  <th style={{ width: '11%' }}>Reference Number</th>
+                  <th style={{ width: '9%' }}>Reference Date</th>
+                  <th style={{ width: '12%' }}>PO Number</th>
+                  <th style={{ width: '15%' }}>Supplier Name</th>
+                  <th style={{ width: '11%' }}>Invoice Number</th>
+                  <th style={{ width: '9%' }}>Invoice Date</th>
+                  <th style={{ width: '11%' }}>Received By</th>
+                  <th style={{ width: '12%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredGrns.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="text-center text-muted py-4">
+                      {searchTerm ? 'No Reference Number found matching your search.' : 'No Reference Numbers available. Click "New Reference" to create one.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredGrns.map((grn) => {
+                    const movementTypeData = movementTypes.find(it => it.value === grn.movementType);
+                    return (
+                    <tr key={grn._id}>
+                      <td>
+                        {movementTypeData ? (
+                          <span className="badge" style={{ backgroundColor: movementTypeData.color, fontSize: '0.75rem' }}>
+                            <i className={`${movementTypeData.icon} me-1`}></i>
+                            {movementTypeData.label}
+                          </span>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
+                      <td>
+                        <Button
+                          variant="link"
+                          className="p-0 text-decoration-none"
+                          onClick={() => handleViewGrn(grn)}
+                          style={{ fontSize: '0.875rem' }}
+                        >
+                          {grn.referenceNumber}
+                        </Button>
+                      </td>
+                      <td>{grn.referenceDate ? new Date(grn.referenceDate).toLocaleDateString('en-GB') : ''}</td>
+                      <td>{grn.poNumber}</td>
+                      <td>{grn.supplierName}</td>
+                      <td>{grn.invoiceNumber}</td>
+                      <td>{grn.invoiceDate ? new Date(grn.invoiceDate).toLocaleDateString('en-GB') : ''}</td>
+                      <td>{grn.receivedBy}</td>
+                      <td>
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          className="me-2"
+                          onClick={() => handleViewGrn(grn)}
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                        <Button 
+                          variant="outline-danger" 
+                          size="sm"
+                          onClick={() => handleDelete(grn._id)}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                  })
+                )}
+              </tbody>
+            </Table>
+          </Card.Body>
+        </Card>
+      ) : (
+        // Form View - Create/Edit GRN
+        <Card>
+          <Card.Header className="bg-success text-white d-flex justify-content-between align-items-center">
+            <div>
+              <h4 className="mb-0">
+                <i className="bi bi-box-seam me-2"></i>
+                {editMode ? `Edit ${formData.movementType || 'Material'} Note` : `New ${formData.movementType || 'Material'} Entry`}
+              </h4>
+              <p className="mb-0 mt-2" style={{ fontSize: '0.9rem' }}>
+                {formData.movementType && movementTypes.find(it => it.value === formData.movementType)?.description}
+              </p>
+            </div>
+            <div className="d-flex gap-2">
+              <Button variant="light" onClick={() => setViewMode('list')}>
+                <i className="bi bi-arrow-left me-2"></i>Back to List
+              </Button>
+              <Button variant="light" type="submit" form="grnForm" className="border border-white">
+                <i className="bi bi-save me-2"></i>{editMode ? 'Update' : 'Save'}
+              </Button>
+            </div>
+          </Card.Header>
+          <Card.Body>
+            <Form id="grnForm" onSubmit={handleSubmit}>
+            {/* Common Header Information */}
             <div className="mb-4">
-              <h5 className="border-bottom pb-2 mb-3">Transport Details</h5>
+              <h5 className="border-bottom pb-2 mb-3">Transaction Details</h5>
               <Row>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Vehicle Number</Form.Label>
+                    <Form.Label>Reference Number <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="text"
-                      name="vehicleNumber"
-                      value={formData.vehicleNumber}
-                      onChange={handleInputChange}
-                      placeholder="Enter vehicle registration number"
+                      name="referenceNumber"
+                      value={formData.referenceNumber}
+                      readOnly
+                      style={{ backgroundColor: '#e9ecef' }}
+                      placeholder="Auto-generated"
                     />
                   </Form.Group>
                 </Col>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Driver Name</Form.Label>
+                    <Form.Label>Reference Date <span className="text-danger">*</span></Form.Label>
                     <Form.Control
-                      type="text"
-                      name="driverName"
-                      value={formData.driverName}
+                      type="date"
+                      name="referenceDate"
+                      value={formData.referenceDate}
                       onChange={handleInputChange}
-                      placeholder="Enter driver name"
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Driver Contact Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="driverContact"
-                      value={formData.driverContact}
-                      onChange={handleInputChange}
-                      placeholder="Enter driver contact number"
+                      required
                     />
                   </Form.Group>
                 </Col>
               </Row>
             </div>
 
-            {/* Materials Received */}
+            {/* Dynamic Movement Type Specific Fields */}
+            {renderHeaderFields()}
+
+            {/* Materials/Items */}
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Materials Received</h5>
+              
+              {/* Instruction message for Receipt case */}
+              {formData.movementType === 'Receipt' && !formData.poId && (
+                <Alert variant="info" className="mb-3">
+                  <i className="bi bi-info-circle me-2"></i>
+                  Please select a Purchase Order above to load materials for receiving.
+                </Alert>
+              )}
+              
+              {/* Instruction message for non-Receipt cases */}
+              {formData.movementType !== 'Receipt' && !formData.sourceLocationId && (
+                <Alert variant="info" className="mb-3">
+                  <i className="bi bi-info-circle me-2"></i>
+                  Please select a Source Location above to load available materials from inventory.
+                </Alert>
+              )}
+              
               <HotTable
                 ref={hotTableRef}
-                data={[
-                  ...(formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
-                    unit: '',
-                    orderedQty: 0,
-                    receivedQty: 0,
-                    rate: 0,
-                    amount: 0
-                  }]),
-                  {
-                    itemCode: 'Total:',
-                    itemName: '',
-                    unit: '',
-                    orderedQty: '',
-                    receivedQty: '',
-                    rate: '',
-                    amount: (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
-                    action: '',
-                    isTotalRow: true
-                  }
-                ]}
-                colHeaders={['Material', 'Unit', 'Ordered Qty', 'Received Qty', 'Rate (INR)', 'Amount (INR)', 'Action']}
-                columns={[
-                  {
-                    data: 'itemCode',
-                    type: 'dropdown',
-                    source: materialItems.map(item => {
-                      const itemData = item.itemData || item;
-                      return itemData.material || '';
-                    }),
-                    strict: false,
-                    filter: false,
-                    width: 250,
-                    renderer: (instance, td, row, col, prop, value, cellProperties) => {
-                      const rowData = instance.getSourceDataAtRow(row);
-                      if (rowData && rowData.itemName) {
-                        td.innerHTML = rowData.itemName;
-                        return td;
-                      }
-                      const materialItem = materialItems.find(item => {
-                        const itemData = item.itemData || item;
-                        return itemData.material === value;
-                      });
-                      if (materialItem) {
-                        td.innerHTML = value;
-                        return td;
-                      }
-                      td.innerHTML = value || '';
-                      return td;
-                    }
-                  },
-                  {
-                    data: 'unit',
-                    type: 'dropdown',
-                    source: units,
-                    strict: false,
-                    width: 100
-                  },
-                  {
-                    data: 'orderedQty',
-                    type: 'numeric',
-                    numericFormat: {
-                      pattern: '0,0.00'
-                    },
-                    width: 120
-                  },
-                  {
-                    data: 'receivedQty',
-                    type: 'numeric',
-                    numericFormat: {
-                      pattern: '0,0.00'
-                    },
-                    width: 120
-                  },
-                  {
-                    data: 'rate',
-                    type: 'numeric',
-                    numericFormat: {
-                      pattern: '0,0.00'
-                    },
-                    width: 100,
-                    readOnly: true,
-                    className: 'htRight htMiddle bg-light'
-                  },
-                  {
-                    data: 'amount',
-                    type: 'numeric',
-                    numericFormat: {
-                      pattern: '0,0.00'
-                    },
-                    width: 120,
-                    readOnly: true,
-                    className: 'htRight htMiddle bg-light'
-                  },
-                  {
-                    data: 'action',
-                    width: 100,
-                    readOnly: true,
-                    renderer: (instance, td, row, col, prop, value, cellProperties) => {
-                      const rowData = instance.getSourceDataAtRow(row);
-                      
-                      // Don't show buttons for total row
-                      if (rowData && rowData.isTotalRow) {
-                        td.innerHTML = '';
-                        return td;
-                      }
-                      
-                      td.innerHTML = '';
-                      td.style.textAlign = 'center';
-                      
-                      // Add row button
-                      const addBtn = document.createElement('button');
-                      addBtn.className = 'btn btn-success btn-sm me-1';
-                      addBtn.innerHTML = '<i class="bi bi-plus"></i>';
-                      addBtn.onclick = () => {
-                        const currentData = instance.getSourceData();
-                        const newItems = currentData.filter(item => !item.isTotalRow).map(item => ({
-                          itemCode: item.itemCode || '',
-                          itemName: item.itemName || '',
-                          unit: item.unit || '',
-                          orderedQty: item.orderedQty || 0,
-                          receivedQty: item.receivedQty || 0,
-                          rate: item.rate || 0,
-                          amount: item.amount || 0,
-                          itemId: item.itemId || ''
-                        }));
-                        
-                        newItems.splice(row + 1, 0, {
+                data={
+                  formData.movementType === 'Receipt'
+                    ? [
+                        ...(formData.items.length > 0 ? formData.items : [{
                           itemCode: '',
                           itemName: '',
                           unit: '',
@@ -793,83 +1151,334 @@ const MaterialReceived = () => {
                           receivedQty: 0,
                           rate: 0,
                           amount: 0
-                        });
-                        setFormData(prev => ({ ...prev, items: newItems }));
-                      };
-                      td.appendChild(addBtn);
-                      
-                      // Delete row button
-                      if (formData.items.length > 0) {
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.className = 'btn btn-danger btn-sm';
-                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-                        deleteBtn.onclick = () => {
-                          const currentData = instance.getSourceData();
-                          const newItems = currentData.filter((item, index) => 
-                            index !== row && !item.isTotalRow)
-                            .map(item => ({
-                              itemCode: item.itemCode || '',
-                              itemName: item.itemName || '',
-                              unit: item.unit || '',
-                              orderedQty: item.orderedQty || 0,
-                              receivedQty: item.receivedQty || 0,
-                              rate: item.rate || 0,
-                              amount: item.amount || 0,
-                              itemId: item.itemId || ''
-                            }));
-                          setFormData(prev => ({ ...prev, items: newItems }));
-                        };
-                        td.appendChild(deleteBtn);
-                      }
-                      
-                      return td;
-                    }
-                  }
-                ]}
+                        }]),
+                        {
+                          itemCode: 'Total:',
+                          itemName: '',
+                          unit: '',
+                          orderedQty: '',
+                          receivedQty: '',
+                          rate: '',
+                          amount: (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
+                          action: '',
+                          isTotalRow: true
+                        }
+                      ]
+                    : (formData.items.length > 0 ? formData.items : [{
+                        itemCode: '',
+                        itemName: '',
+                        unit: '',
+                        stockQty: 0,
+                        receivedQty: 0
+                      }])
+                }
+                colHeaders={
+                  formData.movementType === 'Receipt'
+                    ? ['Material', 'Unit', 'Ordered Qty', 'Qty', 'Rate (INR)', 'Amount (INR)', 'Action']
+                    : ['Material', 'Unit', 'Stock Qty', 'Qty', 'Action']
+                }
+                columns={
+                  formData.movementType === 'Receipt'
+                    ? [
+                        {
+                          data: 'itemCode',
+                          type: 'dropdown',
+                          source: poItems.length > 0 
+                            ? poItems.map(item => item.itemName || item.itemCode || '')
+                            : [],
+                          strict: false,
+                          filter: false,
+                          width: 250,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            const rowData = instance.getSourceDataAtRow(row);
+                            if (rowData && rowData.itemName) {
+                              td.innerHTML = rowData.itemName;
+                              return td;
+                            }
+                            td.innerHTML = value || '';
+                            return td;
+                          }
+                        },
+                        {
+                          data: 'unit',
+                          type: 'text',
+                          readOnly: true,
+                          className: 'htMiddle bg-light',
+                          width: 100
+                        },
+                        {
+                          data: 'orderedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light',
+                          width: 120
+                        },
+                        {
+                          data: 'receivedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 120
+                        },
+                        {
+                          data: 'rate',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 100,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
+                          data: 'amount',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 120,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
+                          data: 'action',
+                          width: 100,
+                          readOnly: true,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            const rowData = instance.getSourceDataAtRow(row);
+                            
+                            // Don't show buttons for total row
+                            if (rowData && rowData.isTotalRow) {
+                              td.innerHTML = '';
+                              return td;
+                            }
+                            
+                            td.innerHTML = '';
+                            td.style.textAlign = 'center';
+                            
+                            // Add row button
+                            const addBtn = document.createElement('button');
+                            addBtn.className = 'btn btn-success btn-sm me-1';
+                            addBtn.innerHTML = '<i class="bi bi-plus"></i>';
+                            addBtn.onclick = () => {
+                              const currentData = instance.getSourceData();
+                              const newItems = currentData.filter(item => !item.isTotalRow).map(item => ({
+                                itemCode: item.itemCode || '',
+                                itemName: item.itemName || '',
+                                unit: item.unit || '',
+                                orderedQty: item.orderedQty || 0,
+                                receivedQty: item.receivedQty || 0,
+                                rate: item.rate || 0,
+                                amount: item.amount || 0,
+                                itemId: item.itemId || ''
+                              }));
+                              
+                              newItems.splice(row + 1, 0, {
+                                itemCode: '',
+                                itemName: '',
+                                unit: '',
+                                orderedQty: 0,
+                                receivedQty: 0,
+                                rate: 0,
+                                amount: 0
+                              });
+                              setFormData(prev => ({ ...prev, items: newItems }));
+                            };
+                            td.appendChild(addBtn);
+                            
+                            // Delete row button
+                            if (formData.items.length > 0) {
+                              const deleteBtn = document.createElement('button');
+                              deleteBtn.className = 'btn btn-danger btn-sm';
+                              deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                              deleteBtn.onclick = () => {
+                                const currentData = instance.getSourceData();
+                                const newItems = currentData.filter((item, index) => 
+                                  index !== row && !item.isTotalRow)
+                                  .map(item => ({
+                                    itemCode: item.itemCode || '',
+                                    itemName: item.itemName || '',
+                                    unit: item.unit || '',
+                                    orderedQty: item.orderedQty || 0,
+                                    receivedQty: item.receivedQty || 0,
+                                    rate: item.rate || 0,
+                                    amount: item.amount || 0,
+                                    itemId: item.itemId || ''
+                                  }));
+                                setFormData(prev => ({ ...prev, items: newItems }));
+                              };
+                              td.appendChild(deleteBtn);
+                            }
+                            
+                            return td;
+                          }
+                        }
+                      ]
+                    : [
+                        {
+                          data: 'itemCode',
+                          type: 'dropdown',
+                          source: formData.sourceLocationId && locationInventory.length > 0 
+                            ? locationInventory
+                                .filter(item => item.locationId === formData.sourceLocationId)
+                                .map(item => item.itemName || '')
+                            : [],
+                          strict: false,
+                          filter: false,
+                          width: 250,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            const rowData = instance.getSourceDataAtRow(row);
+                            if (rowData && rowData.itemName) {
+                              td.innerHTML = rowData.itemName;
+                              return td;
+                            }
+                            const inventoryItem = locationInventory.find(item => item.itemName === value);
+                            if (inventoryItem) {
+                              td.innerHTML = value;
+                              return td;
+                            }
+                            td.innerHTML = value || '';
+                            return td;
+                          }
+                        },
+                        {
+                          data: 'unit',
+                          type: 'dropdown',
+                          source: units,
+                          strict: false,
+                          width: 100
+                        },
+                        {
+                          data: 'stockQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 120,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
+                          data: 'receivedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 120
+                        },
+                        {
+                          data: 'action',
+                          width: 100,
+                          readOnly: true,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            td.innerHTML = '';
+                            td.style.textAlign = 'center';
+                            
+                            // Add row button
+                            const addBtn = document.createElement('button');
+                            addBtn.className = 'btn btn-success btn-sm me-1';
+                            addBtn.innerHTML = '<i class="bi bi-plus"></i>';
+                            addBtn.onclick = () => {
+                              const currentData = instance.getSourceData();
+                              const newItems = currentData.map(item => ({
+                                itemCode: item.itemCode || '',
+                                itemName: item.itemName || '',
+                                unit: item.unit || '',
+                                stockQty: item.stockQty || 0,
+                                receivedQty: item.receivedQty || 0,
+                                itemId: item.itemId || ''
+                              }));
+                              
+                              newItems.splice(row + 1, 0, {
+                                itemCode: '',
+                                itemName: '',
+                                unit: '',
+                                stockQty: 0,
+                                receivedQty: 0
+                              });
+                              setFormData(prev => ({ ...prev, items: newItems }));
+                            };
+                            td.appendChild(addBtn);
+                            
+                            // Delete row button
+                            if (formData.items.length > 0) {
+                              const deleteBtn = document.createElement('button');
+                              deleteBtn.className = 'btn btn-danger btn-sm';
+                              deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                              deleteBtn.onclick = () => {
+                                const currentData = instance.getSourceData();
+                                const newItems = currentData.filter((item, index) => index !== row)
+                                  .map(item => ({
+                                    itemCode: item.itemCode || '',
+                                    itemName: item.itemName || '',
+                                    unit: item.unit || '',
+                                    stockQty: item.stockQty || 0,
+                                    receivedQty: item.receivedQty || 0,
+                                    itemId: item.itemId || ''
+                                  }));
+                                setFormData(prev => ({ ...prev, items: newItems }));
+                              };
+                              td.appendChild(deleteBtn);
+                            }
+                            
+                            return td;
+                          }
+                        }
+                      ]
+                }
                 cells={(row, col) => {
-                  const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
-                    unit: '',
-                    orderedQty: 0,
-                    receivedQty: 0,
-                    rate: 0,
-                    amount: 0
-                  }];
-                  const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
-                  const cellProperties = {};
-                  
-                  if (dataRow && dataRow.isTotalRow) {
-                    cellProperties.readOnly = true;
-                    cellProperties.type = 'text';
+                  if (formData.movementType === 'Receipt') {
+                    const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
+                      itemCode: '',
+                      itemName: '',
+                      unit: '',
+                      orderedQty: 0,
+                      receivedQty: 0,
+                      rate: 0,
+                      amount: 0
+                    }];
+                    const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
+                    const cellProperties = {};
+                    
+                    if (dataRow && dataRow.isTotalRow) {
+                      cellProperties.readOnly = true;
+                      cellProperties.type = 'text';
+                    }
+                    
+                    return cellProperties;
                   }
-                  
-                  return cellProperties;
+                  return {};
                 }}
                 afterRenderer={(td, row, col, prop, value, cellProperties) => {
-                  const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
-                    unit: '',
-                    orderedQty: 0,
-                    receivedQty: 0,
-                    rate: 0,
-                    amount: 0
-                  }];
-                  const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
-                  if (dataRow && dataRow.isTotalRow) {
-                    td.style.borderTop = '2px solid #0d6efd';
-                    td.style.fontWeight = 'bold';
-                    td.style.backgroundColor = '#f8f9fa';
-                    
-                    if (col === 0) {
-                      td.style.textAlign = 'right';
-                      td.style.paddingRight = '15px';
-                    } else if (col === 5) {
-                      td.style.textAlign = 'right';
-                      td.style.color = '#0d6efd';
-                      const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-                      td.innerHTML = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  if (formData.movementType === 'Receipt') {
+                    const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
+                      itemCode: '',
+                      itemName: '',
+                      unit: '',
+                      orderedQty: 0,
+                      receivedQty: 0,
+                      rate: 0,
+                      amount: 0
+                    }];
+                    const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
+                    if (dataRow && dataRow.isTotalRow) {
+                      td.style.borderTop = '2px solid #0d6efd';
+                      td.style.fontWeight = 'bold';
+                      td.style.backgroundColor = '#f8f9fa';
+                      
+                      if (col === 0) {
+                        td.style.textAlign = 'right';
+                        td.style.paddingRight = '15px';
+                      } else if (col === 5) {
+                        td.style.textAlign = 'right';
+                        td.style.color = '#0d6efd';
+                        const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                        td.innerHTML = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      }
                     }
                   }
                 }}
@@ -881,20 +1490,8 @@ const MaterialReceived = () => {
                   if (!changes || source === 'loadData') return;
 
                   changes.forEach(([row, prop, oldValue, newValue]) => {
-                    const currentItems = formData.items.length > 0 ? formData.items : [{
-                      itemCode: '',
-                      itemName: '',
-                      unit: '',
-                      orderedQty: 0,
-                      receivedQty: 0,
-                      rate: 0,
-                      amount: 0
-                    }];
-                    
-                    const newItems = [...currentItems];
-                    
-                    if (!newItems[row]) {
-                      newItems[row] = {
+                    if (formData.movementType === 'Receipt') {
+                      const currentItems = formData.items.length > 0 ? formData.items : [{
                         itemCode: '',
                         itemName: '',
                         unit: '',
@@ -902,76 +1499,192 @@ const MaterialReceived = () => {
                         receivedQty: 0,
                         rate: 0,
                         amount: 0
-                      };
-                    }
-
-                    // Handle material selection
-                    if (prop === 'itemCode' && newValue) {
-                      const selectedItem = materialItems.find(item => {
-                        const itemData = item.itemData || item;
-                        return itemData.material === newValue;
-                      });
+                      }];
                       
-                      if (selectedItem) {
-                        const itemData = selectedItem.itemData || selectedItem;
+                      const newItems = [...currentItems];
+                      
+                      if (!newItems[row]) {
                         newItems[row] = {
-                          ...newItems[row],
-                          itemCode: itemData.material || '',
-                          itemId: itemData._id || itemData.materialId || '',
-                          itemName: itemData.material || '',
-                          unit: itemData.unit || '',
-                          rate: itemData.defaultRate || 0
+                          itemCode: '',
+                          itemName: '',
+                          unit: '',
+                          orderedQty: 0,
+                          receivedQty: 0,
+                          rate: 0,
+                          amount: 0
                         };
-                        // Calculate amount
+                      }
+
+                      // Handle material selection
+                      if (prop === 'itemCode' && newValue) {
+                        // Find the item from the original PO items
+                        const selectedItem = poItems.find(item => 
+                          (item.itemName || item.itemCode) === newValue
+                        );
+                        
+                        if (selectedItem) {
+                          // Keep the existing item data from PO
+                          newItems[row] = {
+                            ...selectedItem,
+                            receivedQty: newItems[row].receivedQty || 0
+                          };
+                          // Calculate amount
+                          const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                          const rate = parseFloat(newItems[row].rate) || 0;
+                          newItems[row].amount = receivedQty * rate;
+                        }
+                      }
+
+                      // Handle receivedQty or rate changes - calculate amount
+                      if (prop === 'receivedQty' || prop === 'rate') {
+                        newItems[row][prop] = newValue;
                         const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
                         const rate = parseFloat(newItems[row].rate) || 0;
                         newItems[row].amount = receivedQty * rate;
                       }
-                    }
 
-                    // Handle receivedQty or rate changes - calculate amount
-                    if (prop === 'receivedQty' || prop === 'rate') {
-                      newItems[row][prop] = newValue;
-                      const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
-                      const rate = parseFloat(newItems[row].rate) || 0;
-                      newItems[row].amount = receivedQty * rate;
-                    }
+                      // Handle other field changes
+                      if (prop !== 'itemCode' && prop !== 'receivedQty' && prop !== 'rate') {
+                        newItems[row][prop] = newValue;
+                      }
 
-                    // Handle other field changes
-                    if (prop !== 'itemCode' && prop !== 'receivedQty' && prop !== 'rate') {
-                      newItems[row][prop] = newValue;
-                    }
+                      setFormData(prev => ({ ...prev, items: newItems }));
+                    } else {
+                      // For other movement types (Transfer, Issue, Return)
+                      const currentItems = formData.items.length > 0 ? formData.items : [{
+                        itemCode: '',
+                        itemName: '',
+                        unit: '',
+                        stockQty: 0,
+                        receivedQty: 0
+                      }];
+                      
+                      const newItems = [...currentItems];
+                      
+                      if (!newItems[row]) {
+                        newItems[row] = {
+                          itemCode: '',
+                          itemName: '',
+                          unit: '',
+                          stockQty: 0,
+                          receivedQty: 0
+                        };
+                      }
 
-                    setFormData(prev => ({ ...prev, items: newItems }));
+                      // Handle material selection
+                      if (prop === 'itemCode' && newValue) {
+                        const inventoryItem = locationInventory.find(item => 
+                          item.itemName === newValue && item.locationId === formData.sourceLocationId
+                        );
+                        
+                        if (inventoryItem) {
+                          // Find the material item to get unit information
+                          const materialItem = materialItems.find(item => {
+                            const itemData = item.itemData || item;
+                            return itemData._id === inventoryItem.itemId || itemData.material === inventoryItem.itemName;
+                          });
+                          
+                          const itemData = materialItem ? (materialItem.itemData || materialItem) : null;
+                          
+                          newItems[row] = {
+                            ...newItems[row],
+                            itemCode: inventoryItem.itemName || '',
+                            itemId: inventoryItem.itemId || '',
+                            itemName: inventoryItem.itemName || '',
+                            unit: itemData?.unit || '',
+                            stockQty: inventoryItem.stockQty || 0
+                          };
+                        }
+                      }
+
+                      // Handle other field changes
+                      if (prop !== 'itemCode') {
+                        newItems[row][prop] = newValue;
+                      }
+
+                      setFormData(prev => ({ ...prev, items: newItems }));
+                    }
                   });
                 }}
               />
-            </div>
-
-            {/* Remarks */}
-            <div className="mb-4">
-              <h5 className="border-bottom pb-2 mb-3">Quality Check & Remarks</h5>
-              <Row>
-                <Col md={12}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Quality Inspection Notes / Remarks</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      name="remarks"
-                      value={formData.remarks}
-                      onChange={handleInputChange}
-                      placeholder="Enter quality check results, damages observed, storage location, or any other relevant notes"
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
             </div>
 
             </Form>
           </Card.Body>
         </Card>
       )}
+
+      {/* Movement Type Selection Modal */}
+      <Modal 
+        show={showMovementTypeModal} 
+        onHide={() => setShowMovementTypeModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton className="bg-success text-white">
+          <Modal.Title>
+            <i className="bi bi-ui-checks me-2"></i>
+            Select Transaction Type
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <p className="text-muted mb-4">
+            Choose the type of inventory transaction you want to create:
+          </p>
+          <Row className="g-3">
+            {movementTypes.map((movementType) => (
+              <Col md={6} key={movementType.value}>
+                <Card 
+                  className="h-100 shadow-sm border-2 cursor-pointer hover-card"
+                  style={{ 
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    borderColor: movementType.color
+                  }}
+                  onClick={() => handleMovementTypeSelect(movementType.value)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                >
+                  <Card.Body className="p-4">
+                    <div className="d-flex align-items-start">
+                      <div 
+                        className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                        style={{ 
+                          width: '60px', 
+                          height: '60px',
+                          backgroundColor: movementType.color + '20',
+                          color: movementType.color
+                        }}
+                      >
+                        <i className={`${movementType.icon}`} style={{ fontSize: '1.8rem' }}></i>
+                      </div>
+                      <div className="flex-grow-1">
+                        <h5 className="mb-2" style={{ color: movementType.color }}>
+                          {movementType.label}
+                        </h5>
+                        <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
+                          {movementType.description}
+                        </p>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowMovementTypeModal(false)}>
+            <i className="bi bi-x-circle me-2"></i>Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

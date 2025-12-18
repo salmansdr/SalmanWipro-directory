@@ -600,8 +600,8 @@ const boqFloorsList = React.useMemo(() => [
         throw new Error(errorData.message || `Server error: ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log('Save successful:', result);
+      await response.json();
+      //console.log('Save successful:', result);
 
       // Save material data (Tab 2) BEFORE refreshing cache
       await saveMaterialData(estimationMasterId);
@@ -643,18 +643,18 @@ const boqFloorsList = React.useMemo(() => [
     try {
       // Get material data from BOQEstimation component
       if (!window.BOQEstimation_getAllMaterialData) {
-        console.log('Material data function not available');
+        //console.log('Material data function not available');
         return;
       }
 
       const allMaterialData = window.BOQEstimation_getAllMaterialData();
       
       if (!allMaterialData || allMaterialData.length === 0) {
-        console.log('No material data to save');
+        //console.log('No material data to save');
         return;
       }
 
-      console.log('Saving material data:', allMaterialData);
+      //console.log('Saving material data:', allMaterialData);
 
       const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
       
@@ -664,12 +664,12 @@ const boqFloorsList = React.useMemo(() => [
       
       if (checkResponse.ok) {
         const existingData = await checkResponse.json();
-        console.log('Existing material data check:', existingData);
+        //console.log('Existing material data check:', existingData);
         
         // Extract _id from records array
         if (existingData && existingData.records && existingData.records.length > 0) {
           existingRecordId = existingData.records[0]._id;
-          console.log('Found existing material record ID:', existingRecordId);
+         // console.log('Found existing material record ID:', existingRecordId);
         }
       }
 
@@ -689,7 +689,7 @@ const boqFloorsList = React.useMemo(() => [
         }))
       };
 
-      console.log('Material payload:', payload);
+      //console.log('Material payload:', payload);
 
       let response;
       if (existingRecordId) {

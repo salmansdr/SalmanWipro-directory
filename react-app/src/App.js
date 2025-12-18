@@ -1,6 +1,7 @@
 import ProjectEstimation from './ProjectEstimation';
 import TestApiPage from './TestApiPage';
 import SupplierMaster from './SupplierMaster';
+import LocationMaster from './LocationMaster';
 import EnquiryDetails from './EnquiryDetails';
 import PurchaseOrders from './PurchaseOrders';
 import MaterialReceived from './MaterialReceived';
@@ -132,7 +133,6 @@ function App() {
     const now = Date.now();
     const storedUser = localStorage.getItem(AUTH_USER_KEY);
     
-    console.log('Auth Init - AUTH_KEY:', localStorage.getItem(AUTH_KEY), 'auth:', auth, 'storedUser:', storedUser, 'lastAuthTime:', lastAuthTime);
     
     // If not authenticated, or expired, force logout
     if (!auth) {
@@ -141,7 +141,7 @@ function App() {
       localStorage.removeItem(AUTH_USER_KEY);
       localStorage.removeItem(AUTH_TIME_KEY);
       clearUserRole();
-      console.log('Auth Init Result: false (no auth)');
+     
       return false;
     }
     if (!lastAuthTime || now - lastAuthTime > ONE_DAY_MS) {
@@ -149,7 +149,7 @@ function App() {
       localStorage.removeItem(AUTH_USER_KEY);
       localStorage.removeItem(AUTH_TIME_KEY);
       clearUserRole();
-      console.log('Auth Init Result: false (expired)');
+      
       return false;
     }
     if (!storedUser) {
@@ -157,10 +157,10 @@ function App() {
       localStorage.removeItem(AUTH_USER_KEY);
       localStorage.removeItem(AUTH_TIME_KEY);
       clearUserRole();
-      console.log('Auth Init Result: false (no user)');
+      
       return false;
     }
-    console.log('Auth Init Result: true (authenticated)');
+    
     return true;
   });
 
@@ -174,7 +174,7 @@ function App() {
       try {
         setMenuLoading(true);
         const items = await getFilteredMenuItems(isAuthenticated);
-        console.log('Menu loaded. isAuthenticated:', isAuthenticated, 'SECURITY_ENABLED:', SECURITY_ENABLED, 'Items:', items.length);
+        
         setMenuItems(items);
       } catch (error) {
         console.error('Error loading menu items:', error);
@@ -197,7 +197,7 @@ function App() {
       setCompanyLogo(logo);
       setThemeColor(color);
       setFontColor(font);
-      console.log('Company data loaded:', { name, hasLogo: !!logo, themeColor: color, fontColor: font });
+      
     };
     loadCompanyData();
 
@@ -390,6 +390,7 @@ function App() {
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
               {isAuthenticated && <Route path="/item-master" element={<ItemMaster />} />}
               {isAuthenticated && <Route path="/supplier-master" element={<SupplierMaster />} />}
+              {isAuthenticated && <Route path="/location-master" element={<LocationMaster />} />}
               {isAuthenticated && <Route path="/rcc-configuration" element={<RccConfiguration />} />}
               {isAuthenticated && <Route path="/bhk-configuration" element={<BHKConfiguration />} />}
               {isAuthenticated && <Route path="/area-calculation" element={<AreaCalculation />} />}
