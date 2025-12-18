@@ -41,7 +41,7 @@
           "icon": "fas fa-file-invoice"
         },
         {
-          "label": "Material Received",
+          "label": "Material Movement",
           "path": "/material-received",
           "icon": "fas fa-box-open"
         },
@@ -80,6 +80,11 @@
           "label": "Supplier Master",
           "path": "/supplier-master",
           "icon": "fas fa-truck"
+        },
+        {
+          "label": "Location Master",
+          "path": "/location-master",
+          "icon": "fas fa-map-marker-alt"
         },
         {
           "label": "RCC Configuration",
