@@ -100,13 +100,11 @@ function Login({ onLogin, isAuthenticated }) {
 
       const userData = await response.json();
       
-      console.log('User data received:', userData);
-      console.log('Companies array:', userData.companies);
-      console.log('Companies length:', userData.companies?.length);
+      
       
       // Check if user has multiple companies
       if (userData.companies && userData.companies.length > 1) {
-        console.log('Multiple companies detected, showing modal');
+        
         // Show company selection modal
         setUserCompanies(userData.companies);
         setPendingUserData(userData);
@@ -139,8 +137,6 @@ function Login({ onLogin, isAuthenticated }) {
       const email = decoded.email;
       const name = decoded.name;
 
-      console.log('Google login successful:', { email, name });
-
       // Call API to verify user exists in database
       const response = await fetch(`${apiBaseUrl}/api/Usermaster/sso-login`, {
         method: 'POST',
@@ -159,10 +155,7 @@ function Login({ onLogin, isAuthenticated }) {
 
       const userData = await response.json();
       
-      console.log('SSO User data received:', userData);
-      console.log('SSO Companies array:', userData.companies);
-      console.log('SSO Companies length:', userData.companies?.length);
-      console.log('SSO useSso flag:', userData.useSso);
+      
       
       // Check if SSO is enabled for this user
       if (userData.useSso === false) {
