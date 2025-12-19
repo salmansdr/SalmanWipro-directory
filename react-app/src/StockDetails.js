@@ -284,7 +284,7 @@ const StockDetails = () => {
 
   const loadLocations = useCallback(async () => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/Locations`);
+      const response = await fetch(`${apiBaseUrl}/api/LocationMaster`);
       if (response.ok) {
         const data = await response.json();
         setLocations(Array.isArray(data) ? data : []);
