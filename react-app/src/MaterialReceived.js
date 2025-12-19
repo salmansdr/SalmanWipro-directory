@@ -1,10 +1,548 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Container, Card, Form, Button, Row, Col, Table, Alert, InputGroup, Modal } from 'react-bootstrap';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
+import { PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 registerAllModules();
+
+// PDF Styles
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontSize: 10,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    marginBottom: 10,
+    borderBottom: '2 solid #000',
+    paddingBottom: 10,
+    textAlign: 'center',
+  },
+  companyName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 3,
+  },
+  companyAddress: {
+    fontSize: 9,
+    marginBottom: 2,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 10,
+    padding: 5,
+    backgroundColor: '#cccccc',
+  },
+  section: {
+    marginVertical: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  label: {
+    width: '25%',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  value: {
+    width: '25%',
+    fontSize: 9,
+  },
+  table: {
+    marginTop: 10,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderBottom: '1 solid #000',
+    padding: 5,
+    fontWeight: 'bold',
+    fontSize: 9,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottom: '1 solid #cccccc',
+    padding: 5,
+    fontSize: 9,
+  },
+  tableRowTotal: {
+    flexDirection: 'row',
+    borderTop: '2 solid #000',
+    padding: 5,
+    fontWeight: 'bold',
+    fontSize: 9,
+  },
+  col1: { width: '5%' },
+  col2: { width: '30%' },
+  col3: { width: '15%' },
+  col4: { width: '15%', textAlign: 'right' },
+  col5: { width: '15%', textAlign: 'right' },
+  col6: { width: '20%', textAlign: 'right' },
+  footer: {
+    marginTop: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  footerItem: {
+    width: '30%',
+    textAlign: 'center',
+    paddingTop: 40,
+  },
+  footerLabel: {
+    fontSize: 9,
+    borderTop: '1 solid #000',
+    paddingTop: 5,
+  },
+  remarksSection: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+  },
+  remarksSectionTitle: {
+    fontWeight: 'bold',
+    fontSize: 10,
+    marginBottom: 5,
+  },
+  sectionContent: {
+    fontSize: 9,
+    lineHeight: 1.4,
+  },
+  chargesSection: {
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: '#e7f3ff',
+  },
+  chargesSectionTitle: {
+    fontWeight: 'bold',
+    fontSize: 10,
+    marginBottom: 5,
+  },
+  chargeRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+    fontSize: 9,
+  },
+  chargeLabel: {
+    width: '60%',
+  },
+  chargeValue: {
+    width: '40%',
+    textAlign: 'right',
+  },
+});
+
+// Helper to get company info and currency (match PurchaseOrders.js behavior)
+const getCompanyInfo = () => {
+  const companyName = localStorage.getItem('companyName') || '';
+  let companyAddress = '';
+  try {
+    const addressObj = JSON.parse(localStorage.getItem('companyAddress') || '{}');
+    const addressParts = [];
+    if (addressObj.street) addressParts.push(addressObj.street);
+    if (addressObj.city) addressParts.push(addressObj.city);
+    if (addressObj.zipCode) addressParts.push(addressObj.zipCode);
+    if (addressObj.country) addressParts.push(addressObj.country);
+    companyAddress = addressParts.join(', ') || '';
+  } catch (e) {
+    companyAddress = localStorage.getItem('companyAddress') || '';
+  }
+
+  let companyPhone = '';
+  let companyEmail = '';
+  let companyWebsite = '';
+  try {
+    const contactObj = JSON.parse(localStorage.getItem('companyContact') || '{}');
+    companyPhone = contactObj.phone || '';
+    companyEmail = contactObj.email || '';
+    companyWebsite = contactObj.website || '';
+  } catch (e) {
+    // ignore
+  }
+
+  const currency = localStorage.getItem('companyCurrency') || 'INR';
+  return { companyName, companyAddress, companyPhone, companyEmail, companyWebsite, currency };
+};
+
+const formatCurrency = (amount, currency) => {
+  return `${currency || 'INR'} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+// Receipt Note PDF Component
+const ReceiptNotePDF = ({ data }) => {
+  if (!data) return null;
+
+  const { companyName, companyAddress, companyPhone, currency } = getCompanyInfo();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB');
+  };
+
+  const materialTotal = (data.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  const totalCharges = (data.charges || []).filter(c => (parseFloat(c.amount) || 0) > 0).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+  const totalDiscount = Math.abs((data.charges || []).filter(c => (parseFloat(c.amount) || 0) < 0).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0));
+  const netPayable = materialTotal + totalCharges - totalDiscount;
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.header}>
+          <Text style={pdfStyles.companyName}>{companyName}</Text>
+          <Text style={pdfStyles.companyAddress}>{companyAddress}</Text>
+          <Text style={pdfStyles.companyAddress}>Phone: {companyPhone}</Text>
+        </View>
+
+        <View style={pdfStyles.title}>
+          <Text>GOODS RECEIPT NOTE (GRN)</Text>
+        </View>
+
+        <View style={pdfStyles.section}>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>GRN Number</Text>
+            <Text style={pdfStyles.value}>: {data.referenceNumber || ''}</Text>
+            <Text style={pdfStyles.label}>GRN Date</Text>
+            <Text style={pdfStyles.value}>: {formatDate(data.referenceDate)}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>PO Number</Text>
+            <Text style={pdfStyles.value}>: {data.poNumber || ''}</Text>
+            <Text style={pdfStyles.label}>Invoice Number</Text>
+            <Text style={pdfStyles.value}>: {data.invoiceNumber || ''}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Supplier Name</Text>
+            <Text style={pdfStyles.value}>: {data.supplierName || ''}</Text>
+            <Text style={pdfStyles.label}>Invoice Date</Text>
+            <Text style={pdfStyles.value}>: {formatDate(data.invoiceDate)}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Receiving Location</Text>
+            <Text style={pdfStyles.value}>: {data.receivingLocationName || ''}</Text>
+            <Text style={pdfStyles.label}>Vehicle Number</Text>
+            <Text style={pdfStyles.value}>: {data.vehicleNumber || ''}</Text>
+          </View>
+        </View>
+
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.col1}>S/N</Text>
+            <Text style={pdfStyles.col2}>Item Name</Text>
+            <Text style={pdfStyles.col3}>Unit</Text>
+            <Text style={pdfStyles.col4}>Ordered Qty</Text>
+            <Text style={pdfStyles.col5}>Received Qty</Text>
+            <Text style={pdfStyles.col6}>Amount ({currency || 'INR'})</Text>
+          </View>
+          {(data.items || []).map((item, index) => (
+            <View key={index} style={pdfStyles.tableRow}>
+              <Text style={pdfStyles.col1}>{index + 1}</Text>
+              <Text style={pdfStyles.col2}>{item.itemName || ''}</Text>
+              <Text style={pdfStyles.col3}>{item.unit || ''}</Text>
+              <Text style={pdfStyles.col4}>{Number(item.orderedQty || 0).toFixed(2)}</Text>
+              <Text style={pdfStyles.col5}>{Number(item.receivedQty || 0).toFixed(2)}</Text>
+              <Text style={pdfStyles.col6}>{Number(item.amount || 0).toFixed(2)}</Text>
+            </View>
+          ))}
+          <View style={pdfStyles.tableRowTotal}>
+            <Text style={{ width: '65%' }}></Text>
+            <Text style={{ width: '15%', textAlign: 'right' }}>Material Total</Text>
+            <Text style={{ width: '20%', textAlign: 'right' }}>{formatCurrency(materialTotal, currency)}</Text>
+          </View>
+        </View>
+
+        {data.charges && data.charges.length > 0 && (
+          <View style={pdfStyles.chargesSection}>
+            <Text style={pdfStyles.chargesSectionTitle}>Charges & Discounts:</Text>
+            {data.charges.map((charge, idx) => (
+              <View key={idx} style={pdfStyles.chargeRow}>
+                <Text style={pdfStyles.chargeLabel}>{charge.chargeType}: {charge.description || ''}</Text>
+                <Text style={pdfStyles.chargeValue}>{formatCurrency(Number(charge.amount || 0), currency)}</Text>
+              </View>
+            ))}
+            <View style={[pdfStyles.chargeRow, { marginTop: 5, borderTop: '1 solid #000', paddingTop: 5 }]}>
+              <Text style={[pdfStyles.chargeLabel, { fontWeight: 'bold' }]}>Net Payable Amount:</Text>
+              <Text style={[pdfStyles.chargeValue, { fontWeight: 'bold' }]}>{formatCurrency(netPayable, currency)}</Text>
+            </View>
+          </View>
+        )}
+
+        {data.remarks && (
+          <View style={pdfStyles.remarksSection}>
+            <Text style={pdfStyles.remarksSectionTitle}>Remarks:</Text>
+            <Text style={pdfStyles.sectionContent}>{data.remarks}</Text>
+          </View>
+        )}
+
+        <View style={pdfStyles.footer}>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Received By</Text>
+          </View>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Inspector</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+// Material Return Note PDF Component
+const MaterialReturnNotePDF = ({ data }) => {
+  if (!data) return null;
+
+  const { companyName, companyAddress, companyPhone } = getCompanyInfo();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB');
+  };
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.header}>
+          <Text style={pdfStyles.companyName}>{companyName}</Text>
+          <Text style={pdfStyles.companyAddress}>{companyAddress}</Text>
+          <Text style={pdfStyles.companyAddress}>Phone: {companyPhone}</Text>
+        </View>
+
+        <View style={pdfStyles.title}>
+          <Text>MATERIAL RETURN NOTE (MRN)</Text>
+        </View>
+
+        <View style={pdfStyles.section}>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>MRN Number</Text>
+            <Text style={pdfStyles.value}>: {data.referenceNumber || ''}</Text>
+            <Text style={pdfStyles.label}>MRN Date</Text>
+            <Text style={pdfStyles.value}>: {formatDate(data.referenceDate)}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Supplier Name</Text>
+            <Text style={pdfStyles.value}>: {data.supplierName || ''}</Text>
+            <Text style={pdfStyles.label}>Original GRN/PO</Text>
+            <Text style={pdfStyles.value}>: {data.originalGrnPo || ''}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Source Location</Text>
+            <Text style={pdfStyles.value}>: {data.sourceLocationName || ''}</Text>
+            <Text style={pdfStyles.label}></Text>
+            <Text style={pdfStyles.value}></Text>
+          </View>
+        </View>
+
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.col1}>S/N</Text>
+            <Text style={{ width: '60%' }}>Item Name</Text>
+            <Text style={{ width: '20%' }}>Unit</Text>
+            <Text style={{ width: '15%', textAlign: 'right' }}>Quantity</Text>
+          </View>
+          {(data.items || []).map((item, index) => (
+            <View key={index} style={pdfStyles.tableRow}>
+              <Text style={pdfStyles.col1}>{index + 1}</Text>
+              <Text style={{ width: '60%' }}>{item.itemName || ''}</Text>
+              <Text style={{ width: '20%' }}>{item.unit || ''}</Text>
+              <Text style={{ width: '15%', textAlign: 'right' }}>{Number(item.receivedQty || item.quantity || 0).toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+
+        {data.remarks && (
+          <View style={pdfStyles.remarksSection}>
+            <Text style={pdfStyles.remarksSectionTitle}>Return Reason / Remarks:</Text>
+            <Text style={pdfStyles.sectionContent}>{data.remarks}</Text>
+          </View>
+        )}
+
+        <View style={pdfStyles.footer}>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Authorized Signature</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+// Material Issue Voucher PDF Component
+const MaterialIssueVoucherPDF = ({ data }) => {
+  if (!data) return null;
+
+  const { companyName, companyAddress, companyPhone } = getCompanyInfo();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB');
+  };
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.header}>
+          <Text style={pdfStyles.companyName}>{companyName}</Text>
+          <Text style={pdfStyles.companyAddress}>{companyAddress}</Text>
+          <Text style={pdfStyles.companyAddress}>Phone: {companyPhone}</Text>
+        </View>
+
+        <View style={pdfStyles.title}>
+          <Text>MATERIAL ISSUE VOUCHER</Text>
+        </View>
+
+        <View style={pdfStyles.section}>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Issue Voucher No.</Text>
+            <Text style={pdfStyles.value}>: {data.referenceNumber || ''}</Text>
+            <Text style={pdfStyles.label}>Issue Date</Text>
+            <Text style={pdfStyles.value}>: {formatDate(data.referenceDate)}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Project Name</Text>
+            <Text style={pdfStyles.value}>: {data.projectName || ''}</Text>
+            <Text style={pdfStyles.label}>Destination</Text>
+            <Text style={pdfStyles.value}>: {data.projectName || ''}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Source Location</Text>
+            <Text style={pdfStyles.value}>: {data.sourceLocationName || ''}</Text>
+            {data.floor && (
+              <>
+                <Text style={pdfStyles.label}>Floor</Text>
+                <Text style={pdfStyles.value}>: {data.floor}</Text>
+              </>
+            )}
+          </View>
+          {data.event && (
+            <View style={pdfStyles.row}>
+              <Text style={pdfStyles.label}>Event</Text>
+              <Text style={pdfStyles.value}>: {data.event}</Text>
+              <Text style={pdfStyles.label}></Text>
+              <Text style={pdfStyles.value}></Text>
+            </View>
+          )}
+        </View>
+
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.col1}>S/N</Text>
+            <Text style={{ width: '60%' }}>Item Name</Text>
+            <Text style={{ width: '20%' }}>Unit</Text>
+            <Text style={{ width: '15%', textAlign: 'right' }}>Quantity</Text>
+          </View>
+          {(data.items || []).map((item, index) => (
+            <View key={index} style={pdfStyles.tableRow}>
+              <Text style={pdfStyles.col1}>{index + 1}</Text>
+              <Text style={{ width: '60%' }}>{item.itemName || ''}</Text>
+              <Text style={{ width: '20%' }}>{item.unit || ''}</Text>
+              <Text style={{ width: '15%', textAlign: 'right' }}>{Number(item.receivedQty || item.quantity || 0).toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+
+        {data.remarks && (
+          <View style={pdfStyles.remarksSection}>
+            <Text style={pdfStyles.remarksSectionTitle}>Remarks:</Text>
+            <Text style={pdfStyles.sectionContent}>{data.remarks}</Text>
+          </View>
+        )}
+
+        <View style={pdfStyles.footer}>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Requestor</Text>
+          </View>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Storekeeper</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+// Transfer Voucher PDF Component
+const TransferVoucherPDF = ({ data }) => {
+  if (!data) return null;
+
+  const { companyName, companyAddress, companyPhone } = getCompanyInfo();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB');
+  };
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.header}>
+          <Text style={pdfStyles.companyName}>{companyName}</Text>
+          <Text style={pdfStyles.companyAddress}>{companyAddress}</Text>
+          <Text style={pdfStyles.companyAddress}>Phone: {companyPhone}</Text>
+        </View>
+
+        <View style={pdfStyles.title}>
+          <Text>MATERIAL TRANSFER VOUCHER</Text>
+        </View>
+
+        <View style={pdfStyles.section}>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Transfer Voucher No.</Text>
+            <Text style={pdfStyles.value}>: {data.referenceNumber || ''}</Text>
+            <Text style={pdfStyles.label}>Transfer Date</Text>
+            <Text style={pdfStyles.value}>: {formatDate(data.referenceDate)}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>From Location</Text>
+            <Text style={pdfStyles.value}>: {data.sourceLocationName || ''}</Text>
+            <Text style={pdfStyles.label}>To Location</Text>
+            <Text style={pdfStyles.value}>: {data.receivingLocationName || ''}</Text>
+          </View>
+          <View style={pdfStyles.row}>
+            <Text style={pdfStyles.label}>Purpose</Text>
+            <Text style={pdfStyles.value}>: {data.remarks || ''}</Text>
+            <Text style={pdfStyles.label}></Text>
+            <Text style={pdfStyles.value}></Text>
+          </View>
+        </View>
+
+        <View style={pdfStyles.table}>
+          <View style={pdfStyles.tableHeader}>
+            <Text style={pdfStyles.col1}>S/N</Text>
+            <Text style={{ width: '60%' }}>Item Name</Text>
+            <Text style={{ width: '20%' }}>Unit</Text>
+            <Text style={{ width: '15%', textAlign: 'right' }}>Quantity</Text>
+          </View>
+          {(data.items || []).map((item, index) => (
+            <View key={index} style={pdfStyles.tableRow}>
+              <Text style={pdfStyles.col1}>{index + 1}</Text>
+              <Text style={{ width: '60%' }}>{item.itemName || ''}</Text>
+              <Text style={{ width: '20%' }}>{item.unit || ''}</Text>
+              <Text style={{ width: '15%', textAlign: 'right' }}>{Number(item.receivedQty || item.quantity || 0).toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={pdfStyles.footer}>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Issued By</Text>
+          </View>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Received By</Text>
+          </View>
+          <View style={pdfStyles.footerItem}>
+            <Text style={pdfStyles.footerLabel}>Transporter</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
 
 const MaterialReceived = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
@@ -14,6 +552,7 @@ const MaterialReceived = () => {
   const [editMode, setEditMode] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const [showMovementTypeModal, setShowMovementTypeModal] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredPOs, setFilteredPOs] = useState([]);
   const [showPODropdown, setShowPODropdown] = useState(false);
@@ -24,6 +563,7 @@ const MaterialReceived = () => {
   const [locations, setLocations] = useState([]);
   const [projects, setProjects] = useState([]);
   const [floors, setFloors] = useState([]);
+  const currency = localStorage.getItem('companyCurrency') || 'INR';
   const [selectedFloor, setSelectedFloor] = useState('');
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState('');
@@ -58,6 +598,8 @@ const MaterialReceived = () => {
     // Other fields
     projectId: '',
     projectName: '',
+    floor: '',
+    event: '',
     mainPurpose: '',
     originalGrnPo: '',
     remarks: '',
@@ -115,6 +657,24 @@ const MaterialReceived = () => {
   ];
 
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+
+  // Memoize PDF content to prevent unnecessary re-renders
+  const pdfContent = useMemo(() => {
+    if (!showPDFModal) return null;
+    
+    switch (formData.movementType) {
+      case 'Receipt':
+        return <ReceiptNotePDF data={formData} />;
+      case 'Return':
+        return <MaterialReturnNotePDF data={formData} />;
+      case 'Issue':
+        return <MaterialIssueVoucherPDF data={formData} />;
+      case 'Transfer':
+        return <TransferVoucherPDF data={formData} />;
+      default:
+        return null;
+    }
+  }, [showPDFModal, formData]);
 
   // Handle click outside to close PO dropdown
   useEffect(() => {
@@ -388,6 +948,8 @@ const MaterialReceived = () => {
         materialTotal: materialTotal,
         charges: chargesArray,
         discounts: discountsArray,
+        floor: selectedFloor || formData.floor || '',
+        event: selectedEvent || formData.event || '',
         companyCode: companyId,
         companyName: companyName,
         createdBy: editMode ? formData.createdBy : userId,
@@ -467,6 +1029,8 @@ const MaterialReceived = () => {
       // Other fields
       projectId: '',
       projectName: '',
+      floor: '',
+      event: '',
       mainPurpose: '',
       originalGrnPo: '',
       remarks: '',
@@ -476,6 +1040,8 @@ const MaterialReceived = () => {
       modifiedBy: '',
       items: []
     });
+    setSelectedFloor('');
+    setSelectedEvent('');
     setEditMode(false);
   };
 
@@ -531,16 +1097,62 @@ const MaterialReceived = () => {
       setPoItems(itemsForDropdown);
     }
     
+    // Populate poItems for Return type to enable dropdown
+    if (grn.movementType === 'Return' && grn.items && grn.items.length > 0) {
+      const itemsForDropdown = grn.items.map(item => ({
+        itemCode: item.itemId || item.itemCode || '',
+        itemName: item.itemName || '',
+        unit: item.unit || '',
+        orderedQty: item.orderedQty || 0,
+        receivedQty: item.receivedQty || 0,
+        rate: item.rate || 0,
+        amount: item.amount || 0
+      }));
+      setPoItems(itemsForDropdown);
+      
+      // Load POs for the supplier
+      if (grn.supplierId) {
+        loadPurchaseOrdersBySupplier(grn.supplierId);
+      }
+    }
+    
     // Populate locationInventory for Transfer/Issue/Return types
     if ((grn.movementType === 'Transfer' || grn.movementType === 'Issue' || grn.movementType === 'Return') && grn.sourceLocationId) {
       loadInventoryByLocation(grn.sourceLocationId);
+    }
+    
+    // Set floor and event for Issue type
+    if (grn.movementType === 'Issue') {
+      setSelectedFloor(grn.floor || '');
+      setSelectedEvent(grn.event || '');
+      
+      // Load floors if projectId exists
+      if (grn.projectId) {
+        fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${grn.projectId}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && data.records && data.records[0] && data.records[0].floors) {
+              const floorList = data.records[0].floors;
+              setFloors(floorList);
+              
+              // Load events if floor exists
+              if (grn.floor) {
+                const floorObj = floorList.find(f => f.floorName === grn.floor);
+                if (floorObj && floorObj.components) {
+                  setEvents(Object.keys(floorObj.components));
+                }
+              }
+            }
+          })
+          .catch(() => {});
+      }
     }
     
     setFormData({
       ...grn,
       charges: mergedCharges.length > 0 ? mergedCharges : []
     });
-    setPoSearchTerm(grn.poNumber || '');
+    setPoSearchTerm(grn.movementType === 'Return' ? (grn.originalGrnPo || '') : (grn.poNumber || ''));
     setEditMode(true);
     setViewMode('form');
   };
@@ -872,6 +1484,7 @@ const MaterialReceived = () => {
                     onChange={e => {
                       setSelectedFloor(e.target.value);
                       setSelectedEvent('');
+                      setFormData(prev => ({ ...prev, floor: e.target.value, event: '' }));
                       const floorObj = floors.find(f => f.floorName === e.target.value);
                       if (floorObj && floorObj.components) {
                         setEvents(Object.keys(floorObj.components));
@@ -897,7 +1510,10 @@ const MaterialReceived = () => {
                   <Form.Select
                     name="event"
                     value={selectedEvent}
-                    onChange={e => setSelectedEvent(e.target.value)}
+                    onChange={e => {
+                      setSelectedEvent(e.target.value);
+                      setFormData(prev => ({ ...prev, event: e.target.value }));
+                    }}
                     required
                     disabled={events.length === 0}
                   >
@@ -953,11 +1569,17 @@ const MaterialReceived = () => {
                       setFormData(prev => ({
                         ...prev,
                         supplierId: e.target.value,
-                        supplierName: selectedSupplier?.supplierName || ''
+                        supplierName: selectedSupplier?.supplierName || '',
+                        originalGrnPo: '',
+                        items: []
                       }));
-                      // Load POs for selected supplier for reference
+                      setPoSearchTerm('');
+                      // Load POs for selected supplier
                       if (e.target.value) {
                         loadPurchaseOrdersBySupplier(e.target.value);
+                      } else {
+                        setPurchaseOrders([]);
+                        setFilteredPOs([]);
                       }
                     }}
                     required
@@ -967,6 +1589,73 @@ const MaterialReceived = () => {
                       <option key={s._id} value={s._id}>{s.supplierName}</option>
                     ))}
                   </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Purchase Order # (Reference)</Form.Label>
+                  <div className="position-relative" ref={poDropdownRef}>
+                    <Form.Control
+                      type="text"
+                      value={poSearchTerm}
+                      onChange={(e) => {
+                        setPoSearchTerm(e.target.value);
+                        setShowPODropdown(true);
+                      }}
+                      onFocus={() => setShowPODropdown(true)}
+                      placeholder="Search PO number (optional)"
+                    />
+                    {showPODropdown && filteredPOs.length > 0 && (
+                      <Card 
+                        className="position-absolute shadow-lg border" 
+                        style={{ 
+                          zIndex: 1000, 
+                          maxHeight: '200px', 
+                          overflowY: 'auto',
+                          marginTop: '2px',
+                          width: '100%'
+                        }}
+                      >
+                        <Card.Body className="p-2">
+                          {filteredPOs.map((po) => (
+                            <div
+                              key={po._id}
+                              onClick={() => {
+                                const mappedItems = po.items.map(item => ({
+                                  itemCode: item.itemName || item.itemCode || '',
+                                  itemId: item.itemCode || '',
+                                  itemName: item.itemName || '',
+                                  unit: item.unit || '',
+                                  orderedQty: item.purchaseQty || 0,
+                                  receivedQty: 0,
+                                  rate: item.rate || 0,
+                                  amount: 0
+                                }));
+                                
+                                setPoItems(mappedItems); // Store PO items for dropdown
+                                setFormData(prev => ({
+                                  ...prev,
+                                  originalGrnPo: po.poNumber
+                                }));
+                                setPoSearchTerm(po.poNumber);
+                                setShowPODropdown(false);
+                              }}
+                              style={{
+                                padding: '8px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #eee'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                            >
+                              <div><strong>{po.poNumber}</strong></div>
+                              <small className="text-muted">{po.supplierName}</small>
+                            </div>
+                          ))}
+                        </Card.Body>
+                      </Card>
+                    )}
+                  </div>
                 </Form.Group>
               </Col>
             </Row>
@@ -1038,7 +1727,7 @@ const MaterialReceived = () => {
                   <th style={{ width: '15%' }}>Supplier Name</th>
                   <th style={{ width: '11%' }}>Invoice Number</th>
                   <th style={{ width: '9%' }}>Invoice Date</th>
-                  <th style={{ width: '11%' }}>Received By</th>
+                  
                   <th style={{ width: '12%' }}>Actions</th>
                 </tr>
               </thead>
@@ -1079,7 +1768,7 @@ const MaterialReceived = () => {
                       <td>{grn.supplierName}</td>
                       <td>{grn.invoiceNumber}</td>
                       <td>{grn.invoiceDate ? new Date(grn.invoiceDate).toLocaleDateString('en-GB') : ''}</td>
-                      <td>{grn.receivedBy}</td>
+                      
                       <td>
                         <Button 
                           variant="outline-primary" 
@@ -1124,6 +1813,15 @@ const MaterialReceived = () => {
               <Button variant="light" onClick={() => setViewMode('list')}>
                 <i className="bi bi-arrow-left me-2"></i>Back to List
               </Button>
+              {editMode && formData._id && (
+                <Button variant="info" onClick={() => setShowPDFModal(true)}>
+                  <i className="bi bi-file-earmark-pdf me-2"></i>
+                  {formData.movementType === 'Receipt' && 'View GRN'}
+                  {formData.movementType === 'Return' && 'View MRN'}
+                  {formData.movementType === 'Issue' && 'View Issue Voucher'}
+                  {formData.movementType === 'Transfer' && 'View Transfer Voucher'}
+                </Button>
+              )}
               <Button variant="light" type="submit" form="grnForm" className="border border-white">
                 <i className="bi bi-save me-2"></i>{editMode ? 'Update' : 'Save'}
               </Button>
@@ -1235,6 +1933,8 @@ const MaterialReceived = () => {
                 colHeaders={
                   formData.movementType === 'Receipt'
                     ? ['Material', 'Unit', 'Ordered Qty', 'Qty', 'Rate (INR)', 'Amount (INR)', 'Action']
+                    : formData.movementType === 'Return'
+                    ? ['Material', 'Unit', 'Qty', 'Action']
                     : ['Material', 'Unit', 'Stock Qty', 'Qty', 'Action']
                 }
                 columns={
@@ -1382,11 +2082,13 @@ const MaterialReceived = () => {
                         {
                           data: 'itemCode',
                           type: 'dropdown',
-                          source: formData.sourceLocationId && locationInventory.length > 0 
-                            ? locationInventory
-                                .filter(item => item.locationId === formData.sourceLocationId)
-                                .map(item => item.itemName || '')
-                            : [],
+                          source: formData.movementType === 'Return' && poItems.length > 0
+                            ? poItems.map(item => item.itemName || item.itemCode || '')
+                            : (formData.sourceLocationId && locationInventory.length > 0 
+                              ? locationInventory
+                                  .filter(item => item.locationId === formData.sourceLocationId)
+                                  .map(item => item.itemName || '')
+                              : []),
                           strict: false,
                           filter: false,
                           width: 250,
@@ -1396,10 +2098,18 @@ const MaterialReceived = () => {
                               td.innerHTML = rowData.itemName;
                               return td;
                             }
-                            const inventoryItem = locationInventory.find(item => item.itemName === value);
-                            if (inventoryItem) {
-                              td.innerHTML = value;
-                              return td;
+                            if (formData.movementType === 'Return' && poItems.length > 0) {
+                              const poItem = poItems.find(item => (item.itemName || item.itemCode) === value);
+                              if (poItem) {
+                                td.innerHTML = value;
+                                return td;
+                              }
+                            } else {
+                              const inventoryItem = locationInventory.find(item => item.itemName === value);
+                              if (inventoryItem) {
+                                td.innerHTML = value;
+                                return td;
+                              }
                             }
                             td.innerHTML = value || '';
                             return td;
@@ -1412,7 +2122,7 @@ const MaterialReceived = () => {
                           strict: false,
                           width: 100
                         },
-                        {
+                        ...(formData.movementType !== 'Return' ? [{
                           data: 'stockQty',
                           type: 'numeric',
                           numericFormat: {
@@ -1421,7 +2131,7 @@ const MaterialReceived = () => {
                           width: 120,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
-                        },
+                        }] : []),
                         {
                           data: 'receivedQty',
                           type: 'numeric',
@@ -1633,32 +2343,61 @@ const MaterialReceived = () => {
 
                       // Handle material selection
                       if (prop === 'itemCode' && newValue) {
-                        const inventoryItem = locationInventory.find(item => 
-                          item.itemName === newValue && item.locationId === formData.sourceLocationId
-                        );
-                        
-                        if (inventoryItem) {
-                          // Find the material item to get unit information
-                          const materialItem = materialItems.find(item => {
-                            const itemData = item.itemData || item;
-                            return itemData._id === inventoryItem.itemId || itemData.material === inventoryItem.itemName;
-                          });
+                        // For Return case with PO items
+                        if (formData.movementType === 'Return' && poItems.length > 0) {
+                          const selectedItem = poItems.find(item => 
+                            (item.itemName || item.itemCode) === newValue
+                          );
                           
-                          const itemData = materialItem ? (materialItem.itemData || materialItem) : null;
+                          if (selectedItem) {
+                            newItems[row] = {
+                              ...newItems[row],
+                              itemCode: selectedItem.itemName || selectedItem.itemCode || '',
+                              itemId: selectedItem.itemId || '',
+                              itemName: selectedItem.itemName || '',
+                              unit: selectedItem.unit || '',
+                              stockQty: 0,
+                              rate: selectedItem.rate || 0,
+                              amount: 0
+                            };
+                          }
+                        } else {
+                          // For Transfer/Issue cases with inventory
+                          const inventoryItem = locationInventory.find(item => 
+                            item.itemName === newValue && item.locationId === formData.sourceLocationId
+                          );
                           
-                          newItems[row] = {
-                            ...newItems[row],
-                            itemCode: inventoryItem.itemName || '',
-                            itemId: inventoryItem.itemId || '',
-                            itemName: inventoryItem.itemName || '',
-                            unit: itemData?.unit || '',
-                            stockQty: inventoryItem.stockQty || 0
-                          };
+                          if (inventoryItem) {
+                            // Find the material item to get unit information
+                            const materialItem = materialItems.find(item => {
+                              const itemData = item.itemData || item;
+                              return itemData._id === inventoryItem.itemId || itemData.material === inventoryItem.itemName;
+                            });
+                            
+                            const itemData = materialItem ? (materialItem.itemData || materialItem) : null;
+                            
+                            newItems[row] = {
+                              ...newItems[row],
+                              itemCode: inventoryItem.itemName || '',
+                              itemId: inventoryItem.itemId || '',
+                              itemName: inventoryItem.itemName || '',
+                              unit: itemData?.unit || '',
+                              stockQty: inventoryItem.stockQty || 0
+                            };
+                          }
                         }
                       }
 
+                      // Handle receivedQty change for Return case - calculate amount
+                      if (formData.movementType === 'Return' && prop === 'receivedQty') {
+                        newItems[row][prop] = newValue;
+                        const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                        const rate = parseFloat(newItems[row].rate) || 0;
+                        newItems[row].amount = receivedQty * rate;
+                      }
+
                       // Handle other field changes
-                      if (prop !== 'itemCode') {
+                      if (prop !== 'itemCode' && (formData.movementType !== 'Return' || prop !== 'receivedQty')) {
                         newItems[row][prop] = newValue;
                       }
 
@@ -1681,7 +2420,7 @@ const MaterialReceived = () => {
                       <tr>
                         <th style={{ width: '25%' }}>Charge Type</th>
                         <th style={{ width: '40%' }}>Description</th>
-                        <th style={{ width: '20%' }} className="text-end">Amount (₹)</th>
+                        <th style={{ width: '20%' }} className="text-end">Amount ({currency || 'INR'})</th>
                         <th style={{ width: '15%' }} className="text-center">Action</th>
                       </tr>
                     </thead>
@@ -1785,52 +2524,27 @@ const MaterialReceived = () => {
                       <Card.Body>
                         <div className="d-flex justify-content-between mb-2">
                           <span className="fw-semibold">Material Total:</span>
-                          <span className="fw-semibold">
-                            ₹ {((formData.items || []).reduce((sum, item) => 
-                              sum + (parseFloat(item.amount) || 0), 0)).toLocaleString('en-IN', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                          </span>
+                          <span className="fw-semibold">{formatCurrency(((formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)), currency)}</span>
                         </div>
                         <div className="d-flex justify-content-between mb-2 text-success">
                           <span>Total Charges:</span>
-                          <span>
-                            + ₹ {((formData.charges || [])
-                              .filter(charge => (parseFloat(charge.amount) || 0) > 0)
-                              .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)
-                            ).toLocaleString('en-IN', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </span>
+                          <span>+ {formatCurrency(((formData.charges || [])
+                            .filter(charge => (parseFloat(charge.amount) || 0) > 0)
+                            .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)), currency)}</span>
                         </div>
                         <div className="d-flex justify-content-between mb-2 text-danger">
                           <span>Total Discount:</span>
-                          <span>
-                            - ₹ {Math.abs((formData.charges || [])
-                              .filter(charge => (parseFloat(charge.amount) || 0) < 0)
-                              .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)
-                            ).toLocaleString('en-IN', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </span>
+                          <span>- {formatCurrency(Math.abs((formData.charges || [])
+                            .filter(charge => (parseFloat(charge.amount) || 0) < 0)
+                            .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)), currency)}</span>
                         </div>
                         <hr />
                         <div className="d-flex justify-content-between">
                           <span className="fw-bold fs-5">Net Payable Amount:</span>
-                          <span className="fw-bold fs-5 text-primary">
-                            ₹ {(
-                              ((formData.items || []).reduce((sum, item) => 
-                                sum + (parseFloat(item.amount) || 0), 0)) +
-                              ((formData.charges || []).reduce((sum, charge) => 
-                                sum + (parseFloat(charge.amount) || 0), 0))
-                            ).toLocaleString('en-IN', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </span>
+                          <span className="fw-bold fs-5 text-primary">{formatCurrency((
+                            ((formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)) +
+                            ((formData.charges || []).reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0))
+                          ), currency)}</span>
                         </div>
                       </Card.Body>
                     </Card>
@@ -1912,6 +2626,32 @@ const MaterialReceived = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowMovementTypeModal(false)}>
             <i className="bi bi-x-circle me-2"></i>Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* PDF Modal */}
+      <Modal show={showPDFModal} onHide={() => setShowPDFModal(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {formData.movementType === 'Receipt' && 'Goods Receipt Note (GRN)'}
+            {formData.movementType === 'Return' && 'Material Return Note (MRN)'}
+            {formData.movementType === 'Issue' && 'Material Issue Voucher'}
+            {formData.movementType === 'Transfer' && 'Material Transfer Voucher'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div style={{ height: '80vh' }}>
+            {showPDFModal && (
+              <PDFViewer width="100%" height="100%" showToolbar={true}>
+                {pdfContent}
+              </PDFViewer>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPDFModal(false)}>
+            Close
           </Button>
         </Modal.Footer>
       </Modal>

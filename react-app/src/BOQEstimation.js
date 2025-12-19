@@ -1319,6 +1319,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   }, [getAllCachedDataForSave, getAllMaterialDataForSave, refreshDataFromDatabase]);
 
   const addRowToGroup = useCallback((groupIndex) => {
+    const hotInstance = quantityTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+    
     const newData = [...quantityData];
     
     // Find the last detail row position for this group
@@ -1351,15 +1354,22 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       parentSrNo: parentSrNo
     });
     
+    // Preserve scroll position
+    const scrollTop = hotInstance.rootElement?.querySelector('.wtHolder')?.scrollTop || 0;
+    const scrollLeft = hotInstance.rootElement?.querySelector('.wtHolder')?.scrollLeft || 0;
+    
+    // Update data without losing scroll
+    hotInstance.loadData(newData);
     setQuantityData(newData);
     
-    // Force table refresh
-    setTimeout(() => {
-      const hotInstance = quantityTableRef.current?.hotInstance;
-      if (hotInstance) {
-        hotInstance.loadData(newData);
+    // Restore scroll position immediately after loadData
+    requestAnimationFrame(() => {
+      const holder = hotInstance.rootElement?.querySelector('.wtHolder');
+      if (holder) {
+        holder.scrollTop = scrollTop;
+        holder.scrollLeft = scrollLeft;
       }
-    }, 0);
+    });
   }, [quantityData]);
 
   const calculateQuantity = (row, col, value) => {
@@ -2897,7 +2907,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   
                                   return (
                                     <HotTable
-                                      key={`quantity-${localSelectedFloor}-${quantityData.length}`}
+                                      key={`quantity-${localSelectedFloor}`}
                                       ref={quantityTableRef}
                                       data={quantityData}
                                       columns={columns}
@@ -2954,6 +2964,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               afterCreateRow={(index, amount, source) => {
                                 // Handle rows created via context menu
                                 if (source === 'ContextMenu.rowBelow' || source === 'ContextMenu.rowAbove') {
+                                  // Preserve scroll position
+                                  const hotInstance = quantityTableRef.current?.hotInstance;
+                                  const scrollTop = hotInstance?.rootElement?.querySelector('.wtHolder')?.scrollTop || 0;
+                                  const scrollLeft = hotInstance?.rootElement?.querySelector('.wtHolder')?.scrollLeft || 0;
+                                  
                                   const newData = [...quantityData];
                                   
                                   // Find the group context from the adjacent row
@@ -2980,6 +2995,15 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                         };
                                       }
                                       setQuantityData(newData);
+                                      
+                                      // Restore scroll position after render
+                                      setTimeout(() => {
+                                        const holder = hotInstance?.rootElement?.querySelector('.wtHolder');
+                                        if (holder) {
+                                          holder.scrollTop = scrollTop;
+                                          holder.scrollLeft = scrollLeft;
+                                        }
+                                      }, 0);
                                     }
                                   }
                                 }
