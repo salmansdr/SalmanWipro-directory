@@ -6,6 +6,7 @@ import EnquiryDetails from './EnquiryDetails';
 import PurchaseOrders from './PurchaseOrders';
 import MaterialReceived from './MaterialReceived';
 import StoreRequisition from './StoreRequisition';
+import StockDetails from './StockDetails';
 
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -387,6 +388,7 @@ function App() {
               {isAuthenticated && <Route path="/material-received" element={<MaterialReceived />} />}
               {isAuthenticated && <Route path="/store-requisition" element={<StoreRequisition />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
+              {isAuthenticated && <Route path="/stock-details" element={<StockDetails />} />}
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
               {isAuthenticated && <Route path="/item-master" element={<ItemMaster />} />}
               {isAuthenticated && <Route path="/supplier-master" element={<SupplierMaster />} />}

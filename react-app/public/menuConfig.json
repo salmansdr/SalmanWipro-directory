@@ -62,6 +62,11 @@
           "label": "Cost Report",
           "path": "/reports",
           "icon": "fas fa-chart-bar"
+        },
+        {
+          "label": "Stock Details",
+          "path": "/stock-details",
+          "icon": "fas fa-box-open"
         }
       ]
     },

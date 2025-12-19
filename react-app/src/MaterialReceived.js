@@ -65,8 +65,23 @@ const MaterialReceived = () => {
     companyName: '',
     createdBy: '',
     modifiedBy: '',
-    items: []
+    items: [],
+    // Charges for Receipt type
+    charges: []
   });
+
+  // Charge types for dropdown (including Discount with negative sign)
+  const chargeTypes = [
+    'Transport',
+    'Unloading',
+    'GST',
+    'VAT',
+    'Insurance',
+    'Handling',
+    'Loading',
+    'Other',
+    'Discount/Rebate (-)'
+  ];
 
   const movementTypes = [
     { 
@@ -325,6 +340,36 @@ const MaterialReceived = () => {
       // Clean items - remove itemCode, itemName from each item
       const cleanedItems = formData.items.map(({ itemCode, itemName, ...rest }) => rest);
       
+      // Calculate material total
+      const materialTotal = (formData.items || []).reduce((sum, item) => 
+        sum + (parseFloat(item.amount) || 0), 0);
+      
+      // Split charges and discounts for Receipt type
+      let chargesArray = [];
+      let discountsArray = [];
+      
+      if (formData.movementType === 'Receipt' && formData.charges && formData.charges.length > 0) {
+        formData.charges.forEach(charge => {
+          if (charge.chargeType && charge.chargeType !== '') {
+            if (charge.chargeType === 'Discount/Rebate (-)' || (parseFloat(charge.amount) || 0) < 0) {
+              // Discount - store as positive value in discounts array
+              discountsArray.push({
+                chargeType: charge.chargeType,
+                description: charge.description || '',
+                amount: Math.abs(parseFloat(charge.amount) || 0)
+              });
+            } else {
+              // Regular charge
+              chargesArray.push({
+                chargeType: charge.chargeType,
+                description: charge.description || '',
+                amount: parseFloat(charge.amount) || 0
+              });
+            }
+          }
+        });
+      }
+      
       // Prepare data - exclude fields populated by backend
       const { 
         supplierName, 
@@ -333,12 +378,16 @@ const MaterialReceived = () => {
         createdByEmail,
         modifiedByUserName,
         modifiedByEmail,
+        charges,
         ...formDataWithoutExcluded 
       } = formData;
       
       const dataToSend = {
         ...formDataWithoutExcluded,
         items: cleanedItems,
+        materialTotal: materialTotal,
+        charges: chargesArray,
+        discounts: discountsArray,
         companyCode: companyId,
         companyName: companyName,
         createdBy: editMode ? formData.createdBy : userId,
@@ -443,7 +492,54 @@ const MaterialReceived = () => {
   };
 
   const handleViewGrn = (grn) => {
-    setFormData(grn);
+    // Merge charges and discounts arrays back into single charges array
+    const mergedCharges = [];
+    
+    // Add regular charges
+    if (grn.charges && grn.charges.length > 0) {
+      grn.charges.forEach(charge => {
+        mergedCharges.push({
+          chargeType: charge.chargeType,
+          description: charge.description || '',
+          amount: parseFloat(charge.amount) || 0
+        });
+      });
+    }
+    
+    // Add discounts (convert to negative amounts)
+    if (grn.discounts && grn.discounts.length > 0) {
+      grn.discounts.forEach(discount => {
+        mergedCharges.push({
+          chargeType: discount.chargeType || 'Discount/Rebate (-)',
+          description: discount.description || '',
+          amount: -(Math.abs(parseFloat(discount.amount) || 0))
+        });
+      });
+    }
+    
+    // Populate poItems for Receipt type to enable dropdown
+    if (grn.movementType === 'Receipt' && grn.items && grn.items.length > 0) {
+      const itemsForDropdown = grn.items.map(item => ({
+        itemCode: item.itemId || item.itemCode || '',
+        itemName: item.itemName || '',
+        unit: item.unit || '',
+        orderedQty: item.orderedQty || 0,
+        receivedQty: item.receivedQty || 0,
+        rate: item.rate || 0,
+        amount: item.amount || 0
+      }));
+      setPoItems(itemsForDropdown);
+    }
+    
+    // Populate locationInventory for Transfer/Issue/Return types
+    if ((grn.movementType === 'Transfer' || grn.movementType === 'Issue' || grn.movementType === 'Return') && grn.sourceLocationId) {
+      loadInventoryByLocation(grn.sourceLocationId);
+    }
+    
+    setFormData({
+      ...grn,
+      charges: mergedCharges.length > 0 ? mergedCharges : []
+    });
     setPoSearchTerm(grn.poNumber || '');
     setEditMode(true);
     setViewMode('form');
@@ -631,18 +727,6 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Remarks</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="remarks"
-                      value={formData.remarks}
-                      onChange={handleInputChange}
-                      placeholder="Enter any additional notes"
-                    />
-                  </Form.Group>
-                </Col>
               </Row>
             </div>
           </>
@@ -702,18 +786,6 @@ const MaterialReceived = () => {
                       ))
                     }
                   </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Remarks</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="remarks"
-                    value={formData.remarks}
-                    onChange={handleInputChange}
-                    placeholder="Enter any additional notes"
-                  />
                 </Form.Group>
               </Col>
             </Row>
@@ -836,18 +908,6 @@ const MaterialReceived = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Remarks</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="remarks"
-                    value={formData.remarks}
-                    onChange={handleInputChange}
-                    placeholder="Enter any additional notes"
-                  />
-                </Form.Group>
-              </Col>
             </Row>
           </div>
         );
@@ -907,18 +967,6 @@ const MaterialReceived = () => {
                       <option key={s._id} value={s._id}>{s.supplierName}</option>
                     ))}
                   </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Remarks</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="remarks"
-                    value={formData.remarks}
-                    onChange={handleInputChange}
-                    placeholder="Enter any additional notes"
-                  />
                 </Form.Group>
               </Col>
             </Row>
@@ -1109,6 +1157,18 @@ const MaterialReceived = () => {
                       value={formData.referenceDate}
                       onChange={handleInputChange}
                       required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Remarks</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="remarks"
+                      value={formData.remarks}
+                      onChange={handleInputChange}
+                      placeholder="Enter any additional notes"
                     />
                   </Form.Group>
                 </Col>
@@ -1608,6 +1668,176 @@ const MaterialReceived = () => {
                 }}
               />
             </div>
+
+            {/* Charges Summary Section - Only for Receipt Type */}
+            {formData.movementType === 'Receipt' && (
+              <div className="mb-4">
+                <h5 className="border-bottom pb-2 mb-3">Charges & Discounts</h5>
+                
+                {/* Charges Grid */}
+                <div className="mb-3">
+                  <Table striped bordered hover responsive>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '25%' }}>Charge Type</th>
+                        <th style={{ width: '40%' }}>Description</th>
+                        <th style={{ width: '20%' }} className="text-end">Amount (₹)</th>
+                        <th style={{ width: '15%' }} className="text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {((formData.charges && formData.charges.length > 0) ? formData.charges : [{ chargeType: '', description: '', amount: '' }]).map((charge, index) => (
+                        <tr key={index}>
+                          <td>
+                            <Form.Select
+                              size="sm"
+                              value={charge.chargeType || ''}
+                              onChange={(e) => {
+                                const newCharges = [...(formData.charges || [{ chargeType: '', description: '', amount: '' }])];
+                                newCharges[index] = { ...newCharges[index], chargeType: e.target.value };
+                                
+                                // Auto-convert to negative if Discount is selected
+                                if (e.target.value === 'Discount/Rebate (-)' && newCharges[index].amount) {
+                                  const currentAmount = Math.abs(parseFloat(newCharges[index].amount));
+                                  newCharges[index].amount = -currentAmount;
+                                }
+                                
+                                setFormData(prev => ({ ...prev, charges: newCharges }));
+                              }}
+                            >
+                              <option value="">Select Charge Type</option>
+                              {chargeTypes.map((type, i) => (
+                                <option key={i} value={type}>{type}</option>
+                              ))}
+                            </Form.Select>
+                          </td>
+                          <td>
+                            <Form.Control
+                              size="sm"
+                              type="text"
+                              value={charge.description || ''}
+                              onChange={(e) => {
+                                const newCharges = [...(formData.charges || [{ chargeType: '', description: '', amount: '' }])];
+                                newCharges[index] = { ...newCharges[index], description: e.target.value };
+                                setFormData(prev => ({ ...prev, charges: newCharges }));
+                              }}
+                              placeholder="Enter description"
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              size="sm"
+                              type="number"
+                              step="0.01"
+                              value={charge.amount || ''}
+                              onChange={(e) => {
+                                const newCharges = [...(formData.charges || [{ chargeType: '', description: '', amount: '' }])];
+                                let newAmount = parseFloat(e.target.value) || 0;
+                                
+                                // Ensure discount amounts stay negative
+                                if (newCharges[index].chargeType === 'Discount/Rebate (-)') {
+                                  newAmount = -Math.abs(newAmount);
+                                }
+                                
+                                newCharges[index] = { ...newCharges[index], amount: newAmount };
+                                setFormData(prev => ({ ...prev, charges: newCharges }));
+                              }}
+                              className="text-end"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <Button
+                              variant="success"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => {
+                                const newCharges = [...(formData.charges || [])];
+                                newCharges.splice(index + 1, 0, { chargeType: '', description: '', amount: '' });
+                                setFormData(prev => ({ ...prev, charges: newCharges }));
+                              }}
+                            >
+                              <i className="bi bi-plus"></i>
+                            </Button>
+                            {formData.charges && formData.charges.length > 1 && (
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => {
+                                  const newCharges = formData.charges.filter((_, i) => i !== index);
+                                  setFormData(prev => ({ ...prev, charges: newCharges }));
+                                }}
+                              >
+                                <i className="bi bi-trash"></i>
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+
+                {/* Summary Calculation */}
+                <Row>
+                  <Col md={{ span: 6, offset: 6 }}>
+                    <Card className="bg-light border-primary">
+                      <Card.Body>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span className="fw-semibold">Material Total:</span>
+                          <span className="fw-semibold">
+                            ₹ {((formData.items || []).reduce((sum, item) => 
+                              sum + (parseFloat(item.amount) || 0), 0)).toLocaleString('en-IN', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2 text-success">
+                          <span>Total Charges:</span>
+                          <span>
+                            + ₹ {((formData.charges || [])
+                              .filter(charge => (parseFloat(charge.amount) || 0) > 0)
+                              .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)
+                            ).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2 text-danger">
+                          <span>Total Discount:</span>
+                          <span>
+                            - ₹ {Math.abs((formData.charges || [])
+                              .filter(charge => (parseFloat(charge.amount) || 0) < 0)
+                              .reduce((sum, charge) => sum + (parseFloat(charge.amount) || 0), 0)
+                            ).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </span>
+                        </div>
+                        <hr />
+                        <div className="d-flex justify-content-between">
+                          <span className="fw-bold fs-5">Net Payable Amount:</span>
+                          <span className="fw-bold fs-5 text-primary">
+                            ₹ {(
+                              ((formData.items || []).reduce((sum, item) => 
+                                sum + (parseFloat(item.amount) || 0), 0)) +
+                              ((formData.charges || []).reduce((sum, charge) => 
+                                sum + (parseFloat(charge.amount) || 0), 0))
+                            ).toLocaleString('en-IN', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </span>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                </Row>
+              </div>
+            )}
 
             </Form>
           </Card.Body>
