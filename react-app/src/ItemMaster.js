@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Form, Button, Row, Col, Alert, Table, Badge, InputGroup, Pagination } from 'react-bootstrap';
+import * as XLSX from 'xlsx-js-style';
 
 // Migration: Convert old formats to new component-grouped structure
 function migrateMaterialCalculation(materialCalc) {
@@ -1133,15 +1134,202 @@ const ItemMaster = () => {
 
   const exportItems = () => {
     try {
-      const dataStr = JSON.stringify(filteredItems, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `item_master_export_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      showAlertMessage('Items exported successfully!', 'success');
+      const wb = XLSX.utils.book_new();
+      
+      // Get company info from localStorage
+      const companyName = localStorage.getItem('companyName') || 'Company Name';
+      let formattedAddress = 'N/A';
+      try {
+        const addr = JSON.parse(localStorage.getItem('companyAddress') || '{}');
+        const parts = [];
+        if (addr.street) parts.push(addr.street);
+        if (addr.city || addr.zipCode) parts.push(`${addr.city}${addr.city && addr.zipCode ? ', ' : ''}${addr.zipCode}`);
+        if (addr.country) parts.push(addr.country);
+        formattedAddress = parts.join(' | ') || 'N/A';
+      } catch {
+        formattedAddress = localStorage.getItem('companyAddress') || 'N/A';
+      }
+      
+      // Prepare the data
+      const data = [
+        // Company Name Header
+        [companyName, '', '', '', '', '', '', '', '', ''],
+        // Address
+        [formattedAddress, '', '', '', '', '', '', '', '', ''],
+        // Empty row
+        ['', '', '', '', '', '', '', '', '', ''],
+        // Column headers
+        ['Material', 'Description', 'Category', 'Sub Category', 'Unit', 'Unit Size (kg)', 'Default Brand', 'Min Rate', 'Max Rate', 'Brand Count', 'Calculations', 'Location', 'Status']
+      ];
+      
+      // Add data rows
+      filteredItems.forEach(item => {
+        const brands = item.brands || [];
+        const rates = brands.map(b => b.rate_per_unit || 0);
+        const minRate = rates.length > 0 ? Math.min(...rates) : 0;
+        const maxRate = rates.length > 0 ? Math.max(...rates) : 0;
+        
+        // Build calculations string
+        const calculations = [];
+        if (item.materialCalculation?.enabled) {
+          calculations.push('Material');
+        }
+        if (item.finishingCalculation?.enabled) {
+          calculations.push('Finishing');
+        }
+        const calculationsStr = calculations.length > 0 ? calculations.join(', ') : 'None';
+        
+        data.push([
+          item.material || '',
+          item.description || '',
+          item.categoryName || item.category || '',
+          item.sub_category || '',
+          item.unit || '',
+          item.unit_size_kg || '',
+          item.default_brand || '',
+          minRate,
+          maxRate !== minRate ? maxRate : '',
+          brands.length,
+          calculationsStr,
+          item.location || '',
+          item.isActive ? 'Active' : 'Inactive'
+        ]);
+      });
+      
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 30 },  // Material
+        { wch: 40 },  // Description
+        { wch: 20 },  // Category
+        { wch: 20 },  // Sub Category
+        { wch: 12 },  // Unit
+        { wch: 15 },  // Unit Size
+        { wch: 20 },  // Default Brand
+        { wch: 12 },  // Min Rate
+        { wch: 12 },  // Max Rate
+        { wch: 12 },  // Brand Count
+        { wch: 25 },  // Calculations
+        { wch: 15 },  // Location
+        { wch: 12 }   // Status
+      ];
+      
+      // Merge cells for company name and address
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 12 } }, // Company name
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 12 } }  // Address
+      ];
+      
+      // Style company name (Row 1)
+      const companyNameStyle = {
+        font: { bold: true, sz: 16, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        fill: { fgColor: { rgb: "E8F5E9" } }
+      };
+      ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1', 'J1', 'K1', 'L1', 'M1'].forEach(cell => {
+        if (!ws[cell]) ws[cell] = { v: '', t: 's' };
+        ws[cell].s = companyNameStyle;
+      });
+      
+      // Style address (Row 2)
+      const addressStyle = {
+        font: { sz: 11, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        fill: { fgColor: { rgb: "E8F5E9" } }
+      };
+      ['A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'H2', 'I2', 'J2', 'K2', 'L2', 'M2'].forEach(cell => {
+        if (!ws[cell]) ws[cell] = { v: '', t: 's' };
+        ws[cell].s = addressStyle;
+      });
+      
+      // Style header row (Row 4)
+      const headerStyle = {
+        font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        fill: { fgColor: { rgb: "198754" } }, // Bootstrap success color
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        }
+      };
+      ['A4', 'B4', 'C4', 'D4', 'E4', 'F4', 'G4', 'H4', 'I4', 'J4', 'K4', 'L4', 'M4'].forEach(cell => {
+        if (!ws[cell]) ws[cell] = { v: '', t: 's' };
+        ws[cell].s = headerStyle;
+      });
+      
+      // Style data rows (starting from row 5)
+      const dataStyle = {
+        alignment: { horizontal: "left", vertical: "top", wrapText: true },
+        border: {
+          top: { style: "thin", color: { rgb: "CCCCCC" } },
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+          left: { style: "thin", color: { rgb: "CCCCCC" } },
+          right: { style: "thin", color: { rgb: "CCCCCC" } }
+        }
+      };
+      
+      const numericStyle = {
+        alignment: { horizontal: "right", vertical: "top" },
+        border: {
+          top: { style: "thin", color: { rgb: "CCCCCC" } },
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+          left: { style: "thin", color: { rgb: "CCCCCC" } },
+          right: { style: "thin", color: { rgb: "CCCCCC" } }
+        },
+        numFmt: "#,##0.00"
+      };
+      
+      // Apply styles to data rows
+      for (let row = 4; row < data.length; row++) {
+        const rowNum = row + 1;
+        
+        // Alternate row coloring
+        const rowStyle = row % 2 === 0 ? 
+          { ...dataStyle } : 
+          { ...dataStyle, fill: { fgColor: { rgb: "F8F9FA" } } };
+        
+        // Text columns
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'K', 'L', 'M'].forEach(col => {
+          const cell = `${col}${rowNum}`;
+          if (!ws[cell]) ws[cell] = { v: '', t: 's' };
+          ws[cell].s = rowStyle;
+        });
+        
+        // Numeric columns (Min Rate, Max Rate, Brand Count)
+        ['H', 'I', 'J'].forEach(col => {
+          const cell = `${col}${rowNum}`;
+          if (ws[cell] && ws[cell].v !== '') {
+            const numRowStyle = row % 2 === 0 ? 
+              { ...numericStyle } : 
+              { ...numericStyle, fill: { fgColor: { rgb: "F8F9FA" } } };
+            ws[cell].s = numRowStyle;
+          } else if (!ws[cell]) {
+            ws[cell] = { v: '', t: 's' };
+            ws[cell].s = rowStyle;
+          }
+        });
+      }
+      
+      // Set row height for header
+      if (!ws['!rows']) ws['!rows'] = [];
+      ws['!rows'][3] = { hpt: 30 }; // Header row height
+      
+      // Add the worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Item Master');
+      
+      // Generate filename with current date
+      const filename = `ItemMaster_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Write the file
+      XLSX.writeFile(wb, filename);
+      
+      showAlertMessage(`Successfully exported ${filteredItems.length} items to Excel!`, 'success');
     } catch (error) {
+      console.error('Export error:', error);
       showAlertMessage('Error exporting items: ' + error.message, 'danger');
     }
   };

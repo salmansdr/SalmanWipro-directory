@@ -569,6 +569,10 @@ const MaterialReceived = () => {
   const [selectedEvent, setSelectedEvent] = useState('');
   const [locationInventory, setLocationInventory] = useState([]);
   const [poItems, setPoItems] = useState([]); // Store original PO items for dropdown
+  const [isOpeningBalance, setIsOpeningBalance] = useState(false);
+  const [openingBalanceItems, setOpeningBalanceItems] = useState([]);
+  const [showAddRowsModal, setShowAddRowsModal] = useState(false);
+  const [rowsToAdd, setRowsToAdd] = useState(1);
   const hotTableRef = useRef(null);
   const poDropdownRef = useRef(null);
   const [formData, setFormData] = useState({
@@ -717,7 +721,6 @@ const MaterialReceived = () => {
 
   useEffect(() => {
     if (viewMode === 'form') {
-      loadPurchaseOrders();
       loadDropdownData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -752,6 +755,29 @@ const MaterialReceived = () => {
     } catch (error) {
       console.error('Error loading location inventory:', error);
       setLocationInventory([]);
+    }
+  };
+
+  const loadOpeningBalanceItems = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/MaterialItems/with-category-details`);
+      if (response.ok) {
+        const data = await response.json();
+        const items = data.items || [];
+        // Map the API response to match expected format
+        const mappedItems = items.map(item => ({
+          _id: item._id,
+          itemName: item.material || '',
+          unit: item.unit || '',
+          defaultRate: item.defaultRate || 0, // Default rate not available in API, can be entered manually
+          categoryName: item.categoryName || '',
+          categoryId: item.categoryId || ''
+        }));
+        setOpeningBalanceItems(mappedItems);
+      }
+    } catch (error) {
+      console.error('Error loading opening balance items:', error);
+      setOpeningBalanceItems([]);
     }
   };
 
@@ -804,20 +830,7 @@ const MaterialReceived = () => {
     }
   };
 
-  const loadPurchaseOrders = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/PurchaseOrder`);
-      if (response.ok) {
-        const data = await response.json();
-        // Filter only approved POs
-        const approvedPOs = data.filter(po => po.status === 'Approved');
-        setPurchaseOrders(approvedPOs);
-        setFilteredPOs(approvedPOs);
-      }
-    } catch (error) {
-      console.error('Error loading purchase orders:', error);
-    }
-  };
+  
 
   const loadPurchaseOrdersBySupplier = async (supplierId) => {
     try {
@@ -849,6 +862,8 @@ const MaterialReceived = () => {
       itemName: item.itemName || '',
       unit: item.unit || '',
       orderedQty: item.purchaseQty || 0,
+      totalReceivedQty: item.totalReceivedQty || 0,
+      balanceQty: item.balanceQty || 0,
       receivedQty: 0,
       rate: item.rate || 0,
       amount: 0
@@ -863,7 +878,7 @@ const MaterialReceived = () => {
       supplierName: po.supplierName || '',
       items: mappedItems
     }));
-    setPoSearchTerm(po.poNumber);
+    setPoSearchTerm(''); // Clear search to show all POs
     setShowPODropdown(false);
   };
 
@@ -897,6 +912,42 @@ const MaterialReceived = () => {
     const companyName = localStorage.getItem('companyName') || '';
     
     try {
+      // Validation for Receipt case
+      if (formData.movementType === 'Receipt') {
+        // Check if there are any items
+        if (!formData.items || formData.items.length === 0) {
+          setAlertMessage({ show: true, type: 'danger', message: 'Please add at least one item with received quantity.' });
+          return;
+        }
+        
+        // Check each item for valid received quantity
+        for (let i = 0; i < formData.items.length; i++) {
+          const item = formData.items[i];
+          const receivedQty = parseFloat(item.receivedQty) || 0;
+          const balanceQty = parseFloat(item.balanceQty) || 0;
+          
+          // Check if received quantity is greater than 0
+          if (receivedQty <= 0) {
+            setAlertMessage({ 
+              show: true, 
+              type: 'danger', 
+              message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Received Qty must be greater than 0.` 
+            });
+            return;
+          }
+          
+          // Check if received quantity exceeds pending quantity (only for PO-based receipts, not opening balance)
+          if (!isOpeningBalance && receivedQty > balanceQty) {
+            setAlertMessage({ 
+              show: true, 
+              type: 'danger', 
+              message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Received Qty (${receivedQty}) cannot be greater than Pending Qty (${balanceQty}).` 
+            });
+            return;
+          }
+        }
+      }
+      
       // Clean items - remove itemCode, itemName from each item
       const cleanedItems = formData.items.map(({ itemCode, itemName, ...rest }) => rest);
       
@@ -948,6 +999,7 @@ const MaterialReceived = () => {
         materialTotal: materialTotal,
         charges: chargesArray,
         discounts: discountsArray,
+        isOpeningBalance: isOpeningBalance,
         floor: selectedFloor || formData.floor || '',
         event: selectedEvent || formData.event || '',
         companyCode: companyId,
@@ -1002,6 +1054,10 @@ const MaterialReceived = () => {
 
   const handleReset = () => {
     setPoItems([]);
+    setPurchaseOrders([]);
+    setFilteredPOs([]);
+    setIsOpeningBalance(false);
+    setOpeningBalanceItems([]);
     setFormData({
       _id: '',
       movementType: '',
@@ -1084,17 +1140,31 @@ const MaterialReceived = () => {
     }
     
     // Populate poItems for Receipt type to enable dropdown
-    if (grn.movementType === 'Receipt' && grn.items && grn.items.length > 0) {
-      const itemsForDropdown = grn.items.map(item => ({
-        itemCode: item.itemId || item.itemCode || '',
-        itemName: item.itemName || '',
-        unit: item.unit || '',
-        orderedQty: item.orderedQty || 0,
-        receivedQty: item.receivedQty || 0,
-        rate: item.rate || 0,
-        amount: item.amount || 0
-      }));
-      setPoItems(itemsForDropdown);
+    if (grn.movementType === 'Receipt' && grn.poId) {
+      // Fetch latest PO items with updated received quantities
+      fetch(`${apiBaseUrl}/api/PurchaseOrder/items/${grn.poId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.items) {
+            const itemsForDropdown = data.items.map(item => ({
+              itemCode: item.itemName || item.itemCode || '',
+              itemId: item.itemCode || '',
+              itemName: item.itemName || '',
+              unit: item.unit || '',
+              orderedQty: item.purchaseQty || 0,
+              totalReceivedQty: item.totalReceivedQty || 0,
+              balanceQty: item.balanceQty || 0,
+              receivedQty: 0,
+              rate: item.rate || 0,
+              amount: 0
+            }));
+            setPoItems(itemsForDropdown);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading PO items:', error);
+          setPoItems([]);
+        });
     }
     
     // Populate poItems for Return type to enable dropdown
@@ -1153,6 +1223,13 @@ const MaterialReceived = () => {
       charges: mergedCharges.length > 0 ? mergedCharges : []
     });
     setPoSearchTerm(grn.movementType === 'Return' ? (grn.originalGrnPo || '') : (grn.poNumber || ''));
+    setIsOpeningBalance(grn.isOpeningBalance || false);
+    
+    // Load opening balance items if this is an opening balance record
+    if (grn.isOpeningBalance) {
+      loadOpeningBalanceItems();
+    }
+    
     setEditMode(true);
     setViewMode('form');
   };
@@ -1191,6 +1268,7 @@ const MaterialReceived = () => {
         return (
           <>
             {/* Supplier & PO Information */}
+            {!isOpeningBalance && (
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Supplier & PO Information</h5>
               <Row>
@@ -1219,6 +1297,7 @@ const MaterialReceived = () => {
                         }
                       }}
                       required
+                      disabled={editMode}
                     >
                       <option value="">Select Supplier</option>
                       {suppliers.map(s => (
@@ -1233,14 +1312,17 @@ const MaterialReceived = () => {
                     <div className="position-relative" ref={poDropdownRef}>
                       <Form.Control
                         type="text"
-                        value={poSearchTerm}
+                        value={formData.poNumber || poSearchTerm}
                         onChange={(e) => {
                           setPoSearchTerm(e.target.value);
+                          setFormData(prev => ({ ...prev, poNumber: '', poId: '', items: [] }));
+                          setPoItems([]);
                           setShowPODropdown(true);
                         }}
                         onFocus={() => setShowPODropdown(true)}
                         placeholder="Search PO number"
                         required
+                        disabled={editMode}
                       />
                       {showPODropdown && filteredPOs.length > 0 && (
                         <Card 
@@ -1266,8 +1348,8 @@ const MaterialReceived = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                               >
-                                <div><strong>{po.poNumber}</strong></div>
-                                <small className="text-muted">{po.supplierName}</small>
+                                <div>{po.poNumber}</div>
+                                
                               </div>
                             ))}
                           </Card.Body>
@@ -1341,6 +1423,7 @@ const MaterialReceived = () => {
                 </Col>
               </Row>
             </div>
+            )}
           </>
         );
 
@@ -1597,9 +1680,11 @@ const MaterialReceived = () => {
                   <div className="position-relative" ref={poDropdownRef}>
                     <Form.Control
                       type="text"
-                      value={poSearchTerm}
+                      value={formData.originalGrnPo || poSearchTerm}
                       onChange={(e) => {
                         setPoSearchTerm(e.target.value);
+                        setFormData(prev => ({ ...prev, originalGrnPo: '' }));
+                        setPoItems([]);
                         setShowPODropdown(true);
                       }}
                       onFocus={() => setShowPODropdown(true)}
@@ -1637,7 +1722,7 @@ const MaterialReceived = () => {
                                   ...prev,
                                   originalGrnPo: po.poNumber
                                 }));
-                                setPoSearchTerm(po.poNumber);
+                                setPoSearchTerm(''); // Clear search to show all POs
                                 setShowPODropdown(false);
                               }}
                               style={{
@@ -1720,15 +1805,15 @@ const MaterialReceived = () => {
             <Table striped bordered hover responsive style={{ fontSize: '0.875rem' }}>
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: '10%' }}>Movement Type</th>
-                  <th style={{ width: '11%' }}>Reference Number</th>
+                  <th style={{ width: '8%' }}>Movement Type</th>
+                  <th style={{ width: '15%' }}>Reference Number</th>
                   <th style={{ width: '9%' }}>Reference Date</th>
                   <th style={{ width: '12%' }}>PO Number</th>
-                  <th style={{ width: '15%' }}>Supplier Name</th>
+                  <th style={{ width: '12%' }}>Supplier Name</th>
                   <th style={{ width: '11%' }}>Invoice Number</th>
                   <th style={{ width: '9%' }}>Invoice Date</th>
                   
-                  <th style={{ width: '12%' }}>Actions</th>
+                  <th style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1871,6 +1956,43 @@ const MaterialReceived = () => {
                   </Form.Group>
                 </Col>
               </Row>
+              {formData.movementType === 'Receipt' && (
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Check
+                        type="checkbox"
+                        id="openingBalanceCheck"
+                        label="Opening Balance"
+                        checked={isOpeningBalance}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsOpeningBalance(checked);
+                          if (checked) {
+                            loadOpeningBalanceItems();
+                            // Clear PO related data
+                            setFormData(prev => ({
+                              ...prev,
+                              supplierId: '',
+                              supplierName: '',
+                              poNumber: '',
+                              poId: '',
+                              items: []
+                            }));
+                            setPoItems([]);
+                            setPurchaseOrders([]);
+                            setFilteredPOs([]);
+                          } else {
+                            setOpeningBalanceItems([]);
+                            setFormData(prev => ({ ...prev, items: [] }));
+                          }
+                        }}
+                        disabled={editMode}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              )}
             </div>
 
             {/* Dynamic Movement Type Specific Fields */}
@@ -1878,10 +2000,10 @@ const MaterialReceived = () => {
 
             {/* Materials/Items */}
             <div className="mb-4">
-              <h5 className="border-bottom pb-2 mb-3">Materials Received</h5>
+              <h5 className="border-bottom pb-2 mb-3">Materials Details</h5>
               
               {/* Instruction message for Receipt case */}
-              {formData.movementType === 'Receipt' && !formData.poId && (
+              {formData.movementType === 'Receipt' && !isOpeningBalance && !formData.poId && (
                 <Alert variant="info" className="mb-3">
                   <i className="bi bi-info-circle me-2"></i>
                   Please select a Purchase Order above to load materials for receiving.
@@ -1932,49 +2054,41 @@ const MaterialReceived = () => {
                 }
                 colHeaders={
                   formData.movementType === 'Receipt'
-                    ? ['Material', 'Unit', 'Ordered Qty', 'Qty', 'Rate (INR)', 'Amount (INR)', 'Action']
+                    ? (isOpeningBalance 
+                        ? ['Item', 'Unit', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                        : ['Item', 'Unit', 'PO Qty','Recd. Till Now','Pending', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action'])
                     : formData.movementType === 'Return'
                     ? ['Material', 'Unit', 'Qty', 'Action']
                     : ['Material', 'Unit', 'Stock Qty', 'Qty', 'Action']
                 }
                 columns={
                   formData.movementType === 'Receipt'
-                    ? [
+                    ? (isOpeningBalance ? [
                         {
                           data: 'itemCode',
                           type: 'dropdown',
-                          source: poItems.length > 0 
-                            ? poItems.map(item => item.itemName || item.itemCode || '')
+                          source: openingBalanceItems.length > 0 
+                            ? openingBalanceItems.map(item => item.itemName || '')
                             : [],
                           strict: false,
                           filter: false,
-                          width: 250,
+                          width: 100,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
                             if (rowData && rowData.itemName) {
                               td.innerHTML = rowData.itemName;
-                              return td;
+                            } else {
+                              td.innerHTML = value || '';
                             }
-                            td.innerHTML = value || '';
                             return td;
                           }
                         },
                         {
                           data: 'unit',
                           type: 'text',
-                          readOnly: true,
-                          className: 'htMiddle bg-light',
+                          readOnly: false,
+                          className: 'htMiddle',
                           width: 100
-                        },
-                        {
-                          data: 'orderedQty',
-                          type: 'numeric',
-                          numericFormat: {
-                            pattern: '0,0.00'
-                          },
-                          readOnly: true,
-                          className: 'htRight htMiddle bg-light',
-                          width: 120
                         },
                         {
                           data: 'receivedQty',
@@ -1990,7 +2104,169 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
+                          width: 100
+                        },
+                        {
+                          data: 'amount',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
                           width: 100,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
+                          data: 'action',
+                          width: 100,
+                          readOnly: true,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            const rowData = instance.getSourceDataAtRow(row);
+                            if (rowData && rowData.isTotalRow) {
+                              td.innerHTML = '';
+                            } else {
+                              // Clear existing content to prevent duplicate buttons
+                              td.innerHTML = '';
+                              td.style.textAlign = 'center';
+                              
+                              // Add row button
+                              const addBtn = document.createElement('button');
+                              addBtn.className = 'btn btn-success btn-sm me-1';
+                              addBtn.innerHTML = '<i class="bi bi-plus"></i>';
+                              addBtn.onclick = () => {
+                                const currentData = instance.getSourceData();
+                                const newItems = currentData.filter(item => !item.isTotalRow).map(item => ({
+                                  itemCode: item.itemCode || '',
+                                  itemName: item.itemName || '',
+                                  itemId: item.itemId || '',
+                                  unit: item.unit || '',
+                                  receivedQty: item.receivedQty || 0,
+                                  rate: item.rate || 0,
+                                  amount: item.amount || 0
+                                }));
+                                
+                                newItems.splice(row + 1, 0, {
+                                  itemCode: '',
+                                  itemName: '',
+                                  itemId: '',
+                                  unit: '',
+                                  receivedQty: 0,
+                                  rate: 0,
+                                  amount: 0
+                                });
+                                setFormData(prev => ({ ...prev, items: newItems }));
+                              };
+                              td.appendChild(addBtn);
+                              
+                              // Bulk add rows button
+                              const bulkAddBtn = document.createElement('button');
+                              bulkAddBtn.className = 'btn btn-primary btn-sm me-1';
+                              bulkAddBtn.innerHTML = '<i class="bi bi-plus-square"></i>';
+                              bulkAddBtn.title = 'Add multiple rows';
+                              bulkAddBtn.onclick = () => {
+                                setShowAddRowsModal(true);
+                              };
+                              td.appendChild(bulkAddBtn);
+                              
+                              // Delete row button
+                              if (formData.items.length > 1 || row > 0) {
+                                const deleteBtn = document.createElement('button');
+                                deleteBtn.className = 'btn btn-danger btn-sm';
+                                deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                                deleteBtn.onclick = () => {
+                                  const currentData = instance.getSourceData();
+                                  const newItems = currentData
+                                    .filter(item => !item.isTotalRow)
+                                    .filter((_, index) => index !== row)
+                                    .map(item => ({
+                                      itemCode: item.itemCode || '',
+                                      itemName: item.itemName || '',
+                                      itemId: item.itemId || '',
+                                      unit: item.unit || '',
+                                      receivedQty: item.receivedQty || 0,
+                                      rate: item.rate || 0,
+                                      amount: item.amount || 0
+                                    }));
+                                  setFormData(prev => ({ ...prev, items: newItems }));
+                                };
+                                td.appendChild(deleteBtn);
+                              }
+                            }
+                            return td;
+                          }
+                        }
+                      ] : [
+                        {
+                          data: 'itemCode',
+                          type: 'dropdown',
+                          source: poItems.length > 0 
+                            ? poItems.map(item => item.itemName || item.itemCode || '')
+                            : [],
+                          strict: false,
+                          filter: false,
+                          width: 200,
+                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                            const rowData = instance.getSourceDataAtRow(row);
+                            if (rowData && rowData.itemName) {
+                              td.innerHTML = rowData.itemName;
+                              return td;
+                            }
+                            td.innerHTML = value || '';
+                            return td;
+                          }
+                        },
+                        {
+                          data: 'unit',
+                          type: 'text',
+                          readOnly: true,
+                          className: 'htMiddle bg-light',
+                          width: 80
+                        },
+                        {
+                          data: 'orderedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light',
+                          width: 100
+                        },
+                        {
+                          data: 'totalReceivedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light',
+                          width: 100
+                        },
+                        {
+                          data: 'balanceQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light',
+                          width: 100
+                        },
+                        {
+                          data: 'receivedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 100
+                        },
+                        {
+                          data: 'rate',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 90,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
@@ -2000,13 +2276,13 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 120,
+                          width: 90,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
                         {
                           data: 'action',
-                          width: 100,
+                          width: 90,
                           readOnly: true,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
@@ -2031,6 +2307,8 @@ const MaterialReceived = () => {
                                 itemName: item.itemName || '',
                                 unit: item.unit || '',
                                 orderedQty: item.orderedQty || 0,
+                                totalReceivedQty: item.totalReceivedQty || 0,
+                                balanceQty: item.balanceQty || 0,
                                 receivedQty: item.receivedQty || 0,
                                 rate: item.rate || 0,
                                 amount: item.amount || 0,
@@ -2042,6 +2320,8 @@ const MaterialReceived = () => {
                                 itemName: '',
                                 unit: '',
                                 orderedQty: 0,
+                                totalReceivedQty: 0,
+                                balanceQty: 0,
                                 receivedQty: 0,
                                 rate: 0,
                                 amount: 0
@@ -2064,6 +2344,8 @@ const MaterialReceived = () => {
                                     itemName: item.itemName || '',
                                     unit: item.unit || '',
                                     orderedQty: item.orderedQty || 0,
+                                    totalReceivedQty: item.totalReceivedQty || 0,
+                                    balanceQty: item.balanceQty || 0,
                                     receivedQty: item.receivedQty || 0,
                                     rate: item.rate || 0,
                                     amount: item.amount || 0,
@@ -2077,7 +2359,7 @@ const MaterialReceived = () => {
                             return td;
                           }
                         }
-                      ]
+                      ])
                     : [
                         {
                           data: 'itemCode',
@@ -2091,7 +2373,7 @@ const MaterialReceived = () => {
                               : []),
                           strict: false,
                           filter: false,
-                          width: 250,
+                          width: 200,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
                             if (rowData && rowData.itemName) {
@@ -2243,7 +2525,7 @@ const MaterialReceived = () => {
                       if (col === 0) {
                         td.style.textAlign = 'right';
                         td.style.paddingRight = '15px';
-                      } else if (col === 5) {
+                      } else if ((isOpeningBalance && col === 4) || (!isOpeningBalance && col === 7)) {
                         td.style.textAlign = 'right';
                         td.style.color = '#0d6efd';
                         const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -2253,23 +2535,37 @@ const MaterialReceived = () => {
                   }
                 }}
                 width="100%"
-                height="200"
+                height="auto"
                 licenseKey="non-commercial-and-evaluation"
                 stretchH="all"
+                fixedRowsTop={0}
+                rowHeaders={true}
+                rowHeaderWidth={35}
+                contextMenu={true}
+                afterRemoveRow={(index, amount) => {
+                  // Update formData.items when rows are deleted via context menu
+                  const hotInstance = hotTableRef.current?.hotInstance;
+                  if (!hotInstance) return;
+                  
+                  const currentData = hotInstance.getSourceData();
+                  if (formData.movementType === 'Receipt') {
+                    const newItems = currentData.filter(item => !item.isTotalRow);
+                    setFormData(prev => ({ ...prev, items: newItems }));
+                  } else {
+                    setFormData(prev => ({ ...prev, items: currentData }));
+                  }
+                }}
                 afterChange={(changes, source) => {
                   if (!changes || source === 'loadData') return;
 
                   changes.forEach(([row, prop, oldValue, newValue]) => {
                     if (formData.movementType === 'Receipt') {
-                      const currentItems = formData.items.length > 0 ? formData.items : [{
-                        itemCode: '',
-                        itemName: '',
-                        unit: '',
-                        orderedQty: 0,
-                        receivedQty: 0,
-                        rate: 0,
-                        amount: 0
-                      }];
+                      // Get current data from the grid instance, not from formData
+                      const hotInstance = hotTableRef.current?.hotInstance;
+                      if (!hotInstance) return;
+                      
+                      const currentData = hotInstance.getSourceData();
+                      const currentItems = currentData.filter(item => !item.isTotalRow);
                       
                       const newItems = [...currentItems];
                       
@@ -2287,21 +2583,44 @@ const MaterialReceived = () => {
 
                       // Handle material selection
                       if (prop === 'itemCode' && newValue) {
-                        // Find the item from the original PO items
-                        const selectedItem = poItems.find(item => 
-                          (item.itemName || item.itemCode) === newValue
-                        );
-                        
-                        if (selectedItem) {
-                          // Keep the existing item data from PO
-                          newItems[row] = {
-                            ...selectedItem,
-                            receivedQty: newItems[row].receivedQty || 0
-                          };
-                          // Calculate amount
-                          const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
-                          const rate = parseFloat(newItems[row].rate) || 0;
-                          newItems[row].amount = receivedQty * rate;
+                        if (isOpeningBalance) {
+                          // Find the item from opening balance items
+                          const selectedItem = openingBalanceItems.find(item => 
+                            item.itemName === newValue
+                          );
+                          
+                          if (selectedItem) {
+                            newItems[row] = {
+                              itemCode: selectedItem.itemName || '',
+                              itemId: selectedItem._id || '',
+                              itemName: selectedItem.itemName || '',
+                              unit: selectedItem.unit || '',
+                              receivedQty: newItems[row].receivedQty || 0,
+                              rate: selectedItem.defaultRate || 0,
+                              amount: 0
+                            };
+                            // Calculate amount
+                            const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                            const rate = parseFloat(newItems[row].rate) || 0;
+                            newItems[row].amount = receivedQty * rate;
+                          }
+                        } else {
+                          // Find the item from the original PO items
+                          const selectedItem = poItems.find(item => 
+                            (item.itemName || item.itemCode) === newValue
+                          );
+                          
+                          if (selectedItem) {
+                            // Keep the existing item data from PO
+                            newItems[row] = {
+                              ...selectedItem,
+                              receivedQty: newItems[row].receivedQty || 0
+                            };
+                            // Calculate amount
+                            const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                            const rate = parseFloat(newItems[row].rate) || 0;
+                            newItems[row].amount = receivedQty * rate;
+                          }
                         }
                       }
 
@@ -2321,13 +2640,12 @@ const MaterialReceived = () => {
                       setFormData(prev => ({ ...prev, items: newItems }));
                     } else {
                       // For other movement types (Transfer, Issue, Return)
-                      const currentItems = formData.items.length > 0 ? formData.items : [{
-                        itemCode: '',
-                        itemName: '',
-                        unit: '',
-                        stockQty: 0,
-                        receivedQty: 0
-                      }];
+                      // Get current data from the grid instance, not from formData
+                      const hotInstance = hotTableRef.current?.hotInstance;
+                      if (!hotInstance) return;
+                      
+                      const currentData = hotInstance.getSourceData();
+                      const currentItems = currentData || [];
                       
                       const newItems = [...currentItems];
                       
@@ -2409,7 +2727,7 @@ const MaterialReceived = () => {
             </div>
 
             {/* Charges Summary Section - Only for Receipt Type */}
-            {formData.movementType === 'Receipt' && (
+            {formData.movementType === 'Receipt' && !isOpeningBalance && (
               <div className="mb-4">
                 <h5 className="border-bottom pb-2 mb-3">Charges & Discounts</h5>
                 
@@ -2652,6 +2970,55 @@ const MaterialReceived = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowPDFModal(false)}>
             Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Add Multiple Rows Modal */}
+      <Modal show={showAddRowsModal} onHide={() => setShowAddRowsModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="bi bi-plus-square me-2"></i>
+            Add Multiple Rows
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Number of rows to add:</Form.Label>
+            <Form.Select
+              value={rowsToAdd}
+              onChange={(e) => setRowsToAdd(parseInt(e.target.value))}
+            >
+              {[...Array(20)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>{i + 1}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAddRowsModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              const currentItems = formData.items.length > 0 ? formData.items : [];
+              const newRows = Array(rowsToAdd).fill(null).map(() => ({
+                itemCode: '',
+                itemName: '',
+                itemId: '',
+                unit: '',
+                receivedQty: 0,
+                rate: 0,
+                amount: 0
+              }));
+              setFormData(prev => ({ ...prev, items: [...currentItems, ...newRows] }));
+              setShowAddRowsModal(false);
+              setRowsToAdd(1);
+            }}
+          >
+            <i className="bi bi-check-circle me-2"></i>
+            Add Rows
           </Button>
         </Modal.Footer>
       </Modal>
