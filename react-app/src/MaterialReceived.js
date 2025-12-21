@@ -2086,8 +2086,8 @@ const MaterialReceived = () => {
                         {
                           data: 'unit',
                           type: 'text',
-                          readOnly: false,
-                          className: 'htMiddle',
+                          readOnly: true,
+                          className: 'htMiddle bg-light',
                           width: 100
                         },
                         {
@@ -2558,19 +2558,21 @@ const MaterialReceived = () => {
                 afterChange={(changes, source) => {
                   if (!changes || source === 'loadData') return;
 
-                  changes.forEach(([row, prop, oldValue, newValue]) => {
-                    if (formData.movementType === 'Receipt') {
-                      // Get current data from the grid instance, not from formData
-                      const hotInstance = hotTableRef.current?.hotInstance;
-                      if (!hotInstance) return;
-                      
-                      const currentData = hotInstance.getSourceData();
-                      const currentItems = currentData.filter(item => !item.isTotalRow);
-                      
-                      const newItems = [...currentItems];
-                      
-                      if (!newItems[row]) {
-                        newItems[row] = {
+                  // Get current data from the grid instance once
+                  const hotInstance = hotTableRef.current?.hotInstance;
+                  if (!hotInstance) return;
+                  
+                  const currentData = hotInstance.getSourceData();
+                  
+                  if (formData.movementType === 'Receipt') {
+                    const currentItems = currentData.filter(item => !item.isTotalRow);
+                    const newItems = currentItems.map(item => ({...item})); // Deep copy
+                    
+                    // Process all changes, updating newItems array
+                    changes.forEach(([row, prop, oldValue, newValue]) => {
+                      // Ensure row exists in newItems
+                      while (newItems.length <= row) {
+                        newItems.push({
                           itemCode: '',
                           itemName: '',
                           unit: '',
@@ -2578,24 +2580,25 @@ const MaterialReceived = () => {
                           receivedQty: 0,
                           rate: 0,
                           amount: 0
-                        };
+                        });
                       }
 
                       // Handle material selection
                       if (prop === 'itemCode' && newValue) {
                         if (isOpeningBalance) {
-                          // Find the item from opening balance items
+                          // Find the item from opening balance items (case-insensitive trim match)
                           const selectedItem = openingBalanceItems.find(item => 
-                            item.itemName === newValue
+                            item.itemName && item.itemName.trim().toLowerCase() === newValue.trim().toLowerCase()
                           );
                           
                           if (selectedItem) {
+                            const existingReceivedQty = newItems[row]?.receivedQty || 0;
                             newItems[row] = {
                               itemCode: selectedItem.itemName || '',
                               itemId: selectedItem._id || '',
                               itemName: selectedItem.itemName || '',
                               unit: selectedItem.unit || '',
-                              receivedQty: newItems[row].receivedQty || 0,
+                              receivedQty: existingReceivedQty,
                               rate: selectedItem.defaultRate || 0,
                               amount: 0
                             };
@@ -2611,10 +2614,11 @@ const MaterialReceived = () => {
                           );
                           
                           if (selectedItem) {
+                            const existingReceivedQty = newItems[row]?.receivedQty || 0;
                             // Keep the existing item data from PO
                             newItems[row] = {
                               ...selectedItem,
-                              receivedQty: newItems[row].receivedQty || 0
+                              receivedQty: existingReceivedQty
                             };
                             // Calculate amount
                             const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
@@ -2636,19 +2640,36 @@ const MaterialReceived = () => {
                       if (prop !== 'itemCode' && prop !== 'receivedQty' && prop !== 'rate') {
                         newItems[row][prop] = newValue;
                       }
-
-                      setFormData(prev => ({ ...prev, items: newItems }));
-                    } else {
-                      // For other movement types (Transfer, Issue, Return)
-                      // Get current data from the grid instance, not from formData
-                      const hotInstance = hotTableRef.current?.hotInstance;
-                      if (!hotInstance) return;
-                      
-                      const currentData = hotInstance.getSourceData();
-                      const currentItems = currentData || [];
-                      
-                      const newItems = [...currentItems];
-                      
+                    });
+                    
+                    // Update the grid's data immediately to reflect changes (only for opening balance)
+                    if (isOpeningBalance) {
+                      const dataWithTotal = [
+                        ...newItems,
+                        {
+                          itemCode: 'Total:',
+                          itemName: '',
+                          unit: '',
+                          orderedQty: '',
+                          receivedQty: '',
+                          rate: '',
+                          amount: newItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
+                          action: '',
+                          isTotalRow: true
+                        }
+                      ];
+                      hotInstance.loadData(dataWithTotal);
+                    }
+                    
+                    // Update state once after processing all changes
+                    setFormData(prev => ({ ...prev, items: newItems }));
+                  } else {
+                    // For other movement types (Transfer, Issue, Return)
+                    const currentItems = currentData || [];
+                    const newItems = [...currentItems];
+                    
+                    // Process all changes, updating newItems array
+                    changes.forEach(([row, prop, oldValue, newValue]) => {
                       if (!newItems[row]) {
                         newItems[row] = {
                           itemCode: '',
@@ -2718,10 +2739,11 @@ const MaterialReceived = () => {
                       if (prop !== 'itemCode' && (formData.movementType !== 'Return' || prop !== 'receivedQty')) {
                         newItems[row][prop] = newValue;
                       }
-
-                      setFormData(prev => ({ ...prev, items: newItems }));
-                    }
-                  });
+                    });
+                    
+                    // Update state once after processing all changes
+                    setFormData(prev => ({ ...prev, items: newItems }));
+                  }
                 }}
               />
             </div>

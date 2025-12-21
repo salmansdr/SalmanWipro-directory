@@ -11,10 +11,22 @@ const SupplierMaster = () => {
     _id: '',
     supplierCode: '',
     supplierName: '',
+    vendorGroup: '',
+    initial: '',
     contactPerson: '',
     mobileNumber: '',
     email: '',
     address: '',
+    nid: '',
+    tinPan: '',
+    country: '',
+    bankAccountNo: '',
+    bankAccountName: '',
+    bankName: '',
+    bankBranchName: '',
+    routingNo: '',
+    creditDays: '',
+    creditLimit: '',
     isActive: true
   });
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
@@ -73,10 +85,22 @@ const SupplierMaster = () => {
       _id: '',
       supplierCode: '',
       supplierName: '',
+      vendorGroup: '',
+      initial: '',
       contactPerson: '',
       mobileNumber: '',
       email: '',
       address: '',
+      nid: '',
+      tinPan: '',
+      country: '',
+      bankAccountNo: '',
+      bankAccountName: '',
+      bankName: '',
+      bankBranchName: '',
+      routingNo: '',
+      creditDays: '',
+      creditLimit: '',
       isActive: true
     });
     setEditMode(false);
@@ -133,21 +157,25 @@ const SupplierMaster = () => {
           if (addAnother) {
             // Reset form for new entry
             setFormData({
+              _id: '',
               supplierCode: '',
               supplierName: '',
+              vendorGroup: '',
+              initial: '',
+              contactPerson: '',
               mobileNumber: '',
               email: '',
-              contactPerson: '',
               address: '',
-              city: '',
-              state: '',
-              pincode: '',
-              gst: '',
-              panNumber: '',
+              nid: '',
+              tinPan: '',
+              country: '',
+              bankAccountNo: '',
+              bankAccountName: '',
               bankName: '',
-              accountNumber: '',
-              ifscCode: '',
-              accountHolderName: '',
+              bankBranchName: '',
+              routingNo: '',
+              creditDays: '',
+              creditLimit: '',
               isActive: true
             });
           } else {
@@ -341,7 +369,7 @@ const SupplierMaster = () => {
               <div className="mb-4">
                 <h5 className="border-bottom pb-2 mb-3">Supplier Information</h5>
                 <Row>
-                  <Col md={4}>
+                  <Col md={3}>
                     <Form.Group className="mb-3">
                       <Form.Label>Supplier Code <span className="text-danger">*</span></Form.Label>
                       <Form.Control
@@ -351,6 +379,41 @@ const SupplierMaster = () => {
                         onChange={handleInputChange}
                         required
                       />
+                    </Form.Group>
+                  </Col>
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Vendor Group</Form.Label>
+                      <Form.Select
+                        name="vendorGroup"
+                        value={formData.vendorGroup}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select Vendor Group</option>
+                        <option value="Consultant">Consultant</option>
+                        <option value="Contractor">Contractor</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Land Owner">Land Owner</option>
+                        <option value="Media">Media</option>
+                        <option value="N/A">N/A</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Vendor">Vendor</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={2}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Initial</Form.Label>
+                      <Form.Select
+                        name="initial"
+                        value={formData.initial}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="M/S">M/S</option>
+                      </Form.Select>
                     </Form.Group>
                   </Col>
                   <Col md={4}>
@@ -365,6 +428,8 @@ const SupplierMaster = () => {
                       />
                     </Form.Group>
                   </Col>
+                </Row>
+                <Row>
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Contact Person</Form.Label>
@@ -373,6 +438,42 @@ const SupplierMaster = () => {
                         name="contactPerson"
                         value={formData.contactPerson}
                         onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>NID</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="nid"
+                        value={formData.nid}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>TIN/PAN</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="tinPan"
+                        value={formData.tinPan}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Country and Details</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                        placeholder="e.g., India, Delhi"
                       />
                     </Form.Group>
                   </Col>
@@ -418,6 +519,102 @@ const SupplierMaster = () => {
                     onChange={handleInputChange}
                   />
                 </Form.Group>
+              </div>
+
+              {/* Bank Details */}
+              <div className="mb-4">
+                <h5 className="border-bottom pb-2 mb-3">Bank Details</h5>
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankName"
+                        value={formData.bankName}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Branch Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankBranchName"
+                        value={formData.bankBranchName}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Account No</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankAccountNo"
+                        value={formData.bankAccountNo}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Bank Account Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="bankAccountName"
+                        value={formData.bankAccountName}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Routing No</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="routingNo"
+                        value={formData.routingNo}
+                        onChange={handleInputChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Credit Terms */}
+              <div className="mb-4">
+                <h5 className="border-bottom pb-2 mb-3">Credit Terms</h5>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Credit Days</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="creditDays"
+                        value={formData.creditDays}
+                        onChange={handleInputChange}
+                        placeholder="Number of days"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Credit Limit</Form.Label>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        name="creditLimit"
+                        value={formData.creditLimit}
+                        onChange={handleInputChange}
+                        placeholder="Maximum credit amount"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
               </div>
 
               {/* Status */}
