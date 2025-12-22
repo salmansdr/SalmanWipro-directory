@@ -24,3 +24,9 @@ footer {
   color: white !important;
   filter: brightness(1000%);
 }
+
+/* Handsontable container - ensure enough height for dropdowns */
+.handsontable-container {
+  min-height: 300px; /* or enough to fit 5 rows */
+  overflow: visible;
+}

@@ -558,7 +558,6 @@ const MaterialReceived = () => {
   const [showPODropdown, setShowPODropdown] = useState(false);
   const [poSearchTerm, setPoSearchTerm] = useState('');
   const [materialItems, setMaterialItems] = useState([]);
-  const [units, setUnits] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -769,7 +768,8 @@ const MaterialReceived = () => {
           _id: item._id,
           itemName: item.material || '',
           unit: item.unit || '',
-          defaultRate: item.defaultRate || 0, // Default rate not available in API, can be entered manually
+          defaultRate: item.defaultRate || 0,
+          lotControlled: item.lotControlled || false,
           categoryName: item.categoryName || '',
           categoryId: item.categoryId || ''
         }));
@@ -788,20 +788,6 @@ const MaterialReceived = () => {
       if (itemsResponse.ok) {
         const itemsData = await itemsResponse.json();
         setMaterialItems(Array.isArray(itemsData) ? itemsData : []);
-      }
-
-      // Load Units
-      const unitsResponse = await fetch(`${apiBaseUrl}/api/MaterialItems/units`);
-      if (unitsResponse.ok) {
-        const unitsData = await unitsResponse.json();
-        let unitsArray = Array.isArray(unitsData) ? unitsData : (unitsData.units || []);
-        
-        if (unitsArray.length > 0 && typeof unitsArray[0] === 'object') {
-          unitsArray = unitsArray.map(u => u.unit || u);
-        }
-        
-        const uniqueUnits = [...new Set(unitsArray.filter(u => u))];
-        setUnits(uniqueUnits.length > 0 ? uniqueUnits : ['pcs', 'kg', 'bag', 'cft', 'sqm', 'cum', 'ltr', 'nos']);
       }
 
       // Load Suppliers
@@ -826,7 +812,6 @@ const MaterialReceived = () => {
       }
     } catch (error) {
       console.error('Error loading dropdown data:', error);
-      setUnits(['pcs', 'kg', 'bag', 'cft', 'sqm', 'cum', 'ltr', 'nos']);
     }
   };
 
@@ -861,6 +846,8 @@ const MaterialReceived = () => {
       itemId: item.itemCode || '',
       itemName: item.itemName || '',
       unit: item.unit || '',
+      lotNo: '',
+      lotControlled: item.lotControlled || false,
       orderedQty: item.purchaseQty || 0,
       totalReceivedQty: item.totalReceivedQty || 0,
       balanceQty: item.balanceQty || 0,
@@ -920,7 +907,7 @@ const MaterialReceived = () => {
           return;
         }
         
-        // Check each item for valid received quantity
+        // Check each item for valid received quantity and lot number
         for (let i = 0; i < formData.items.length; i++) {
           const item = formData.items[i];
           const receivedQty = parseFloat(item.receivedQty) || 0;
@@ -932,6 +919,16 @@ const MaterialReceived = () => {
               show: true, 
               type: 'danger', 
               message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Received Qty must be greater than 0.` 
+            });
+            return;
+          }
+          
+          // Check if lot number is required for lot controlled items
+          if (item.lotControlled && (!item.lotNo || item.lotNo.trim() === '')) {
+            setAlertMessage({ 
+              show: true, 
+              type: 'danger', 
+              message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Lot No is required for lot controlled items.` 
             });
             return;
           }
@@ -1272,7 +1269,7 @@ const MaterialReceived = () => {
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Supplier & PO Information</h5>
               <Row>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Supplier <span className="text-danger">*</span></Form.Label>
                     <Form.Select
@@ -1306,7 +1303,7 @@ const MaterialReceived = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Purchase Order # <span className="text-danger">*</span></Form.Label>
                     <div className="position-relative" ref={poDropdownRef}>
@@ -1358,7 +1355,7 @@ const MaterialReceived = () => {
                     </div>
                   </Form.Group>
                 </Col>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Challan/Invoice # <span className="text-danger">*</span></Form.Label>
                     <Form.Control
@@ -1371,9 +1368,7 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
-              </Row>
-              <Row>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Invoice Date <span className="text-danger">*</span></Form.Label>
                     <Form.Control
@@ -1385,6 +1380,14 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
+              </Row>
+            </div>
+            )}
+            
+            {/* Receiving Information - Always visible for Receipt */}
+            <div className="mb-4">
+              <h5 className="border-bottom pb-2 mb-3">Receiving Information</h5>
+              <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
                     <Form.Label>Receiving Location <span className="text-danger">*</span></Form.Label>
@@ -1421,9 +1424,44 @@ const MaterialReceived = () => {
                     />
                   </Form.Group>
                 </Col>
+                {(!editMode || (editMode && isOpeningBalance)) && (
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Check
+                        type="checkbox"
+                        id="openingBalanceCheck"
+                        label="Opening Balance"
+                        checked={isOpeningBalance}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsOpeningBalance(checked);
+                          if (checked) {
+                            loadOpeningBalanceItems();
+                            // Clear PO related data
+                            setFormData(prev => ({
+                            ...prev,
+                            supplierId: '',
+                            supplierName: '',
+                            poNumber: '',
+                            poId: '',
+                            items: []
+                          }));
+                          setPoItems([]);
+                          setPurchaseOrders([]);
+                          setFilteredPOs([]);
+                        } else {
+                          setOpeningBalanceItems([]);
+                          setFormData(prev => ({ ...prev, items: [] }));
+                        }
+                      }}
+                      disabled={editMode}
+                      style={{ marginTop: '32px' }}
+                    />
+                  </Form.Group>
+                </Col>
+                )}
               </Row>
             </div>
-            )}
           </>
         );
 
@@ -1492,7 +1530,7 @@ const MaterialReceived = () => {
           <div className="mb-4">
             <h5 className="border-bottom pb-2 mb-3">Issue Information</h5>
             <Row>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
                   <Form.Select
@@ -1517,7 +1555,7 @@ const MaterialReceived = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label>Project <span className="text-danger">*</span></Form.Label>
                   <Form.Select
@@ -1558,7 +1596,7 @@ const MaterialReceived = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label>Floor <span className="text-danger">*</span></Form.Label>
                   <Form.Select
@@ -1585,9 +1623,7 @@ const MaterialReceived = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
+              <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label>Event <span className="text-danger">*</span></Form.Label>
                   <Form.Select
@@ -1956,43 +1992,6 @@ const MaterialReceived = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              {formData.movementType === 'Receipt' && (
-                <Row>
-                  <Col md={12}>
-                    <Form.Group className="mb-3">
-                      <Form.Check
-                        type="checkbox"
-                        id="openingBalanceCheck"
-                        label="Opening Balance"
-                        checked={isOpeningBalance}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setIsOpeningBalance(checked);
-                          if (checked) {
-                            loadOpeningBalanceItems();
-                            // Clear PO related data
-                            setFormData(prev => ({
-                              ...prev,
-                              supplierId: '',
-                              supplierName: '',
-                              poNumber: '',
-                              poId: '',
-                              items: []
-                            }));
-                            setPoItems([]);
-                            setPurchaseOrders([]);
-                            setFilteredPOs([]);
-                          } else {
-                            setOpeningBalanceItems([]);
-                            setFormData(prev => ({ ...prev, items: [] }));
-                          }
-                        }}
-                        disabled={editMode}
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-              )}
             </div>
 
             {/* Dynamic Movement Type Specific Fields */}
@@ -2020,6 +2019,8 @@ const MaterialReceived = () => {
               
               <HotTable
                 ref={hotTableRef}
+                className="handsontable-container"
+                viewportRowRenderingOffset={30}
                 data={
                   formData.movementType === 'Receipt'
                     ? [
@@ -2027,6 +2028,7 @@ const MaterialReceived = () => {
                           itemCode: '',
                           itemName: '',
                           unit: '',
+                          lotNo: '',
                           orderedQty: 0,
                           receivedQty: 0,
                           rate: 0,
@@ -2036,6 +2038,7 @@ const MaterialReceived = () => {
                           itemCode: 'Total:',
                           itemName: '',
                           unit: '',
+                          lotNo: '',
                           orderedQty: '',
                           receivedQty: '',
                           rate: '',
@@ -2055,30 +2058,43 @@ const MaterialReceived = () => {
                 colHeaders={
                   formData.movementType === 'Receipt'
                     ? (isOpeningBalance 
-                        ? ['Item', 'Unit', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
-                        : ['Item', 'Unit', 'PO Qty','Recd. Till Now','Pending', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action'])
+                        ? ['Item', 'Lot No', 'Unit', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                        : ['Item', 'Lot No', 'Unit', 'PO Qty','Recd. Till Now','Pending', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action'])
                     : formData.movementType === 'Return'
-                    ? ['Material', 'Unit', 'Qty', 'Action']
-                    : ['Material', 'Unit', 'Stock Qty', 'Qty', 'Action']
+                    ? ['Item', 'Lot No', 'Unit', 'Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                    : ['Item', 'Lot No', 'Unit', 'Stock Qty', 'Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                 }
                 columns={
                   formData.movementType === 'Receipt'
                     ? (isOpeningBalance ? [
                         {
-                          data: 'itemCode',
-                          type: 'dropdown',
+                          data: 'itemName',
+                          type: 'autocomplete',
                           source: openingBalanceItems.length > 0 
                             ? openingBalanceItems.map(item => item.itemName || '')
                             : [],
-                          strict: false,
+                          strict: true,
                           filter: false,
-                          width: 100,
+                          visibleRows: 10,
+                          width: 300
+                        },
+                        {
+                          data: 'lotNo',
+                          type: 'text',
+                          width: 140,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
-                            if (rowData && rowData.itemName) {
-                              td.innerHTML = rowData.itemName;
+                            if (rowData && rowData.isTotalRow) {
+                              td.innerHTML = '';
+                              cellProperties.readOnly = true;
                             } else {
                               td.innerHTML = value || '';
+                              // Make it required if item is lot controlled
+                              if (rowData && rowData.lotControlled) {
+                                td.style.backgroundColor = '#fffacd';
+                              } else {
+                                td.style.backgroundColor = '';
+                              }
                             }
                             return td;
                           }
@@ -2088,7 +2104,7 @@ const MaterialReceived = () => {
                           type: 'text',
                           readOnly: true,
                           className: 'htMiddle bg-light',
-                          width: 100
+                          width: 110
                         },
                         {
                           data: 'receivedQty',
@@ -2096,7 +2112,7 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 120
+                          width: 140
                         },
                         {
                           data: 'rate',
@@ -2104,7 +2120,7 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100
+                          width: 140
                         },
                         {
                           data: 'amount',
@@ -2112,13 +2128,13 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100,
+                          width: 140,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
                         {
                           data: 'action',
-                          width: 100,
+                          width: 130,
                           readOnly: true,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
@@ -2140,6 +2156,8 @@ const MaterialReceived = () => {
                                   itemName: item.itemName || '',
                                   itemId: item.itemId || '',
                                   unit: item.unit || '',
+                                  lotNo: item.lotNo || '',
+                                  lotControlled: item.lotControlled || false,
                                   receivedQty: item.receivedQty || 0,
                                   rate: item.rate || 0,
                                   amount: item.amount || 0
@@ -2150,6 +2168,8 @@ const MaterialReceived = () => {
                                   itemName: '',
                                   itemId: '',
                                   unit: '',
+                                  lotNo: '',
+                                  lotControlled: false,
                                   receivedQty: 0,
                                   rate: 0,
                                   amount: 0
@@ -2183,6 +2203,8 @@ const MaterialReceived = () => {
                                       itemName: item.itemName || '',
                                       itemId: item.itemId || '',
                                       unit: item.unit || '',
+                                      lotNo: item.lotNo || '',
+                                      lotControlled: item.lotControlled || false,
                                       receivedQty: item.receivedQty || 0,
                                       rate: item.rate || 0,
                                       amount: item.amount || 0
@@ -2197,21 +2219,34 @@ const MaterialReceived = () => {
                         }
                       ] : [
                         {
-                          data: 'itemCode',
-                          type: 'dropdown',
+                          data: 'itemName',
+                          type: 'autocomplete',
                           source: poItems.length > 0 
                             ? poItems.map(item => item.itemName || item.itemCode || '')
                             : [],
-                          strict: false,
+                          strict: true,
                           filter: false,
-                          width: 200,
+                          visibleRows: 10,
+                          width: 200
+                        },
+                        {
+                          data: 'lotNo',
+                          type: 'text',
+                          width: 100,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
-                            if (rowData && rowData.itemName) {
-                              td.innerHTML = rowData.itemName;
-                              return td;
+                            if (rowData && rowData.isTotalRow) {
+                              td.innerHTML = '';
+                              cellProperties.readOnly = true;
+                            } else {
+                              td.innerHTML = value || '';
+                              // Make it required if item is lot controlled
+                              if (rowData && rowData.lotControlled) {
+                                td.style.backgroundColor = '#fffacd';
+                              } else {
+                                td.style.backgroundColor = '';
+                              }
                             }
-                            td.innerHTML = value || '';
                             return td;
                           }
                         },
@@ -2230,7 +2265,7 @@ const MaterialReceived = () => {
                           },
                           readOnly: true,
                           className: 'htRight htMiddle bg-light',
-                          width: 100
+                          width: 110
                         },
                         {
                           data: 'totalReceivedQty',
@@ -2240,7 +2275,7 @@ const MaterialReceived = () => {
                           },
                           readOnly: true,
                           className: 'htRight htMiddle bg-light',
-                          width: 100
+                          width: 120
                         },
                         {
                           data: 'balanceQty',
@@ -2258,7 +2293,7 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100
+                          width: 120
                         },
                         {
                           data: 'rate',
@@ -2266,7 +2301,7 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 90,
+                          width: 110,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
@@ -2276,13 +2311,13 @@ const MaterialReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 90,
+                          width: 120,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
                         {
                           data: 'action',
-                          width: 90,
+                          width: 100,
                           readOnly: true,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
@@ -2362,8 +2397,8 @@ const MaterialReceived = () => {
                       ])
                     : [
                         {
-                          data: 'itemCode',
-                          type: 'dropdown',
+                          data: 'itemName',
+                          type: 'autocomplete',
                           source: formData.movementType === 'Return' && poItems.length > 0
                             ? poItems.map(item => item.itemName || item.itemCode || '')
                             : (formData.sourceLocationId && locationInventory.length > 0 
@@ -2371,37 +2406,32 @@ const MaterialReceived = () => {
                                   .filter(item => item.locationId === formData.sourceLocationId)
                                   .map(item => item.itemName || '')
                               : []),
-                          strict: false,
+                          strict: true,
                           filter: false,
-                          width: 200,
+                          visibleRows: 10,
+                          width: 200
+                        },
+                        {
+                          data: 'lotNo',
+                          type: 'text',
+                          width: 100,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
-                            if (rowData && rowData.itemName) {
-                              td.innerHTML = rowData.itemName;
-                              return td;
-                            }
-                            if (formData.movementType === 'Return' && poItems.length > 0) {
-                              const poItem = poItems.find(item => (item.itemName || item.itemCode) === value);
-                              if (poItem) {
-                                td.innerHTML = value;
-                                return td;
-                              }
-                            } else {
-                              const inventoryItem = locationInventory.find(item => item.itemName === value);
-                              if (inventoryItem) {
-                                td.innerHTML = value;
-                                return td;
-                              }
-                            }
                             td.innerHTML = value || '';
+                            // Make it yellow if item is lot controlled
+                            if (rowData && rowData.lotControlled) {
+                              td.style.backgroundColor = '#fffacd';
+                            } else {
+                              td.style.backgroundColor = '';
+                            }
                             return td;
                           }
                         },
                         {
                           data: 'unit',
-                          type: 'dropdown',
-                          source: units,
-                          strict: false,
+                          type: 'text',
+                          readOnly: true,
+                          className: 'htMiddle bg-light',
                           width: 100
                         },
                         ...(formData.movementType !== 'Return' ? [{
@@ -2423,6 +2453,26 @@ const MaterialReceived = () => {
                           width: 120
                         },
                         {
+                          data: 'rate',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 110,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
+                          data: 'amount',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          width: 120,
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light'
+                        },
+                        {
                           data: 'action',
                           width: 100,
                           readOnly: true,
@@ -2440,8 +2490,12 @@ const MaterialReceived = () => {
                                 itemCode: item.itemCode || '',
                                 itemName: item.itemName || '',
                                 unit: item.unit || '',
+                                lotNo: item.lotNo || '',
+                                lotControlled: item.lotControlled || false,
                                 stockQty: item.stockQty || 0,
                                 receivedQty: item.receivedQty || 0,
+                                rate: item.rate || 0,
+                                amount: item.amount || 0,
                                 itemId: item.itemId || ''
                               }));
                               
@@ -2449,8 +2503,12 @@ const MaterialReceived = () => {
                                 itemCode: '',
                                 itemName: '',
                                 unit: '',
+                                lotNo: '',
+                                lotControlled: false,
                                 stockQty: 0,
-                                receivedQty: 0
+                                receivedQty: 0,
+                                rate: 0,
+                                amount: 0
                               });
                               setFormData(prev => ({ ...prev, items: newItems }));
                             };
@@ -2468,8 +2526,12 @@ const MaterialReceived = () => {
                                     itemCode: item.itemCode || '',
                                     itemName: item.itemName || '',
                                     unit: item.unit || '',
+                                    lotNo: item.lotNo || '',
+                                    lotControlled: item.lotControlled || false,
                                     stockQty: item.stockQty || 0,
                                     receivedQty: item.receivedQty || 0,
+                                    rate: item.rate || 0,
+                                    amount: item.amount || 0,
                                     itemId: item.itemId || ''
                                   }));
                                 setFormData(prev => ({ ...prev, items: newItems }));
@@ -2525,7 +2587,7 @@ const MaterialReceived = () => {
                       if (col === 0) {
                         td.style.textAlign = 'right';
                         td.style.paddingRight = '15px';
-                      } else if ((isOpeningBalance && col === 4) || (!isOpeningBalance && col === 7)) {
+                      } else if ((isOpeningBalance && col === 5) || (!isOpeningBalance && col === 8)) {
                         td.style.textAlign = 'right';
                         td.style.color = '#0d6efd';
                         const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -2593,11 +2655,14 @@ const MaterialReceived = () => {
                           
                           if (selectedItem) {
                             const existingReceivedQty = newItems[row]?.receivedQty || 0;
+                            const existingLotNo = newItems[row]?.lotNo || '';
                             newItems[row] = {
                               itemCode: selectedItem.itemName || '',
                               itemId: selectedItem._id || '',
                               itemName: selectedItem.itemName || '',
                               unit: selectedItem.unit || '',
+                              lotNo: existingLotNo,
+                              lotControlled: selectedItem.lotControlled || false,
                               receivedQty: existingReceivedQty,
                               rate: selectedItem.defaultRate || 0,
                               amount: 0
@@ -2615,9 +2680,11 @@ const MaterialReceived = () => {
                           
                           if (selectedItem) {
                             const existingReceivedQty = newItems[row]?.receivedQty || 0;
+                            const existingLotNo = newItems[row]?.lotNo || '';
                             // Keep the existing item data from PO
                             newItems[row] = {
                               ...selectedItem,
+                              lotNo: existingLotNo,
                               receivedQty: existingReceivedQty
                             };
                             // Calculate amount
@@ -2675,13 +2742,15 @@ const MaterialReceived = () => {
                           itemCode: '',
                           itemName: '',
                           unit: '',
+                          lotNo: '',
+                          lotControlled: false,
                           stockQty: 0,
                           receivedQty: 0
                         };
                       }
 
                       // Handle material selection
-                      if (prop === 'itemCode' && newValue) {
+                      if (prop === 'itemName' && newValue) {
                         // For Return case with PO items
                         if (formData.movementType === 'Return' && poItems.length > 0) {
                           const selectedItem = poItems.find(item => 
@@ -2695,6 +2764,8 @@ const MaterialReceived = () => {
                               itemId: selectedItem.itemId || '',
                               itemName: selectedItem.itemName || '',
                               unit: selectedItem.unit || '',
+                              lotNo: newItems[row].lotNo || '',
+                              lotControlled: selectedItem.lotControlled || false,
                               stockQty: 0,
                               rate: selectedItem.rate || 0,
                               amount: 0
@@ -2707,7 +2778,7 @@ const MaterialReceived = () => {
                           );
                           
                           if (inventoryItem) {
-                            // Find the material item to get unit information
+                            // Find the material item to get unit and lot control information
                             const materialItem = materialItems.find(item => {
                               const itemData = item.itemData || item;
                               return itemData._id === inventoryItem.itemId || itemData.material === inventoryItem.itemName;
@@ -2721,6 +2792,8 @@ const MaterialReceived = () => {
                               itemId: inventoryItem.itemId || '',
                               itemName: inventoryItem.itemName || '',
                               unit: itemData?.unit || '',
+                              lotNo: newItems[row].lotNo || '',
+                              lotControlled: itemData?.lotControlled || false,
                               stockQty: inventoryItem.stockQty || 0
                             };
                           }
@@ -2735,8 +2808,8 @@ const MaterialReceived = () => {
                         newItems[row].amount = receivedQty * rate;
                       }
 
-                      // Handle other field changes
-                      if (prop !== 'itemCode' && (formData.movementType !== 'Return' || prop !== 'receivedQty')) {
+                      // Handle other field changes (including lotNo)
+                      if (prop !== 'itemName' && (formData.movementType !== 'Return' || prop !== 'receivedQty')) {
                         newItems[row][prop] = newValue;
                       }
                     });

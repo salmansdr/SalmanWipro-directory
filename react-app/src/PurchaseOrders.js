@@ -1233,10 +1233,10 @@ const PurchaseOrders = () => {
             </Row>
 
             {/* Purchase Orders Table */}
-            <Table striped bordered hover responsive style={{ fontSize: '0.875rem' }}>
+            <Table striped bordered hover responsive style={{ fontSize: '0.775rem' }}>
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: '13%' }}>PO Number</th>
+                  <th style={{ width: '15%' }}>PO Number</th>
                   <th style={{ width: '8%' }}>PO Date</th>
                   <th style={{ width: '12%' }}>Supplier Name</th>
                   <th style={{ width: '12%' }}>Project Name</th>
@@ -1263,7 +1263,7 @@ const PurchaseOrders = () => {
                           variant="link"
                           className="p-0 text-decoration-none"
                           onClick={() => handleViewPO(po)}
-                          style={{ fontSize: '0.875rem' }}
+                          style={{ fontSize: '0.690rem' }}
                         >
                           {po.poNumber}
                         </Button>

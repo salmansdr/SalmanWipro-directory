@@ -176,6 +176,7 @@ const ItemMaster = () => {
     description: '',
     location: '',
     isActive: true,
+    lotControlled: false,
     // Calculation subcomponents - grouped by component type
       materialCalculation: {
         RCC: [
@@ -821,6 +822,7 @@ const ItemMaster = () => {
           unit: processedItemData.unit || '',
           location: processedItemData.location || '',
           isActive: processedItemData.isActive !== undefined ? processedItemData.isActive : true,
+          lotControlled: processedItemData.lotControlled !== undefined ? processedItemData.lotControlled : false,
           default_brand: defaultBrand,
           defaultRate: defaultRate,
           unit_size_kg: processedItemData.unit_size_kg || '',
@@ -881,6 +883,7 @@ const ItemMaster = () => {
           unit: item.unit || '',
           location: item.location || '',
           isActive: item.isActive !== undefined ? item.isActive : true,
+          lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
           default_brand: defaultBrand,
           defaultRate: defaultRate,
           unit_size_kg: item.unit_size_kg || '',
@@ -913,7 +916,8 @@ const ItemMaster = () => {
         wastage_percent: 0,
         description: '',
         location: userLocation || '', // Allow empty location for dropdown selection
-        isActive: true
+        isActive: true,
+        lotControlled: false
       });
       // Clear validation states for new item
       setDuplicateError('');
@@ -940,6 +944,7 @@ const ItemMaster = () => {
       description: '',
       location: userLocation || '',
       isActive: true,
+      lotControlled: false,
       // Reset calculation subcomponents
       materialCalculation: {
         RCC: [],
@@ -1034,6 +1039,7 @@ const ItemMaster = () => {
         description: itemForm.description || null,
         location: itemForm.location,
         isActive: itemForm.isActive !== undefined ? itemForm.isActive : true,
+        lotControlled: itemForm.lotControlled !== undefined ? itemForm.lotControlled : false,
         materialCalculation: itemForm.materialCalculation || null,
         finishingCalculation: itemForm.finishingCalculation?.enabled ? {
           enabled: true,
@@ -1153,45 +1159,25 @@ const ItemMaster = () => {
       // Prepare the data
       const data = [
         // Company Name Header
-        [companyName, '', '', '', '', '', '', '', '', ''],
+        [companyName, '', '', '', '', '', '', ''],
         // Address
-        [formattedAddress, '', '', '', '', '', '', '', '', ''],
+        [formattedAddress, '', '', '', '', '', '', ''],
         // Empty row
-        ['', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
         // Column headers
-        ['Material', 'Description', 'Category', 'Sub Category', 'Unit', 'Unit Size (kg)', 'Default Brand', 'Min Rate', 'Max Rate', 'Brand Count', 'Calculations', 'Location', 'Status']
+        ['Category', 'Sub Category', 'Material', 'Unit', 'Default Brand', 'Rate', 'Lot Controlled', 'Status']
       ];
       
       // Add data rows
       filteredItems.forEach(item => {
-        const brands = item.brands || [];
-        const rates = brands.map(b => b.rate_per_unit || 0);
-        const minRate = rates.length > 0 ? Math.min(...rates) : 0;
-        const maxRate = rates.length > 0 ? Math.max(...rates) : 0;
-        
-        // Build calculations string
-        const calculations = [];
-        if (item.materialCalculation?.enabled) {
-          calculations.push('Material');
-        }
-        if (item.finishingCalculation?.enabled) {
-          calculations.push('Finishing');
-        }
-        const calculationsStr = calculations.length > 0 ? calculations.join(', ') : 'None';
-        
         data.push([
-          item.material || '',
-          item.description || '',
           item.categoryName || item.category || '',
           item.sub_category || '',
+          item.material || '',
           item.unit || '',
-          item.unit_size_kg || '',
           item.default_brand || '',
-          minRate,
-          maxRate !== minRate ? maxRate : '',
-          brands.length,
-          calculationsStr,
-          item.location || '',
+          item.defaultRate || 0,
+          item.lotControlled ? 'Yes' : 'No',
           item.isActive ? 'Active' : 'Inactive'
         ]);
       });
@@ -1201,25 +1187,20 @@ const ItemMaster = () => {
       
       // Set column widths
       ws['!cols'] = [
-        { wch: 30 },  // Material
-        { wch: 40 },  // Description
         { wch: 20 },  // Category
         { wch: 20 },  // Sub Category
+        { wch: 30 },  // Material
         { wch: 12 },  // Unit
-        { wch: 15 },  // Unit Size
         { wch: 20 },  // Default Brand
-        { wch: 12 },  // Min Rate
-        { wch: 12 },  // Max Rate
-        { wch: 12 },  // Brand Count
-        { wch: 25 },  // Calculations
-        { wch: 15 },  // Location
+        { wch: 12 },  // Rate
+        { wch: 15 },  // Lot Controlled
         { wch: 12 }   // Status
       ];
       
       // Merge cells for company name and address
       ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 12 } }, // Company name
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 12 } }  // Address
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Company name
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }  // Address
       ];
       
       // Style company name (Row 1)
@@ -1228,7 +1209,7 @@ const ItemMaster = () => {
         alignment: { horizontal: "center", vertical: "center" },
         fill: { fgColor: { rgb: "E8F5E9" } }
       };
-      ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1', 'J1', 'K1', 'L1', 'M1'].forEach(cell => {
+      ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'].forEach(cell => {
         if (!ws[cell]) ws[cell] = { v: '', t: 's' };
         ws[cell].s = companyNameStyle;
       });
@@ -1239,7 +1220,7 @@ const ItemMaster = () => {
         alignment: { horizontal: "center", vertical: "center" },
         fill: { fgColor: { rgb: "E8F5E9" } }
       };
-      ['A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'H2', 'I2', 'J2', 'K2', 'L2', 'M2'].forEach(cell => {
+      ['A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2', 'H2'].forEach(cell => {
         if (!ws[cell]) ws[cell] = { v: '', t: 's' };
         ws[cell].s = addressStyle;
       });
@@ -1256,7 +1237,7 @@ const ItemMaster = () => {
           right: { style: "thin", color: { rgb: "000000" } }
         }
       };
-      ['A4', 'B4', 'C4', 'D4', 'E4', 'F4', 'G4', 'H4', 'I4', 'J4', 'K4', 'L4', 'M4'].forEach(cell => {
+      ['A4', 'B4', 'C4', 'D4', 'E4', 'F4', 'G4', 'H4'].forEach(cell => {
         if (!ws[cell]) ws[cell] = { v: '', t: 's' };
         ws[cell].s = headerStyle;
       });
@@ -1292,15 +1273,15 @@ const ItemMaster = () => {
           { ...dataStyle } : 
           { ...dataStyle, fill: { fgColor: { rgb: "F8F9FA" } } };
         
-        // Text columns
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'K', 'L', 'M'].forEach(col => {
+        // Text columns (Category, Sub Category, Material, Unit, Default Brand, Lot Controlled, Status)
+        ['A', 'B', 'C', 'D', 'E', 'G', 'H'].forEach(col => {
           const cell = `${col}${rowNum}`;
           if (!ws[cell]) ws[cell] = { v: '', t: 's' };
           ws[cell].s = rowStyle;
         });
         
-        // Numeric columns (Min Rate, Max Rate, Brand Count)
-        ['H', 'I', 'J'].forEach(col => {
+        // Numeric column (Rate)
+        ['F'].forEach(col => {
           const cell = `${col}${rowNum}`;
           if (ws[cell] && ws[cell].v !== '') {
             const numRowStyle = row % 2 === 0 ? 
@@ -1354,11 +1335,7 @@ const ItemMaster = () => {
               <h4 className="mb-0">
                 <i className="fas fa-boxes me-2"></i>
                 Item Master
-                {userLocation && (
-                  <Badge bg="light" text="dark" className="ms-2">
-                    Default: {userLocation}
-                  </Badge>
-                )}
+               
               </h4>
               <div className="d-flex gap-2 flex-wrap">
                 <Button variant="light" size="sm" onClick={exportItems}>
@@ -1395,32 +1372,7 @@ const ItemMaster = () => {
                 <Table striped bordered hover responsive className="align-middle" style={{ fontSize: '0.875rem' }}>
                   <thead className="table-light">
                     <tr>
-                      <th>
-                        <div className="d-flex flex-column">
-                          <span>Material</span>
-                          <div className="mt-1">
-                            <InputGroup size="sm">
-                              <Form.Control
-                                type="text"
-                                placeholder="Filter materials..."
-                                value={materialFilter}
-                                onChange={(e) => setMaterialFilter(e.target.value)}
-                                style={{ fontSize: '0.8rem' }}
-                              />
-                              {materialFilter && (
-                                <Button 
-                                  variant="outline-light" 
-                                  size="sm"
-                                  onClick={clearMaterialFilter}
-                                  title="Clear filter"
-                                >
-                                  <i className="fas fa-times"></i>
-                                </Button>
-                              )}
-                            </InputGroup>
-                          </div>
-                        </div>
-                      </th>
+                     
                       <th>
                         <div className="d-flex flex-column">
                           <span>Category</span>
@@ -1479,11 +1431,37 @@ const ItemMaster = () => {
                           </div>
                         </div>
                       </th>
+                       <th>
+                        <div className="d-flex flex-column">
+                          <span>Material</span>
+                          <div className="mt-1">
+                            <InputGroup size="sm">
+                              <Form.Control
+                                type="text"
+                                placeholder="Filter materials..."
+                                value={materialFilter}
+                                onChange={(e) => setMaterialFilter(e.target.value)}
+                                style={{ fontSize: '0.8rem' }}
+                              />
+                              {materialFilter && (
+                                <Button 
+                                  variant="outline-light" 
+                                  size="sm"
+                                  onClick={clearMaterialFilter}
+                                  title="Clear filter"
+                                >
+                                  <i className="fas fa-times"></i>
+                                </Button>
+                              )}
+                            </InputGroup>
+                          </div>
+                        </div>
+                      </th>
                       <th>Unit</th>
                       <th>Default Brand</th>
-                      <th>Rate Range</th>
-                      <th>Calculations</th>
-                      <th>Location</th>
+                      <th>Rate</th>
+                      <th>Lot Controlled</th>
+                     
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -1491,26 +1469,25 @@ const ItemMaster = () => {
                   <tbody>
                     {currentItems.map(item => {
                       // Safely handle brands array
-                      const brands = item.brands || [];
-                      const rates = brands.map(b => b.rate_per_unit || 0);
-                      const minRate = rates.length > 0 ? Math.min(...rates) : 0;
-                      const maxRate = rates.length > 0 ? Math.max(...rates) : 0;
-                      
+                    
+                     
+                     
                       return (
                         <tr key={item.id}>
-                          <td>
-                            <strong>{item.material}</strong>
-                            {item.description && (
-                              <div>
-                                <small className="text-muted">{item.description}</small>
-                              </div>
-                            )}
-                          </td>
+                          
                           <td>
                             {item.categoryName || item.category}
                           </td>
                           <td>
                             {item.sub_category || '-'}
+                          </td>
+                          <td>
+                           {item.material}
+                            {item.description && (
+                              <div>
+                                <small className="text-muted">{item.description}</small>
+                              </div>
+                            )}
                           </td>
                           <td>
                             {item.unit}
@@ -1522,44 +1499,12 @@ const ItemMaster = () => {
                           </td>
                           <td>{item.default_brand}</td>
                           <td>
-                            ₹{minRate}
-                            {minRate !== maxRate && ` - ₹${maxRate}`}
-                            <div>
-                              <small className="text-muted">{brands.length} brands</small>
-                            </div>
+                            {item.defaultRate}
                           </td>
                           <td>
-                            <div className="d-flex flex-wrap gap-1">
-                              {item.materialCalculation?.enabled && (
-                                <div>
-                                  <Badge 
-                                    bg="primary" 
-                                    size="sm"
-                                    title="Material Calculation: Floor-Component specific MT values"
-                                  >
-                                    <i className="fas fa-cubes me-1"></i>
-                                    Material
-                                  </Badge>
-                                </div>
-                              )}
-                              {item.finishingCalculation?.enabled && (
-                                <Badge 
-                                  bg="success" 
-                                  size="sm"
-                                  title={`Finishing: ${item.finishingCalculation.quantity_formula || 'Area/Count-based'}`}
-                                >
-                                  <i className="fas fa-paint-brush me-1"></i>
-                                  Finishing
-                                </Badge>
-                              )}
-                              {!item.materialCalculation?.enabled && !item.finishingCalculation?.enabled && (
-                                <small className="text-muted">None</small>
-                              )}
-                            </div>
+                            {item.lotControlled ? 'Yes' : 'No'}
                           </td>
-                          <td>
-                            {item.location}
-                          </td>
+                          
                           <td>
                             {item.isActive ? 'Active' : 'Inactive'}
                           </td>
@@ -2111,13 +2056,22 @@ const ItemMaster = () => {
             </Row>
 
             <Row className="mb-3">
-              <Col md={12}>
+              <Col md={6}>
                 <Form.Check
                   type="checkbox"
                   name="isActive"
                   checked={itemForm.isActive}
                   onChange={handleInputChange}
                   label="Active (Include in calculations)"
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Check
+                  type="checkbox"
+                  name="lotControlled"
+                  checked={itemForm.lotControlled}
+                  onChange={handleInputChange}
+                  label="Lot Controlled"
                 />
               </Col>
             </Row>
