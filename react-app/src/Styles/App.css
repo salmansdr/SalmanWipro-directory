@@ -30,3 +30,18 @@ footer {
   min-height: 300px; /* or enough to fit 5 rows */
   overflow: visible;
 }
+/* Prevent horizontal overflow */
+.hot-container {
+  overflow-x: hidden !important;
+}
+
+/* Force table to respect container width */
+.ht_master .wtHolder {
+  max-width: 100% !important;
+  overflow-x: auto;
+}
+
+/* Optional: prevent column stretching */
+.ht_master .wtTable {
+  table-layout: fixed !important;
+}

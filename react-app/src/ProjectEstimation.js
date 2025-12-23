@@ -49,6 +49,8 @@ function ProjectEstimation() {
           modifiedBy: project.modifiedBy || 'Unknown',
           createdByUserName: project.createdByUserName || 'Unknown',
           modifiedByUserName: project.modifiedByUserName || 'Unknown',
+          lockEdit: project.lockEdit || false,
+          lockDelete: project.lockDelete || false,
           action: 'Edit',
          
         }));
@@ -224,7 +226,8 @@ function ProjectEstimation() {
                           size="sm" 
                           className="me-2"
                           onClick={() => handleEditClick(row._id)}
-                          title="Edit"
+                          disabled={row.lockEdit}
+                          title={row.lockEdit ? "Edit Locked" : "Edit"}
                         >
                           <i className="bi bi-pencil"></i>
                         </Button>
@@ -232,7 +235,8 @@ function ProjectEstimation() {
                           variant="outline-danger" 
                           size="sm"
                           onClick={() => handleDelete(row._id, row.ref)}
-                          title="Delete"
+                          disabled={row.lockDelete}
+                          title={row.lockDelete ? "Delete Locked" : "Delete"}
                         >
                           <i className="bi bi-trash"></i>
                         </Button>

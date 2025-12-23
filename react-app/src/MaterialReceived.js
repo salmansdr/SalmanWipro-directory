@@ -943,6 +943,57 @@ const MaterialReceived = () => {
             return;
           }
         }
+      } else {
+        // Validation for non-Receipt cases (Issue, Transfer, Return)
+        if (!formData.items || formData.items.length === 0) {
+          setAlertMessage({ show: true, type: 'danger', message: 'Please add at least one item with quantity.' });
+          return;
+        }
+        
+        // Check each item for valid lot number if lot controlled
+        for (let i = 0; i < formData.items.length; i++) {
+          const item = formData.items[i];
+          const qty = parseFloat(item.receivedQty) || 0;
+          
+          // Check if quantity is greater than 0
+          if (qty <= 0) {
+            setAlertMessage({ 
+              show: true, 
+              type: 'danger', 
+              message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Quantity must be greater than 0.` 
+            });
+            return;
+          }
+          
+          // Check if lot number is required for lot controlled items
+          if (item.lotControlled && (!item.lotNo || item.lotNo.trim() === '')) {
+            setAlertMessage({ 
+              show: true, 
+              type: 'danger', 
+              message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Lot No is required for lot controlled items.` 
+            });
+            return;
+          }
+          
+          // Validate that lot number exists in inventory for lot controlled items
+          if (item.lotControlled && item.lotNo) {
+            const inventoryItem = locationInventory.find(inv => 
+              inv.itemName === item.itemName && inv.locationId === formData.sourceLocationId
+            );
+            
+            if (inventoryItem && inventoryItem.lotWiseStock) {
+              const lotExists = inventoryItem.lotWiseStock.some(lot => lot.lotNo === item.lotNo);
+              if (!lotExists) {
+                setAlertMessage({ 
+                  show: true, 
+                  type: 'danger', 
+                  message: `Row ${i + 1} (${item.itemName || 'Unknown Item'}): Lot No "${item.lotNo}" is not valid for this item at the selected location.` 
+                });
+                return;
+              }
+            }
+          }
+        }
       }
       
       // Clean items - remove itemCode, itemName from each item
@@ -2089,11 +2140,13 @@ const MaterialReceived = () => {
                               cellProperties.readOnly = true;
                             } else {
                               td.innerHTML = value || '';
-                              // Make it required if item is lot controlled
+                              // Make it yellow if item is lot controlled, disabled if not
                               if (rowData && rowData.lotControlled) {
                                 td.style.backgroundColor = '#fffacd';
+                                cellProperties.readOnly = false;
                               } else {
-                                td.style.backgroundColor = '';
+                                td.style.backgroundColor = '#f0f0f0';
+                                cellProperties.readOnly = true;
                               }
                             }
                             return td;
@@ -2157,7 +2210,7 @@ const MaterialReceived = () => {
                                   itemId: item.itemId || '',
                                   unit: item.unit || '',
                                   lotNo: item.lotNo || '',
-                                  lotControlled: item.lotControlled || false,
+                                  lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                   receivedQty: item.receivedQty || 0,
                                   rate: item.rate || 0,
                                   amount: item.amount || 0
@@ -2204,7 +2257,7 @@ const MaterialReceived = () => {
                                       itemId: item.itemId || '',
                                       unit: item.unit || '',
                                       lotNo: item.lotNo || '',
-                                      lotControlled: item.lotControlled || false,
+                                      lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                       receivedQty: item.receivedQty || 0,
                                       rate: item.rate || 0,
                                       amount: item.amount || 0
@@ -2240,11 +2293,13 @@ const MaterialReceived = () => {
                               cellProperties.readOnly = true;
                             } else {
                               td.innerHTML = value || '';
-                              // Make it required if item is lot controlled
+                              // Make it yellow if item is lot controlled, disabled if not
                               if (rowData && rowData.lotControlled) {
                                 td.style.backgroundColor = '#fffacd';
+                                cellProperties.readOnly = false;
                               } else {
-                                td.style.backgroundColor = '';
+                                td.style.backgroundColor = '#f0f0f0';
+                                cellProperties.readOnly = true;
                               }
                             }
                             return td;
@@ -2341,6 +2396,8 @@ const MaterialReceived = () => {
                                 itemCode: item.itemCode || '',
                                 itemName: item.itemName || '',
                                 unit: item.unit || '',
+                                lotNo: item.lotNo || '',
+                                lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                 orderedQty: item.orderedQty || 0,
                                 totalReceivedQty: item.totalReceivedQty || 0,
                                 balanceQty: item.balanceQty || 0,
@@ -2354,6 +2411,8 @@ const MaterialReceived = () => {
                                 itemCode: '',
                                 itemName: '',
                                 unit: '',
+                                lotNo: '',
+                                lotControlled: false,
                                 orderedQty: 0,
                                 totalReceivedQty: 0,
                                 balanceQty: 0,
@@ -2378,6 +2437,8 @@ const MaterialReceived = () => {
                                     itemCode: item.itemCode || '',
                                     itemName: item.itemName || '',
                                     unit: item.unit || '',
+                                    lotNo: item.lotNo || '',
+                                    lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                     orderedQty: item.orderedQty || 0,
                                     totalReceivedQty: item.totalReceivedQty || 0,
                                     balanceQty: item.balanceQty || 0,
@@ -2413,16 +2474,21 @@ const MaterialReceived = () => {
                         },
                         {
                           data: 'lotNo',
-                          type: 'text',
+                          type: 'autocomplete',
                           width: 100,
+                          strict: true,
+                          allowInvalid: false,
+                          source: [],
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
                             td.innerHTML = value || '';
-                            // Make it yellow if item is lot controlled
+                            // Make it yellow if item is lot controlled, gray if not
                             if (rowData && rowData.lotControlled) {
                               td.style.backgroundColor = '#fffacd';
+                              cellProperties.readOnly = false;
                             } else {
-                              td.style.backgroundColor = '';
+                              td.style.backgroundColor = '#f0f0f0';
+                              cellProperties.readOnly = true;
                             }
                             return td;
                           }
@@ -2491,7 +2557,7 @@ const MaterialReceived = () => {
                                 itemName: item.itemName || '',
                                 unit: item.unit || '',
                                 lotNo: item.lotNo || '',
-                                lotControlled: item.lotControlled || false,
+                                lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                 stockQty: item.stockQty || 0,
                                 receivedQty: item.receivedQty || 0,
                                 rate: item.rate || 0,
@@ -2527,7 +2593,7 @@ const MaterialReceived = () => {
                                     itemName: item.itemName || '',
                                     unit: item.unit || '',
                                     lotNo: item.lotNo || '',
-                                    lotControlled: item.lotControlled || false,
+                                    lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
                                     stockQty: item.stockQty || 0,
                                     receivedQty: item.receivedQty || 0,
                                     rate: item.rate || 0,
@@ -2564,8 +2630,47 @@ const MaterialReceived = () => {
                     }
                     
                     return cellProperties;
+                  } else {
+                    // For non-Receipt cases (Issue, Transfer, Return)
+                    const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
+                      itemCode: '',
+                      itemName: '',
+                      unit: '',
+                      stockQty: 0,
+                      receivedQty: 0
+                    }];
+                    const dataRow = itemsToDisplay[row];
+                    const cellProperties = {};
+                    
+                    // For Lot No column (column index 1)
+                    if (col === 1 && dataRow) {
+                      if (dataRow.lotControlled) {
+                        // If lot controlled, show autocomplete dropdown with lot numbers
+                        cellProperties.type = 'autocomplete';
+                        
+                        // Find inventory item to get lot wise stock
+                        const inventoryItem = locationInventory.find(item => 
+                          item.itemName === dataRow.itemName && item.locationId === formData.sourceLocationId
+                        );
+                        
+                        if (inventoryItem && inventoryItem.lotWiseStock && inventoryItem.lotWiseStock.length > 0) {
+                          cellProperties.source = inventoryItem.lotWiseStock.map(lot => lot.lotNo);
+                        } else {
+                          cellProperties.source = [];
+                        }
+                        cellProperties.strict = true;
+                        cellProperties.allowInvalid = false;
+                        cellProperties.filter = false;
+                        cellProperties.readOnly = false;
+                      } else {
+                        // If not lot controlled, make it read-only
+                        cellProperties.type = 'text';
+                        cellProperties.readOnly = true;
+                      }
+                    }
+                    
+                    return cellProperties;
                   }
-                  return {};
                 }}
                 afterRenderer={(td, row, col, prop, value, cellProperties) => {
                   if (formData.movementType === 'Receipt') {
@@ -2646,7 +2751,7 @@ const MaterialReceived = () => {
                       }
 
                       // Handle material selection
-                      if (prop === 'itemCode' && newValue) {
+                      if (prop === 'itemName' && newValue) {
                         if (isOpeningBalance) {
                           // Find the item from opening balance items (case-insensitive trim match)
                           const selectedItem = openingBalanceItems.find(item => 
@@ -2704,7 +2809,7 @@ const MaterialReceived = () => {
                       }
 
                       // Handle other field changes
-                      if (prop !== 'itemCode' && prop !== 'receivedQty' && prop !== 'rate') {
+                      if (prop !== 'itemName' && prop !== 'receivedQty' && prop !== 'rate') {
                         newItems[row][prop] = newValue;
                       }
                     });
@@ -2794,22 +2899,49 @@ const MaterialReceived = () => {
                               unit: itemData?.unit || '',
                               lotNo: newItems[row].lotNo || '',
                               lotControlled: itemData?.lotControlled || false,
-                              stockQty: inventoryItem.stockQty || 0
+                              stockQty: inventoryItem.stockQty || 0,
+                              rate: itemData?.lotControlled ? 0 : (inventoryItem.rate || 0),
+                              amount: 0
                             };
                           }
                         }
                       }
 
-                      // Handle receivedQty change for Return case - calculate amount
-                      if (formData.movementType === 'Return' && prop === 'receivedQty') {
+                      // Handle lot number selection for lot controlled items
+                      if (prop === 'lotNo' && newValue) {
+                        if (newItems[row].lotControlled) {
+                          // Find inventory item to get lot wise stock
+                          const inventoryItem = locationInventory.find(item => 
+                            item.itemName === newItems[row].itemName && item.locationId === formData.sourceLocationId
+                          );
+                          
+                          if (inventoryItem && inventoryItem.lotWiseStock) {
+                            const selectedLot = inventoryItem.lotWiseStock.find(lot => lot.lotNo === newValue);
+                            if (selectedLot) {
+                              newItems[row].stockQty = selectedLot.stockQty || 0;
+                              newItems[row].rate = selectedLot.rate || 0;
+                              newItems[row].lotNo = newValue;
+                              // Recalculate amount if receivedQty exists
+                              const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                              newItems[row].amount = receivedQty * (selectedLot.rate || 0);
+                            }
+                          }
+                        } else {
+                          // For non-lot-controlled items, just set the lotNo
+                          newItems[row].lotNo = newValue;
+                        }
+                      }
+
+                      // Handle receivedQty change - calculate amount
+                      if (prop === 'receivedQty') {
                         newItems[row][prop] = newValue;
-                        const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
+                        const receivedQty = parseFloat(newValue) || 0;
                         const rate = parseFloat(newItems[row].rate) || 0;
                         newItems[row].amount = receivedQty * rate;
                       }
 
-                      // Handle other field changes (including lotNo)
-                      if (prop !== 'itemName' && (formData.movementType !== 'Return' || prop !== 'receivedQty')) {
+                      // Handle other field changes
+                      if (prop !== 'itemName' && prop !== 'receivedQty' && prop !== 'lotNo') {
                         newItems[row][prop] = newValue;
                       }
                     });

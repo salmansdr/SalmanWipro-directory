@@ -1,14 +1,295 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Container, Form, Row, Col, Card, Alert, Spinner, Tabs, Tab, Button, Modal } from 'react-bootstrap';
+import { Container, Form, Row, Col, Card, Alert, Spinner, Tabs, Tab, Button, Modal, Dropdown, DropdownButton } from 'react-bootstrap';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
 import Handsontable from 'handsontable';
+import { Document, Page, Text, View, StyleSheet, PDFViewer } from '@react-pdf/renderer';
+import * as XLSX from 'xlsx-js-style';
 
 // Register all Handsontable modules
 registerAllModules();
 
-const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveComplete }) => {
+// PDF Styles
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontSize: 10,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#1a365d',
+    textAlign: 'center',
+  },
+  floorTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#2d3748',
+    backgroundColor: '#e2e8f0',
+    padding: 8,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 15,
+    marginBottom: 8,
+    color: '#2d3748',
+    backgroundColor: '#f7fafc',
+    padding: 6,
+  },
+  table: {
+    marginBottom: 15,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#4472C4',
+    color: '#ffffff',
+    fontWeight: 'bold',
+    padding: 6,
+    fontSize: 8,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottom: '1 solid #e2e8f0',
+    padding: 5,
+    fontSize: 8,
+  },
+  tableRowAlt: {
+    flexDirection: 'row',
+    backgroundColor: '#f7fafc',
+    borderBottom: '1 solid #e2e8f0',
+    padding: 5,
+    fontSize: 8,
+  },
+  col1: { width: '40%', paddingRight: 4 },
+  col2: { width: '15%', paddingRight: 4, textAlign: 'right' },
+  col3: { width: '15%', paddingRight: 4, textAlign: 'right' },
+  col4: { width: '15%', paddingRight: 4, textAlign: 'right' },
+  col5: { width: '15%', paddingRight: 4, textAlign: 'right' },
+  // Material grid columns
+  matCol1: { width: '18%', paddingRight: 3 },
+  matCol2: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol3: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol4: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol5: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol6: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol7: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol8: { width: '8%', paddingRight: 3, textAlign: 'right' },
+  matCol9: { width: '10%', paddingRight: 5, textAlign: 'right' },
+  matCol10: { width: '10%', paddingRight: 5, textAlign: 'right' },
+  matCol11: { width: '12%', paddingRight: 3, textAlign: 'right' },
+  tableRowGroupHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#4a5568',
+    color: '#ffffff',
+    fontWeight: 'bold',
+    padding: 5,
+    fontSize: 8,
+  },
+  tableRowGrandTotal: {
+    flexDirection: 'row',
+    backgroundColor: '#2d3748',
+    color: '#ffffff',
+    fontWeight: 'bold',
+    padding: 6,
+    fontSize: 9,
+    borderTop: '2 solid #1a202c',
+  },
+});
+
+// BOQ PDF Document Component
+const BOQPDFDocument = ({ floors, floorDataCache, materialDataCache, currency }) => {
+  // Use currency string directly like in the grid
+  const currencyDisplay = currency || 'INR';
+
+  const renderFloorData = (floorName) => {
+    // Safely access cache data with null checks
+    const floorCache = floorDataCache?.[floorName];
+    const materialCache = materialDataCache?.[floorName];
+    
+    // Get quantity data - handle both direct array and gridData property
+    let quantityData = [];
+    if (Array.isArray(floorCache)) {
+      quantityData = floorCache;
+    } else if (floorCache && Array.isArray(floorCache.gridData)) {
+      quantityData = floorCache.gridData;
+    }
+
+    // Get material data - handle both direct array and cached object
+    let materialData = [];
+    if (Array.isArray(materialCache)) {
+      materialData = materialCache;
+    } else if (materialCache && Array.isArray(materialCache.data)) {
+      materialData = materialCache.data;
+    }
+
+    // Filter only group header rows from quantity data where quantity > 0
+    const componentDetails = quantityData.filter(row => 
+      row && row.isGroupHeader && row.quantity != null && !isNaN(row.quantity) && parseFloat(row.quantity) > 0
+    ) || [];
+    
+    // Filter valid material rows (both group headers and children)
+    const validMaterialData = materialData.filter(row => row && row.component) || [];
+
+    // Calculate grand total for material data
+    const grandTotal = validMaterialData.reduce((acc, row) => {
+      // Material and Total amounts are on both group headers and children
+      acc.materialAmount += parseFloat(row.materialAmount) || 0;
+      acc.totalAmount += parseFloat(row.totalAmount) || 0;
+      // Labour amount only on group headers
+      if (row.isGroupHeader) {
+        acc.labourAmount += parseFloat(row.labourAmount) || 0;
+      }
+      return acc;
+    }, { materialAmount: 0, labourAmount: 0, totalAmount: 0 });
+
+    // Skip rendering if no data
+    if (componentDetails.length === 0 && validMaterialData.length === 0) {
+      return null;
+    }
+
+    return (
+      <View key={floorName}>
+        <Text style={pdfStyles.floorTitle}>{floorName || 'Unknown Floor'}</Text>
+
+        {/* Component Details Section */}
+        {componentDetails.length > 0 && (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Component Details</Text>
+            <View style={pdfStyles.table}>
+              <View style={pdfStyles.tableHeader}>
+                <Text style={pdfStyles.col1}>Component</Text>
+                <Text style={pdfStyles.col2}>Quantity</Text>
+                <Text style={pdfStyles.col3}>Unit</Text>
+              </View>
+              {componentDetails.map((row, index) => (
+                <View key={`comp-${index}`} style={index % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt}>
+                  <Text style={pdfStyles.col1}>{row.component || ''}</Text>
+                  <Text style={pdfStyles.col2}>
+                    {row.quantity != null && !isNaN(row.quantity) ? parseFloat(row.quantity).toFixed(2) : '0.00'}
+                  </Text>
+                  <Text style={pdfStyles.col3}>{row.unit || ''}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Estimation Details Section */}
+        {validMaterialData.length > 0 && (
+          <>
+            <Text style={pdfStyles.sectionTitle}>Estimation Details</Text>
+            <View style={pdfStyles.table}>
+              <View style={pdfStyles.tableHeader}>
+                <Text style={pdfStyles.matCol1}>Component</Text>
+                <Text style={pdfStyles.matCol2}>Volume</Text>
+                <Text style={pdfStyles.matCol3}>Cons. Rate</Text>
+                <Text style={pdfStyles.matCol4}>Qty</Text>
+                <Text style={pdfStyles.matCol5}>Wastage %</Text>
+                <Text style={pdfStyles.matCol6}>Total Qty</Text>
+                <Text style={pdfStyles.matCol7}>Rate</Text>
+                <Text style={pdfStyles.matCol8}>Labour Rate</Text>
+                <Text style={pdfStyles.matCol9}>Material Amt</Text>
+                <Text style={pdfStyles.matCol10}>Labour Amt</Text>
+                <Text style={pdfStyles.matCol11}>Total Amt ({currencyDisplay})</Text>
+              </View>
+              {validMaterialData.map((row, index) => {
+                const isGroupHeader = row.isGroupHeader;
+                const rowStyle = isGroupHeader ? pdfStyles.tableRowGroupHeader : (index % 2 === 0 ? pdfStyles.tableRow : pdfStyles.tableRowAlt);
+                
+                // Helper function to format numbers or return empty string
+                const formatNum = (value) => {
+                  return (value != null && !isNaN(value)) ? parseFloat(value).toFixed(2) : '';
+                };
+                
+                return (
+                  <View key={`mat-${index}`} style={rowStyle}>
+                    <Text style={pdfStyles.matCol1}>{row.component || ''}</Text>
+                    <Text style={pdfStyles.matCol2}>
+                      {isGroupHeader ? formatNum(row.volume) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol3}>
+                      {!isGroupHeader ? formatNum(row.consumptionRate) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol4}>
+                      {!isGroupHeader ? formatNum(row.materialQty) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol5}>
+                      {!isGroupHeader ? formatNum(row.wastage) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol6}>
+                      {!isGroupHeader ? formatNum(row.totalQty) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol7}>
+                      {!isGroupHeader ? formatNum(row.materialRate) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol8}>
+                      {isGroupHeader ? formatNum(row.labourRate) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol9}>
+                      {formatNum(row.materialAmount)}
+                    </Text>
+                    <Text style={pdfStyles.matCol10}>
+                      {isGroupHeader ? formatNum(row.labourAmount) : ''}
+                    </Text>
+                    <Text style={pdfStyles.matCol11}>
+                      {formatNum(row.totalAmount)}
+                    </Text>
+                  </View>
+                );
+              })}
+              {/* Grand Total Row */}
+              <View style={pdfStyles.tableRowGrandTotal}>
+                <Text style={pdfStyles.matCol1}>Grand Total</Text>
+                <Text style={pdfStyles.matCol2}></Text>
+                <Text style={pdfStyles.matCol3}></Text>
+                <Text style={pdfStyles.matCol4}></Text>
+                <Text style={pdfStyles.matCol5}></Text>
+                <Text style={pdfStyles.matCol6}></Text>
+                <Text style={pdfStyles.matCol7}></Text>
+                <Text style={pdfStyles.matCol8}></Text>
+                <Text style={pdfStyles.matCol9}>{grandTotal.materialAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                <Text style={pdfStyles.matCol10}>{grandTotal.labourAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                <Text style={pdfStyles.matCol11}>{grandTotal.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+    );
+  };
+
+  // Validate inputs
+  if (!floors || !Array.isArray(floors) || floors.length === 0) {
+    return (
+      <Document>
+        <Page size="A4" style={pdfStyles.page}>
+          <View style={{ padding: 50, textAlign: 'center' }}>
+            <Text style={{ fontSize: 16, color: '#e53e3e' }}>No floors available</Text>
+          </View>
+        </Page>
+      </Document>
+    );
+  }
+
+  return (
+    <Document>
+      {floors.map(floor => (
+        <Page key={floor} size="A4" style={pdfStyles.page}>
+          <Text style={pdfStyles.header}>BOQ Estimation Report</Text>
+          {renderFloorData(floor)}
+        </Page>
+      ))}
+    </Document>
+  );
+};
+
+const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveComplete, isExpandedView = false, onToggleExpandedView }) => {
   // eslint-disable-next-line no-unused-vars
   const [estimations, setEstimations] = useState([]);
   const [floors, setFloors] = useState([]);
@@ -28,13 +309,20 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const [materialCacheVersion, setMaterialCacheVersion] = useState(0); // Track when material cache is updated
   const [showCopyFloorModal, setShowCopyFloorModal] = useState(false);
   const [copySourceFloor, setCopySourceFloor] = useState('');
-  const [copyTargetFloor, setCopyTargetFloor] = useState('');
+  const [copyTargetFloors, setCopyTargetFloors] = useState([]);
+  const [indirectExpenseData, setIndirectExpenseData] = useState(null);
+  const [indirectExpenseConfig, setIndirectExpenseConfig] = useState(null);
+  const [currency, setCurrency] = useState('INR');
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfFloors, setPdfFloors] = useState([]);
   
   const quantityTableRef = useRef(null);
   const materialTableRef = useRef(null);
+  const indirectExpenseTableRef = useRef(null);
   
   const floorDataCache = useRef({});
   const materialDataCache = useRef({}); // Cache for material grid data
+  const indirectExpenseCache = useRef({}); // Cache for indirect expense data
   const initialLoadDone = useRef(false);
   const previousFloorRef = useRef(''); // Track previous floor for saving data before switching
   const previousTabRef = useRef('quantity'); // Track previous tab for saving material data
@@ -90,6 +378,20 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       setGradeOptions(grades);
     } catch (error) {
       // Error loading grade options
+    }
+  }, [apiBaseUrl]);
+
+  const loadIndirectExpenseConfig = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/IndirectExpenseLogic`);
+      if (!response.ok) throw new Error('Failed to fetch indirect expense configuration');
+      
+      const result = await response.json();
+      const data = result.data && result.data.length > 0 ? result.data[0] : result;
+      
+      setIndirectExpenseConfig(data);
+    } catch (error) {
+      console.error('Error loading indirect expense configuration:', error);
     }
   }, [apiBaseUrl]);
 
@@ -429,17 +731,17 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               materialGridData.push({
                 component: compName,
                 category: category,
-                volume: comp.volume || 0,
+                volume: parseFloat(comp.volume) || 0,
                 unit: comp.unit || 'Cum',
                 materialQty: '',
                 wastage: '',
                 totalQty: '',
                 uom: '',
                 materialRate: '',
-                labourRate: comp.labourRate || 0,
-                materialAmount: comp.materialAmount || 0,
-                labourAmount: comp.labourAmount || 0,
-                totalAmount: comp.totalAmount || 0,
+                labourRate: parseFloat(comp.labourRate) || 0,
+                materialAmount: parseFloat(comp.materialAmount) || 0,
+                labourAmount: parseFloat(comp.labourAmount) || 0,
+                totalAmount: parseFloat(comp.totalAmount) || 0,
                 remarks: comp.remarks || '',
                 isGroupHeader: true
               });
@@ -455,6 +757,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                     materialId: mat.materialId || '',
                     volume: '',
                     unit: '',
+                    consumptionRate: mat.consumptionRate || 0,
                     materialQty: mat.materialQty || 0,
                     wastage: mat.wastage || 0,
                     totalQty: mat.totalQty || 0,
@@ -477,6 +780,46 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             // Only cache if there's actual data - don't cache empty arrays
             if (cleanedData.length > 0) {
               materialDataCache.current[floorName] = cleanedData;
+            }
+          }
+
+          // Load Expense (indirect expense) data if exists
+          if (floorName && floorData.Expense) {
+            const expenseData = [];
+            let totalIndirectExpense = 0;
+
+            Object.keys(floorData.Expense).forEach(expenseHead => {
+              const exp = floorData.Expense[expenseHead];
+              const amount = parseFloat(exp.amount) || 0;
+              totalIndirectExpense += amount;
+
+              expenseData.push({
+                expenseHead: expenseHead,
+                allocationPercent: parseFloat(exp.allocationPercent) || 0,
+                amount: amount
+              });
+            });
+
+            if (expenseData.length > 0) {
+              // Calculate floor total from components
+              let floorTotalAmount = 0;
+              if (floorData.components) {
+                Object.keys(floorData.components).forEach(compName => {
+                  if (compName !== 'GRAND TOTAL') {
+                    const comp = floorData.components[compName];
+                    floorTotalAmount += parseFloat(comp.totalAmount) || 0;
+                  }
+                });
+              }
+
+              const grandTotal = floorTotalAmount + totalIndirectExpense;
+
+              indirectExpenseCache.current[floorName] = {
+                floorTotalAmount: parseFloat(floorTotalAmount.toFixed(2)),
+                expenses: expenseData,
+                totalIndirectExpense: parseFloat(totalIndirectExpense.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2))
+              };
             }
           }
         });
@@ -776,26 +1119,26 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   // Handle opening Copy Floor modal
   const handleOpenCopyFloorModal = useCallback(() => {
     setCopySourceFloor('');
-    setCopyTargetFloor(localSelectedFloor); // Default target to current floor
+    setCopyTargetFloors([]); // Reset to empty array
     setShowCopyFloorModal(true);
-  }, [localSelectedFloor]);
+  }, []);
 
   // Handle copying data from one floor to another
   const handleCopyFloorData = useCallback(() => {
-    if (!copySourceFloor || !copyTargetFloor) {
+    if (!copySourceFloor || !copyTargetFloors || copyTargetFloors.length === 0) {
       setAlertMessage({
         show: true,
         type: 'warning',
-        message: 'Please select both source and target floors'
+        message: 'Please select both source and target floor(s)'
       });
       return;
     }
 
-    if (copySourceFloor === copyTargetFloor) {
+    if (copyTargetFloors.includes(copySourceFloor)) {
       setAlertMessage({
         show: true,
         type: 'warning',
-        message: 'Source and target floors cannot be the same'
+        message: 'Source floor cannot be in the target floors list'
       });
       return;
     }
@@ -811,14 +1154,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       return;
     }
 
-    // Check if target floor has existing data
-    const targetCache = floorDataCache.current[copyTargetFloor];
-    const hasTargetData = targetCache && targetCache.gridData && targetCache.gridData.length > 0;
+    // Check if any target floor has existing data
+    const floorsWithData = copyTargetFloors.filter(floor => {
+      const targetCache = floorDataCache.current[floor];
+      return targetCache && targetCache.gridData && targetCache.gridData.length > 0;
+    });
 
-    // Show warning if target has data
-    if (hasTargetData) {
+    // Show warning if any target has data
+    if (floorsWithData.length > 0) {
       const confirmOverride = window.confirm(
-        `Warning: ${copyTargetFloor} already has data.\n\nThis operation will override all existing data in ${copyTargetFloor} with data from ${copySourceFloor}.\n\nDo you want to continue?`
+        `Warning: The following floor(s) already have data:\n${floorsWithData.join(', ')}\n\nThis operation will override all existing data in the selected floor(s) with data from ${copySourceFloor}.\n\nDo you want to continue?`
       );
       
       if (!confirmOverride) {
@@ -836,35 +1181,625 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const sourceGridData = JSON.parse(JSON.stringify(sourceCache.gridData));
     const sourceComponents = JSON.parse(JSON.stringify(sourceCache.components));
 
-    // Update target floor cache for quantity data
-    floorDataCache.current[copyTargetFloor] = {
-      components: sourceComponents,
-      gridData: sourceGridData
-    };
+    // Copy to all selected target floors
+    copyTargetFloors.forEach(targetFloor => {
+      // Update target floor cache for quantity data
+      floorDataCache.current[targetFloor] = {
+        components: sourceComponents,
+        gridData: sourceGridData
+      };
 
-    // Deep clone the source material data (Tab 2) if exists
-    const sourceMaterialCache = materialDataCache.current[copySourceFloor];
-    if (sourceMaterialCache && sourceMaterialCache.length > 0) {
-      const sourceMaterialData = JSON.parse(JSON.stringify(sourceMaterialCache));
-      materialDataCache.current[copyTargetFloor] = sourceMaterialData;
-    }
+      // Deep clone the source material data (Tab 2) if exists
+      const sourceMaterialCache = materialDataCache.current[copySourceFloor];
+      if (sourceMaterialCache && sourceMaterialCache.length > 0) {
+        const sourceMaterialData = JSON.parse(JSON.stringify(sourceMaterialCache));
+        materialDataCache.current[targetFloor] = sourceMaterialData;
+      }
 
-    // If we're copying to the current floor, refresh the display
-    if (copyTargetFloor === localSelectedFloor) {
-      setQuantityData(sourceGridData);
-      setMaterialCacheVersion(prev => prev + 1); // Refresh material grid if on Tab 2
-    }
+      // If we're copying to the current floor, refresh the display
+      if (targetFloor === localSelectedFloor) {
+        setQuantityData(sourceGridData);
+        setMaterialCacheVersion(prev => prev + 1); // Refresh material grid if on Tab 2
+      }
+    });
 
     setShowCopyFloorModal(false);
     setCopySourceFloor('');
-    setCopyTargetFloor('');
+    setCopyTargetFloors([]);
 
     setAlertMessage({
       show: true,
       type: 'success',
-      message: `Data copied successfully from ${copySourceFloor} to ${copyTargetFloor}`
+      message: `Data copied successfully from ${copySourceFloor} to ${copyTargetFloors.join(', ')}`
     });
-  }, [copySourceFloor, copyTargetFloor, localSelectedFloor, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
+  }, [copySourceFloor, copyTargetFloors, localSelectedFloor, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
+
+  // Handle PDF generation for current floor
+  const handlePDFCurrentFloor = useCallback(async () => {
+    if (!localSelectedFloor) return;
+
+    try {
+      // Save current floor data to cache before generating PDF
+      await saveCurrentFloorDataToCache();
+      await saveCurrentMaterialDataToCache();
+
+      setPdfFloors([localSelectedFloor]);
+      setShowPdfModal(true);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setAlertMessage({
+        show: true,
+        type: 'danger',
+        message: `Error generating PDF: ${error.message}`
+      });
+    }
+  }, [localSelectedFloor, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
+
+  // Handle PDF generation for all floors
+  const handlePDFAllFloors = useCallback(async () => {
+    try {
+      // Save current floor data to cache before generating PDF
+      await saveCurrentFloorDataToCache();
+      await saveCurrentMaterialDataToCache();
+
+      setPdfFloors(floors);
+      setShowPdfModal(true);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setAlertMessage({
+        show: true,
+        type: 'danger',
+        message: `Error generating PDF: ${error.message}`
+      });
+    }
+  }, [floors, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache]);
+
+  // Handle Excel export for current floor
+  const handleExcelCurrentFloor = useCallback(async () => {
+    if (!localSelectedFloor) return;
+
+    try {
+      // Save current floor data to cache before generating Excel
+      await saveCurrentFloorDataToCache();
+      await saveCurrentMaterialDataToCache();
+
+      const wb = XLSX.utils.book_new();
+      const floorsToExport = [localSelectedFloor];
+      
+      floorsToExport.forEach(floorName => {
+        const floorCache = floorDataCache.current?.[floorName];
+        const materialCache = materialDataCache.current?.[floorName];
+        
+        let quantityData = [];
+        if (Array.isArray(floorCache)) {
+          quantityData = floorCache;
+        } else if (floorCache && Array.isArray(floorCache.gridData)) {
+          quantityData = floorCache.gridData;
+        }
+
+        let materialData = [];
+        if (Array.isArray(materialCache)) {
+          materialData = materialCache;
+        } else if (materialCache && Array.isArray(materialCache.data)) {
+          materialData = materialCache.data;
+        }
+
+        const componentDetails = quantityData.filter(row => 
+          row && row.isGroupHeader && row.quantity != null && !isNaN(row.quantity) && parseFloat(row.quantity) > 0
+        ) || [];
+        
+        const validMaterialData = materialData.filter(row => row && row.component) || [];
+
+        // Build Excel data
+        const excelData = [];
+        
+        // Component Details Section
+        if (componentDetails.length > 0) {
+          excelData.push(['Component Details']);
+          excelData.push(['Component', 'Quantity', 'Unit']);
+          componentDetails.forEach(row => {
+            excelData.push([
+              row.component || '',
+              row.quantity != null && !isNaN(row.quantity) ? parseFloat(row.quantity).toFixed(2) : '',
+              row.unit || ''
+            ]);
+          });
+          excelData.push([]);
+        }
+
+        // Estimation Details Section
+        if (validMaterialData.length > 0) {
+          excelData.push(['Estimation Details']);
+          excelData.push([
+            'Component', 'Volume', 'Cons. Rate', 'Qty', 'Wastage %', 'Total Qty', 
+            'Rate', 'Labour Rate', 'Material Amt', 'Labour Amt', `Total Amt (${currency})`
+          ]);
+          
+          let grandTotal = { materialAmount: 0, labourAmount: 0, totalAmount: 0 };
+          
+          validMaterialData.forEach(row => {
+            const isGroupHeader = row.isGroupHeader;
+            const formatNum = (value) => value != null && !isNaN(value) ? parseFloat(value).toFixed(2) : '';
+            
+            excelData.push([
+              row.component || '',
+              isGroupHeader ? formatNum(row.volume) : '',
+              !isGroupHeader ? formatNum(row.consumptionRate) : '',
+              !isGroupHeader ? formatNum(row.materialQty) : '',
+              !isGroupHeader ? formatNum(row.wastage) : '',
+              !isGroupHeader ? formatNum(row.totalQty) : '',
+              !isGroupHeader ? formatNum(row.materialRate) : '',
+              isGroupHeader ? formatNum(row.labourRate) : '',
+              formatNum(row.materialAmount),
+              isGroupHeader ? formatNum(row.labourAmount) : '',
+              formatNum(row.totalAmount)
+            ]);
+            
+            grandTotal.materialAmount += parseFloat(row.materialAmount) || 0;
+            grandTotal.totalAmount += parseFloat(row.totalAmount) || 0;
+            if (isGroupHeader) {
+              grandTotal.labourAmount += parseFloat(row.labourAmount) || 0;
+            }
+          });
+          
+          // Add Grand Total
+          excelData.push([
+            'Grand Total', '', '', '', '', '', '', '',
+            grandTotal.materialAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            grandTotal.labourAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            grandTotal.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          ]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        ws['!cols'] = [
+          { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, 
+          { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+        ];
+        
+        // Apply styling
+        let currentRow = 0;
+        
+        // Component Details section styling
+        if (componentDetails.length > 0) {
+          // Section header
+          const sectionHeaderStyle = {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "left", vertical: "center" }
+          };
+          ws[`A${currentRow + 1}`].s = sectionHeaderStyle;
+          currentRow++;
+          
+          // Column headers
+          const headerStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          ['A', 'B', 'C'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = headerStyle;
+          });
+          currentRow++;
+          
+          // Data rows
+          componentDetails.forEach(() => {
+            ['A', 'B', 'C'].forEach(col => {
+              const cell = `${col}${currentRow + 1}`;
+              if (!ws[cell]) ws[cell] = {};
+              ws[cell].s = {
+                alignment: { horizontal: col === 'A' ? 'left' : (col === 'B' ? 'right' : 'center'), vertical: 'center' },
+                border: {
+                  top: { style: "thin", color: { rgb: "000000" } },
+                  bottom: { style: "thin", color: { rgb: "000000" } },
+                  left: { style: "thin", color: { rgb: "000000" } },
+                  right: { style: "thin", color: { rgb: "000000" } }
+                }
+              };
+              if (col === 'B' && ws[cell].v != null) {
+                ws[cell].z = '#,##0.00';
+              }
+            });
+            currentRow++;
+          });
+          currentRow++; // Empty row
+        }
+        
+        // Estimation Details section styling
+        if (validMaterialData.length > 0) {
+          // Section header
+          const sectionHeaderStyle = {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "left", vertical: "center" }
+          };
+          ws[`A${currentRow + 1}`].s = sectionHeaderStyle;
+          currentRow++;
+          
+          // Column headers
+          const headerStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = headerStyle;
+          });
+          currentRow++;
+          
+          // Data rows
+          validMaterialData.forEach((row) => {
+            const isGroupHeader = row.isGroupHeader;
+            const rowStyle = isGroupHeader ? {
+              font: { bold: true, color: { rgb: "FFFFFF" } },
+              fill: { fgColor: { rgb: "4A5568" } },
+              alignment: { horizontal: "left", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            } : {
+              alignment: { horizontal: "left", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            };
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+              const cell = `${col}${currentRow + 1}`;
+              if (!ws[cell]) ws[cell] = {};
+              ws[cell].s = {
+                ...rowStyle,
+                alignment: { 
+                  horizontal: col === 'A' ? 'left' : 'right', 
+                  vertical: 'center' 
+                }
+              };
+              if (col !== 'A' && ws[cell].v != null && ws[cell].v !== '') {
+                ws[cell].z = '#,##0.00';
+              }
+            });
+            currentRow++;
+          });
+          
+          // Grand Total row
+          const grandTotalStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "2D3748" } },
+            alignment: { horizontal: "right", vertical: "center" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          
+          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = {
+              ...grandTotalStyle,
+              alignment: { 
+                horizontal: col === 'A' ? 'left' : 'right', 
+                vertical: 'center' 
+              }
+            };
+          });
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws, floorName.substring(0, 31));
+      });
+
+      XLSX.writeFile(wb, `BOQ_${localSelectedFloor}_${Date.now()}.xlsx`, { cellStyles: true });
+      
+      setAlertMessage({
+        show: true,
+        type: 'success',
+        message: `Excel file generated successfully for ${localSelectedFloor}`
+      });
+    } catch (error) {
+      console.error('Error generating Excel:', error);
+      setAlertMessage({
+        show: true,
+        type: 'danger',
+        message: `Error generating Excel: ${error.message}`
+      });
+    }
+  }, [localSelectedFloor, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache, currency, floorDataCache, materialDataCache]);
+
+  // Handle Excel export for all floors
+  const handleExcelAllFloors = useCallback(async () => {
+    try {
+      // Save current floor data to cache before generating Excel
+      await saveCurrentFloorDataToCache();
+      await saveCurrentMaterialDataToCache();
+
+      const wb = XLSX.utils.book_new();
+      
+      floors.forEach(floorName => {
+        const floorCache = floorDataCache.current?.[floorName];
+        const materialCache = materialDataCache.current?.[floorName];
+        
+        let quantityData = [];
+        if (Array.isArray(floorCache)) {
+          quantityData = floorCache;
+        } else if (floorCache && Array.isArray(floorCache.gridData)) {
+          quantityData = floorCache.gridData;
+        }
+
+        let materialData = [];
+        if (Array.isArray(materialCache)) {
+          materialData = materialCache;
+        } else if (materialCache && Array.isArray(materialCache.data)) {
+          materialData = materialCache.data;
+        }
+
+        const componentDetails = quantityData.filter(row => 
+          row && row.isGroupHeader && row.quantity != null && !isNaN(row.quantity) && parseFloat(row.quantity) > 0
+        ) || [];
+        
+        const validMaterialData = materialData.filter(row => row && row.component) || [];
+
+        // Build Excel data
+        const excelData = [];
+        
+        // Component Details Section
+        if (componentDetails.length > 0) {
+          excelData.push(['Component Details']);
+          excelData.push(['Component', 'Quantity', 'Unit']);
+          componentDetails.forEach(row => {
+            excelData.push([
+              row.component || '',
+              row.quantity != null && !isNaN(row.quantity) ? parseFloat(row.quantity).toFixed(2) : '',
+              row.unit || ''
+            ]);
+          });
+          excelData.push([]);
+        }
+
+        // Estimation Details Section
+        if (validMaterialData.length > 0) {
+          excelData.push(['Estimation Details']);
+          excelData.push([
+            'Component', 'Volume', 'Cons. Rate', 'Qty', 'Wastage %', 'Total Qty', 
+            'Rate', 'Labour Rate', 'Material Amt', 'Labour Amt', `Total Amt (${currency})`
+          ]);
+          
+          let grandTotal = { materialAmount: 0, labourAmount: 0, totalAmount: 0 };
+          
+          validMaterialData.forEach(row => {
+            const isGroupHeader = row.isGroupHeader;
+            const formatNum = (value) => value != null && !isNaN(value) ? parseFloat(value).toFixed(2) : '';
+            
+            excelData.push([
+              row.component || '',
+              isGroupHeader ? formatNum(row.volume) : '',
+              !isGroupHeader ? formatNum(row.consumptionRate) : '',
+              !isGroupHeader ? formatNum(row.materialQty) : '',
+              !isGroupHeader ? formatNum(row.wastage) : '',
+              !isGroupHeader ? formatNum(row.totalQty) : '',
+              !isGroupHeader ? formatNum(row.materialRate) : '',
+              isGroupHeader ? formatNum(row.labourRate) : '',
+              formatNum(row.materialAmount),
+              isGroupHeader ? formatNum(row.labourAmount) : '',
+              formatNum(row.totalAmount)
+            ]);
+            
+            grandTotal.materialAmount += parseFloat(row.materialAmount) || 0;
+            grandTotal.totalAmount += parseFloat(row.totalAmount) || 0;
+            if (isGroupHeader) {
+              grandTotal.labourAmount += parseFloat(row.labourAmount) || 0;
+            }
+          });
+          
+          // Add Grand Total
+          excelData.push([
+            'Grand Total', '', '', '', '', '', '', '',
+            grandTotal.materialAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            grandTotal.labourAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            grandTotal.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          ]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+        ws['!cols'] = [
+          { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, 
+          { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+        ];
+        
+        // Apply styling
+        let currentRow = 0;
+        
+        // Component Details section styling
+        if (componentDetails.length > 0) {
+          // Section header
+          const sectionHeaderStyle = {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "left", vertical: "center" }
+          };
+          ws[`A${currentRow + 1}`].s = sectionHeaderStyle;
+          currentRow++;
+          
+          // Column headers
+          const headerStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          ['A', 'B', 'C'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = headerStyle;
+          });
+          currentRow++;
+          
+          // Data rows
+          componentDetails.forEach(() => {
+            ['A', 'B', 'C'].forEach(col => {
+              const cell = `${col}${currentRow + 1}`;
+              if (!ws[cell]) ws[cell] = {};
+              ws[cell].s = {
+                alignment: { horizontal: col === 'A' ? 'left' : (col === 'B' ? 'right' : 'center'), vertical: 'center' },
+                border: {
+                  top: { style: "thin", color: { rgb: "000000" } },
+                  bottom: { style: "thin", color: { rgb: "000000" } },
+                  left: { style: "thin", color: { rgb: "000000" } },
+                  right: { style: "thin", color: { rgb: "000000" } }
+                }
+              };
+              if (col === 'B' && ws[cell].v != null) {
+                ws[cell].z = '#,##0.00';
+              }
+            });
+            currentRow++;
+          });
+          currentRow++; // Empty row
+        }
+        
+        // Estimation Details section styling
+        if (validMaterialData.length > 0) {
+          // Section header
+          const sectionHeaderStyle = {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "left", vertical: "center" }
+          };
+          ws[`A${currentRow + 1}`].s = sectionHeaderStyle;
+          currentRow++;
+          
+          // Column headers
+          const headerStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4472C4" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = headerStyle;
+          });
+          currentRow++;
+          
+          // Data rows
+          validMaterialData.forEach((row) => {
+            const isGroupHeader = row.isGroupHeader;
+            const rowStyle = isGroupHeader ? {
+              font: { bold: true, color: { rgb: "FFFFFF" } },
+              fill: { fgColor: { rgb: "4A5568" } },
+              alignment: { horizontal: "left", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            } : {
+              alignment: { horizontal: "left", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            };
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+              const cell = `${col}${currentRow + 1}`;
+              if (!ws[cell]) ws[cell] = {};
+              ws[cell].s = {
+                ...rowStyle,
+                alignment: { 
+                  horizontal: col === 'A' ? 'left' : 'right', 
+                  vertical: 'center' 
+                }
+              };
+              if (col !== 'A' && ws[cell].v != null && ws[cell].v !== '') {
+                ws[cell].z = '#,##0.00';
+              }
+            });
+            currentRow++;
+          });
+          
+          // Grand Total row
+          const grandTotalStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "2D3748" } },
+            alignment: { horizontal: "right", vertical: "center" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          };
+          
+          ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].forEach(col => {
+            const cell = `${col}${currentRow + 1}`;
+            if (!ws[cell]) ws[cell] = {};
+            ws[cell].s = {
+              ...grandTotalStyle,
+              alignment: { 
+                horizontal: col === 'A' ? 'left' : 'right', 
+                vertical: 'center' 
+              }
+            };
+          });
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws, floorName.substring(0, 31));
+      });
+
+      XLSX.writeFile(wb, `BOQ_All_Floors_${Date.now()}.xlsx`, { cellStyles: true });
+      
+      setAlertMessage({
+        show: true,
+        type: 'success',
+        message: 'Excel file generated successfully for all floors'
+      });
+    } catch (error) {
+      console.error('Error generating Excel:', error);
+      setAlertMessage({
+        show: true,
+        type: 'danger',
+        message: `Error generating Excel: ${error.message}`
+      });
+    }
+  }, [floors, saveCurrentFloorDataToCache, saveCurrentMaterialDataToCache, currency, floorDataCache, materialDataCache]);
 
   const loadComponentsForFloor = useCallback(async (floor) => {
     try {
@@ -938,7 +1873,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     loadEstimations();
     loadGradeOptions();
     loadMaterialItems();
-  }, [loadEstimations, loadGradeOptions, loadMaterialItems]);
+    loadIndirectExpenseConfig();
+  }, [loadEstimations, loadGradeOptions, loadMaterialItems, loadIndirectExpenseConfig]);
+
+  // Load currency from localStorage
+  useEffect(() => {
+    const companyCurrency = localStorage.getItem('companyCurrency');
+    if (companyCurrency) {
+      setCurrency(companyCurrency);
+    }
+  }, []);
 
   // Load all floors data on initial mount when estimationMasterId is available
   useEffect(() => {
@@ -1113,6 +2057,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               materialComponents[parentComponent].materials.push({
                 materialId: row.materialId || '',
                 material: row.component || '',
+                consumptionRate: row.consumptionRate || 0,
                 materialQty: row.materialQty || 0,
                 wastage: row.wastage || 0,
                 totalQty: row.totalQty || 0,
@@ -1126,11 +2071,30 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           }
         });
         
-        allFloorsMaterialData.push({
+        const floorDataObject = {
           floorName: floorName,
           estimationMasterId: estimationMasterId,
           components: materialComponents
-        });
+        };
+
+        // Add Expense data if available for this floor
+        if (indirectExpenseCache.current[floorName]) {
+          const indirectExpenseData = indirectExpenseCache.current[floorName];
+          const expenseObject = {};
+          
+          if (indirectExpenseData.expenses && indirectExpenseData.expenses.length > 0) {
+            indirectExpenseData.expenses.forEach(exp => {
+              expenseObject[exp.expenseHead] = {
+                allocationPercent: exp.allocationPercent,
+                amount: exp.amount
+              };
+            });
+            
+            floorDataObject.Expense = expenseObject;
+          }
+        }
+
+        allFloorsMaterialData.push(floorDataObject);
         
         return; // Skip to next floor
       }
@@ -1202,6 +2166,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                   
                   materialRowsForGroup.push({
                     material: materialName,
+                    consumptionRate: matQty,
                     materialQty: parseFloat(materialQty),
                     wastage: wastage,
                     totalQty: parseFloat(totalQty),
@@ -1275,20 +2240,181 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         }
       });
       
-      allFloorsMaterialData.push({
+      const floorDataObject = {
         floorName: floorName,
         estimationMasterId: estimationMasterId,
         components: materialComponents
-      });
+      };
+
+      // Add Expense data if available for this floor
+      if (indirectExpenseCache.current[floorName]) {
+        const indirectExpenseData = indirectExpenseCache.current[floorName];
+        const expenseObject = {};
+        
+        if (indirectExpenseData.expenses && indirectExpenseData.expenses.length > 0) {
+          indirectExpenseData.expenses.forEach(exp => {
+            expenseObject[exp.expenseHead] = {
+              allocationPercent: exp.allocationPercent,
+              amount: exp.amount
+            };
+          });
+          
+          floorDataObject.Expense = expenseObject;
+        }
+      }
+
+      allFloorsMaterialData.push(floorDataObject);
     });
     
     return allFloorsMaterialData;
   }, [localSelectedFloor, estimationMasterId, saveCurrentMaterialDataToCache, rccConfigData]);
 
+  // Function to calculate indirect expenses based on material data and allocation percentages
+  const calculateIndirectExpenses = useCallback(() => {
+    if (!indirectExpenseConfig || !materialDataCache.current || !floors || floors.length === 0) {
+      return;
+    }
+
+    const indirectExpenseByFloor = {};
+
+    floors.forEach(floorName => {
+      // Skip if this floor already has expense data loaded from DB
+      if (indirectExpenseCache.current[floorName] && 
+          indirectExpenseCache.current[floorName].expenses && 
+          indirectExpenseCache.current[floorName].expenses.length > 0) {
+        // Keep existing DB data
+        indirectExpenseByFloor[floorName] = indirectExpenseCache.current[floorName];
+        return;
+      }
+
+      const materialData = materialDataCache.current[floorName];
+      if (!materialData || !Array.isArray(materialData) || materialData.length === 0) {
+        return;
+      }
+
+      // Calculate total amount for this floor
+      let floorTotalAmount = 0;
+      materialData.forEach(row => {
+        if (row.isGroupHeader && !row.isGrandTotal) {
+          floorTotalAmount += parseFloat(row.totalAmount) || 0;
+        }
+      });
+
+      // Determine which allocation to use (Foundation, Basement, or Floors)
+      let allocationArray = null;
+      if (floorName === 'Foundation' && indirectExpenseConfig.Foundation) {
+        allocationArray = indirectExpenseConfig.Foundation;
+      } else if (floorName === 'Basement' && indirectExpenseConfig.Basement) {
+        allocationArray = indirectExpenseConfig.Basement;
+      } else if (indirectExpenseConfig.Floors) {
+        // All other floors use the "Floors" allocation
+        allocationArray = indirectExpenseConfig.Floors;
+      }
+
+      if (!allocationArray || !Array.isArray(allocationArray)) {
+        return;
+      }
+
+      // Calculate amount for each expense head
+      const expenseRows = allocationArray.map(expense => {
+        const allocationPercent = parseFloat(expense.allocationPercent) || 0;
+        const amount = (floorTotalAmount * allocationPercent) / 100;
+
+        return {
+          expenseHead: expense.head,
+          allocationPercent: allocationPercent,
+          amount: parseFloat(amount.toFixed(2))
+        };
+      });
+
+      // Calculate total indirect expense for this floor
+      const totalIndirectExpense = expenseRows.reduce((sum, row) => sum + row.amount, 0);
+
+      indirectExpenseByFloor[floorName] = {
+        floorTotalAmount: parseFloat(floorTotalAmount.toFixed(2)),
+        expenses: expenseRows,
+        totalIndirectExpense: parseFloat(totalIndirectExpense.toFixed(2)),
+        grandTotal: parseFloat((floorTotalAmount + totalIndirectExpense).toFixed(2))
+      };
+    });
+
+    // Store in cache
+    indirectExpenseCache.current = indirectExpenseByFloor;
+
+    // If current floor is selected, update the display data
+    if (localSelectedFloor && indirectExpenseByFloor[localSelectedFloor]) {
+      const floorData = indirectExpenseByFloor[localSelectedFloor];
+      setIndirectExpenseData(floorData.expenses);
+    }
+  }, [indirectExpenseConfig, floors, localSelectedFloor]);
+
+  // Recalculate indirect expenses when material data or config changes
+  useEffect(() => {
+    if (materialCacheVersion > 0 && indirectExpenseConfig) {
+      calculateIndirectExpenses();
+    }
+  }, [materialCacheVersion, indirectExpenseConfig, calculateIndirectExpenses]);
+
+  // Update indirect expense data when floor changes
+  useEffect(() => {
+    if (localSelectedFloor && indirectExpenseCache.current[localSelectedFloor]) {
+      const floorData = indirectExpenseCache.current[localSelectedFloor];
+      setIndirectExpenseData(floorData.expenses);
+    } else {
+      setIndirectExpenseData(null);
+    }
+  }, [localSelectedFloor]);
+
+  // Handle indirect expense changes
+  const handleIndirectExpenseChange = useCallback((changes, source) => {
+    if (!changes || source === 'loadData') return;
+
+    const hotInstance = indirectExpenseTableRef.current?.hotInstance;
+    if (!hotInstance || !localSelectedFloor) return;
+
+    const floorData = indirectExpenseCache.current[localSelectedFloor];
+    if (!floorData) return;
+
+    const floorTotalAmount = floorData.floorTotalAmount;
+
+    changes.forEach(([row, prop, oldValue, newValue]) => {
+      if (prop === 'allocationPercent' && newValue !== oldValue) {
+        const newPercent = parseFloat(newValue) || 0;
+        const newAmount = (floorTotalAmount * newPercent) / 100;
+        
+        // Update the amount in the table
+        hotInstance.setDataAtRowProp(row, 'amount', parseFloat(newAmount.toFixed(2)), 'internal');
+        
+        // Update cache
+        const sourceData = hotInstance.getSourceData();
+        const updatedExpenses = sourceData.map(rowData => ({
+          expenseHead: rowData.expenseHead,
+          allocationPercent: parseFloat(rowData.allocationPercent) || 0,
+          amount: parseFloat(rowData.amount) || 0
+        }));
+
+        const totalIndirectExpense = updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const grandTotal = floorTotalAmount + totalIndirectExpense;
+
+        indirectExpenseCache.current[localSelectedFloor] = {
+          floorTotalAmount: floorTotalAmount,
+          expenses: updatedExpenses,
+          totalIndirectExpense: parseFloat(totalIndirectExpense.toFixed(2)),
+          grandTotal: parseFloat(grandTotal.toFixed(2))
+        };
+
+        // Update state to refresh summary cards
+        setIndirectExpenseData([...updatedExpenses]);
+      }
+    });
+  }, [localSelectedFloor]);
+
+  // Function to get all indirect expense data for save
   // Function to clear cache and reload data (to be called after save)
   const refreshDataFromDatabase = useCallback(() => {
     floorDataCache.current = {};
     materialDataCache.current = {};
+    indirectExpenseCache.current = {};
     initialLoadDone.current = false;
     if (estimationMasterId && floorsList && floorsList.length > 0) {
       loadAllFloorsData(estimationMasterId).then(() => {
@@ -1561,6 +2687,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                   materialId: materialId,
                   volume: '',
                   unit: '',
+                  consumptionRate: matQty,
                   materialQty: parseFloat(materialQty),
                   wastage: wastage,
                   totalQty: parseFloat(totalQty),
@@ -1583,6 +2710,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               component: row.component,
               volume: parseFloat(volumeQty.toFixed(2)),
               unit: 'Cum',
+              consumptionRate: '',
               materialQty: '',
               wastage: '',
               totalQty: '',
@@ -1609,6 +2737,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             component: row.component,
             volume: parseFloat(volumeQty.toFixed(2)),
             unit: row.unit || 'Cum',
+            consumptionRate: '',
             materialQty: '',
             wastage: '',
             totalQty: '',
@@ -1705,8 +2834,10 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           updatedMaterialData[matGroupIndex].labourAmount = labourAmount;
           
           // Recalculate child materials based on new volume (preserve user's rates and wastage)
+          // Only recalculate for RCC components, preserve manual entries for others
           let totalMaterialAmount = 0;
           let childIndex = matGroupIndex + 1;
+          let shouldRecalculateMaterialAmount = false;
           
           // Get RCC config if this is an RCC component
           let rccConfig = null;
@@ -1714,13 +2845,18 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             rccConfig = rccConfigData.find(config =>
               config.grade && config.grade.toLowerCase() === qtyRow.mixture.toLowerCase()
             );
+            // Only recalculate material amounts if we have RCC config
+            shouldRecalculateMaterialAmount = !!rccConfig;
           }
           
           while (childIndex < updatedMaterialData.length && !updatedMaterialData[childIndex].isGroupHeader) {
             const childRow = updatedMaterialData[childIndex];
             
-            // Find the ratio for this material from RCC config
-            if (rccConfig) {
+            // Use consumptionRate from the row if available, otherwise fall back to RCC config lookup
+            let ratio = parseFloat(childRow.consumptionRate) || 0;
+            
+            // If no consumptionRate is set, try to get it from RCC config
+            if (!ratio && rccConfig) {
               const materialConfigs = [
                 { name: 'Cement', data: rccConfig.cement },
                 { name: 'Steel', data: rccConfig.steel },
@@ -1736,32 +2872,44 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               );
               
               if (materialConfig && materialConfig.data) {
-                const ratio = parseFloat(materialConfig.data.quantity) || 0;
-                const newMaterialQty = parseFloat((volumeQty * ratio).toFixed(2));
-                
-                // Use existing wastage and rate (preserve user edits)
-                const wastage = childRow.wastage || 0;
-                const materialRate = childRow.materialRate || 0;
-                
-                const newTotalQty = parseFloat((newMaterialQty * (1 + wastage / 100)).toFixed(2));
-                const newMaterialAmount = parseFloat((newTotalQty * materialRate).toFixed(2));
-                
-                // Update child row
-                updatedMaterialData[childIndex].materialQty = newMaterialQty;
-                updatedMaterialData[childIndex].totalQty = newTotalQty;
-                updatedMaterialData[childIndex].materialAmount = newMaterialAmount;
-                updatedMaterialData[childIndex].totalAmount = newMaterialAmount;
-                
-                totalMaterialAmount += newMaterialAmount;
+                ratio = parseFloat(materialConfig.data.quantity) || 0;
+                // Update consumptionRate in the row for future reference
+                updatedMaterialData[childIndex].consumptionRate = ratio;
               }
+            }
+            
+            if (ratio > 0) {
+              const newMaterialQty = parseFloat((volumeQty * ratio).toFixed(2));
+              
+              // Use existing wastage and rate (preserve user edits)
+              const wastage = childRow.wastage || 0;
+              const materialRate = childRow.materialRate || 0;
+              
+              const newTotalQty = parseFloat((newMaterialQty * (1 + wastage / 100)).toFixed(2));
+              const newMaterialAmount = parseFloat((newTotalQty * materialRate).toFixed(2));
+              
+              // Update child row
+              updatedMaterialData[childIndex].materialQty = newMaterialQty;
+              updatedMaterialData[childIndex].totalQty = newTotalQty;
+              updatedMaterialData[childIndex].materialAmount = newMaterialAmount;
+              updatedMaterialData[childIndex].totalAmount = newMaterialAmount;
+              
+              totalMaterialAmount += newMaterialAmount;
             }
             
             childIndex++;
           }
           
           // Update group header material amount and total amount
-          updatedMaterialData[matGroupIndex].materialAmount = parseFloat(totalMaterialAmount.toFixed(2));
-          updatedMaterialData[matGroupIndex].totalAmount = parseFloat((totalMaterialAmount + labourAmount).toFixed(2));
+          // Only update materialAmount if this is an RCC component, otherwise preserve the value from database/manual entry
+          if (shouldRecalculateMaterialAmount) {
+            updatedMaterialData[matGroupIndex].materialAmount = parseFloat(totalMaterialAmount.toFixed(2));
+            updatedMaterialData[matGroupIndex].totalAmount = parseFloat((totalMaterialAmount + labourAmount).toFixed(2));
+          } else {
+            // For non-RCC components, preserve existing materialAmount and just update totalAmount
+            const existingMaterialAmount = parseFloat(updatedMaterialData[matGroupIndex].materialAmount) || 0;
+            updatedMaterialData[matGroupIndex].totalAmount = parseFloat((existingMaterialAmount + labourAmount).toFixed(2));
+          }
           
         } else {
           // New component - generate and add to cache
@@ -1843,6 +2991,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             component: 'GRAND TOTAL',
             volume: '',
             unit: '',
+            consumptionRate: '',
             materialQty: '',
             wastage: '',
             totalQty: '',
@@ -1871,6 +3020,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
               component: 'GRAND TOTAL',
               volume: '',
               unit: '',
+              consumptionRate: '',
               materialQty: '',
               wastage: '',
               totalQty: '',
@@ -1929,19 +3079,21 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     let totalMaterialAmount = 0;
     for (let i = groupHeaderRow + 1; i < allData.length; i++) {
       const childRow = allData[i];
-      if (!childRow || childRow.isGroupHeader) break;
+      if (!childRow || childRow.isGroupHeader || childRow.isGrandTotal) break;
       totalMaterialAmount += parseFloat(childRow.materialAmount) || 0;
     }
     
     const labourAmount = parseFloat(groupRowData.labourAmount) || 0;
     const totalAmount = (totalMaterialAmount + labourAmount).toFixed(2);
     
-    hotInstance.setDataAtRowProp(groupHeaderRow, 'materialAmount', totalMaterialAmount.toFixed(2));
-    hotInstance.setDataAtRowProp(groupHeaderRow, 'totalAmount', totalAmount);
+    hotInstance.setDataAtRowProp(groupHeaderRow, 'materialAmount', totalMaterialAmount.toFixed(2), 'updateGroupHeader');
+    hotInstance.setDataAtRowProp(groupHeaderRow, 'totalAmount', totalAmount, 'updateGroupHeader');
     
-    // Update cache
+    // Update cache without grand total
     if (localSelectedFloor) {
-      materialDataCache.current[localSelectedFloor] = hotInstance.getSourceData();
+      const currentData = hotInstance.getSourceData();
+      const dataToCache = currentData.filter(row => !row.isGrandTotal);
+      materialDataCache.current[localSelectedFloor] = dataToCache;
     }
   }, [localSelectedFloor]);
 
@@ -1953,9 +3105,22 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const rowData = hotInstance.getSourceDataAtRow(row);
     if (!rowData || rowData.isGroupHeader) return;
     
-    const materialQty = parseFloat(rowData.materialQty) || 0;
+    // Find the parent group header to get volume
+    const allData = hotInstance.getSourceData();
+    let volume = 0;
+    for (let i = row - 1; i >= 0; i--) {
+      if (allData[i] && allData[i].isGroupHeader && !allData[i].isGrandTotal) {
+        volume = parseFloat(allData[i].volume) || 0;
+        break;
+      }
+    }
+    
+    // Calculate materialQty from consumptionRate and volume
+    const consumptionRate = parseFloat(rowData.consumptionRate) || 0;
+    const materialQty = (volume * consumptionRate).toFixed(2);
+    
     const wastage = parseFloat(rowData.wastage) || 0;
-    const totalQty = materialQty + (materialQty * wastage / 100);
+    const totalQty = parseFloat(materialQty) * (1 + wastage / 100);
     
     const materialRate = parseFloat(rowData.materialRate) || 0;
     const labourRate = parseFloat(rowData.labourRate) || 0;
@@ -1964,10 +3129,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const labourAmount = (totalQty * labourRate).toFixed(2);
     const totalAmount = (parseFloat(materialAmount) + parseFloat(labourAmount)).toFixed(2);
     
-    hotInstance.setDataAtRowProp(row, 'totalQty', totalQty.toFixed(2));
-    hotInstance.setDataAtRowProp(row, 'materialAmount', materialAmount);
-    hotInstance.setDataAtRowProp(row, 'labourAmount', labourAmount);
-    hotInstance.setDataAtRowProp(row, 'totalAmount', totalAmount);
+    hotInstance.setDataAtRowProp(row, 'materialQty', materialQty, 'recalculate');
+    hotInstance.setDataAtRowProp(row, 'totalQty', totalQty.toFixed(2), 'recalculate');
+    hotInstance.setDataAtRowProp(row, 'materialAmount', materialAmount, 'recalculate');
+    hotInstance.setDataAtRowProp(row, 'labourAmount', labourAmount, 'recalculate');
+    hotInstance.setDataAtRowProp(row, 'totalAmount', totalAmount, 'recalculate');
   }, []);
 
   const getMaterialColumns = useMemo(() => [
@@ -2002,9 +3168,9 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       readOnly: true
     },
     {
-      data: 'materialQty',
-      title: 'Qty',
-      width: 60,
+      data: 'consumptionRate',
+      title: 'Cons. Rate',
+      width: 90,
       type: 'numeric',
       numericFormat: {
         pattern: '0.00'
@@ -2015,6 +3181,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         // Group headers are read-only, child rows are editable
         return rowData && rowData.isGroupHeader;
       }
+    },
+    {
+      data: 'materialQty',
+      title: 'Qty',
+      width: 60,
+      type: 'numeric',
+      numericFormat: {
+        pattern: '0.00'
+      },
+      readOnly: true
     },
     {
       data: 'wastage',
@@ -2069,7 +3245,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'materialAmount',
-      title: 'Material Amt',
+      title: `Material Amt`,
       width: 90,
       type: 'numeric',
       numericFormat: {
@@ -2079,7 +3255,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'labourAmount',
-      title: 'Labour Amt',
+      title: `Labour Amt`,
       width: 90,
       type: 'numeric',
       numericFormat: {
@@ -2089,7 +3265,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     },
     {
       data: 'totalAmount',
-      title: 'Total Amt',
+      title: `Total Amt (${currency})`,
       width: 90,
       type: 'numeric',
       numericFormat: {
@@ -2105,7 +3281,37 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       readOnly: false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], []);
+  ], [currency]);
+
+  const getIndirectExpenseColumns = useMemo(() => [
+    {
+      data: 'expenseHead',
+      title: 'Expense Head',
+      width: 250,
+      type: 'text',
+      readOnly: true
+    },
+    {
+      data: 'allocationPercent',
+      title: 'Allocation (%)',
+      width: 120,
+      type: 'numeric',
+      numericFormat: {
+        pattern: '0.00'
+      },
+      readOnly: false
+    },
+    {
+      data: 'amount',
+      title: `Amount (${currency})`,
+      width: 150,
+      type: 'numeric',
+      numericFormat: {
+        pattern: '0,0.00'
+      },
+      readOnly: true
+    }
+  ], [currency]);
 
   const getQuantityColumns = useMemo(() => [
     {
@@ -2730,7 +3936,20 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   ], [gradeOptions, addRowToGroup, toggleDeduction, deleteGroup]);
 
   return (
-    <Container fluid style={{ padding: '0', margin: '0', maxWidth: '100%' }}>
+    <Container fluid style={{ 
+      padding: isExpandedView ? '1rem' : '0', 
+      margin: '0', 
+      maxWidth: '100%',
+      height: isExpandedView ? '100vh' : 'auto',
+      overflow: isExpandedView ? 'auto' : 'visible',
+      position: isExpandedView ? 'fixed' : 'relative',
+      top: isExpandedView ? 0 : 'auto',
+      left: isExpandedView ? 0 : 'auto',
+      right: isExpandedView ? 0 : 'auto',
+      bottom: isExpandedView ? 0 : 'auto',
+      zIndex: isExpandedView ? 9999 : 'auto',
+      backgroundColor: isExpandedView ? 'white' : 'transparent'
+    }}>
       {alertMessage.show && (
         <Alert 
           variant={alertMessage.type} 
@@ -2741,9 +3960,44 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         </Alert>
       )}
 
-      <Card>
-        <Card.Body style={{ padding: '0.5rem' }}>
-          <Row>
+      <Card style={{ 
+        height: '100%',
+        border: 'none'
+      }}>
+        <Card.Body style={{ 
+          padding: '0.5rem',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'visible'
+        }}>
+          {/* Header with Title and Toggle */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            marginBottom: '1rem', 
+            paddingBottom: '0.5rem', 
+            borderBottom: '1px solid #e0e0e0',
+            flexShrink: 0,
+            position: 'relative'
+          }}>
+            <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>
+              Floor Component
+            </h5>
+            {onToggleExpandedView && (
+              <Form.Check 
+                type="switch"
+                id="expanded-view-toggle"
+                label="Expanded View"
+                checked={isExpandedView}
+                onChange={(e) => onToggleExpandedView(e.target.checked)}
+                style={{ fontSize: '14px', fontWeight: 500, position: 'absolute', right: 0 }}
+              />
+            )}
+          </div>
+          
+          <Row style={{ flex: 1, overflow: 'visible', margin: 0 }}>
               <Col md={12}>
                 {/* Select Floor Dropdown and Add Component Button */}
                 <Row className="mb-3">
@@ -2782,6 +4036,34 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                       >
                         Copy from Floor
                       </Button>
+                      <DropdownButton
+                        variant="danger"
+                        size="sm"
+                        title={<><i className="bi bi-file-earmark-pdf-fill"></i> PDF</>}
+                        disabled={!localSelectedFloor}
+                        style={{ marginBottom: '0px' }}
+                      >
+                        <Dropdown.Item onClick={handlePDFCurrentFloor}>
+                          Current Floor
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={handlePDFAllFloors}>
+                          All Floors
+                        </Dropdown.Item>
+                      </DropdownButton>
+                      <DropdownButton
+                        variant="success"
+                        size="sm"
+                        title={<><i className="bi bi-file-earmark-excel-fill"></i> Excel</>}
+                        disabled={!localSelectedFloor}
+                        style={{ marginBottom: '0px' }}
+                      >
+                        <Dropdown.Item onClick={handleExcelCurrentFloor}>
+                          Current Floor
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={handleExcelAllFloors}>
+                          All Floors
+                        </Dropdown.Item>
+                      </DropdownButton>
                     </Col>
                   </Row>
                   
@@ -2794,6 +4076,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                       <Spinner animation="border" /> Loading floor data...
                     </div>
                   ) : (
+                  <>
+                    
                   <Tabs
                     id="boq-tabs"
                     activeKey={activeTab}
@@ -2940,7 +4224,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 }
                               }}
                               width="100%"
-                              height="600px"
+                              height={isExpandedView ? "calc(100vh - 200px)" : "600px"}
                               autoRowSize={true}
                               autoColumnSize={true}
                               licenseKey="non-commercial-and-evaluation"
@@ -3222,6 +4506,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 const rowData = materialData[index];
                                 if (!rowData) return index + 1;
                                 
+                                // Hide row number for grand total row
+                                if (rowData.isGrandTotal) {
+                                  return '';
+                                }
+                                
                                 if (rowData.isGroupHeader) {
                                   // For group headers, count only group headers before this one
                                   let groupNumber = 1;
@@ -3262,7 +4551,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 }
                               }}
                               width="100%"
-                              height="600px"
+                              height={isExpandedView ? "calc(100vh - 200px)" : "600px"}
                               licenseKey="non-commercial-and-evaluation"
                               stretchH="all"
                               contextMenu={true}
@@ -3271,8 +4560,31 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               fixedRowsTop={1}
                               autoWrapCol={true}
                               autoWrapRow={true}
+                              afterRemoveRow={(index, amount, physicalRows, source) => {
+                                // Recalculate group totals after row deletion
+                                const hotInstance = materialTableRef.current?.hotInstance;
+                                if (!hotInstance || hotInstance.isDestroyed) return;
+                                
+                                setTimeout(() => {
+                                  if (!hotInstance || hotInstance.isDestroyed) return;
+                                  
+                                  const allData = hotInstance.getSourceData();
+                                  if (!allData || !Array.isArray(allData)) return;
+                                  
+                                  // Find all group headers and recalculate them
+                                  // This is simpler and more reliable than trying to find which one was affected
+                                  for (let i = 0; i < allData.length; i++) {
+                                    if (allData[i] && allData[i].isGroupHeader && !allData[i].isGrandTotal) {
+                                      updateGroupHeader(hotInstance, allData, i);
+                                    }
+                                  }
+                                  
+                                  // Force render
+                                  hotInstance.render();
+                                }, 50);
+                              }}
                               afterChange={(changes, source) => {
-                                if (!changes || source === 'loadData' || !materialData || !Array.isArray(materialData)) return;
+                                if (!changes || source === 'loadData' || source === 'updateGroupHeader' || source === 'recalculate' || !materialData || !Array.isArray(materialData)) return;
                                 
                                 // Mark this floor's material data as edited
                                 if (localSelectedFloor && source === 'edit') {
@@ -3313,7 +4625,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     }
                                     
                                     // Track which groups need updating
-                                    if (['materialQty', 'wastage', 'materialRate', 'labourRate', 'component'].includes(prop)) {
+                                    if (['consumptionRate', 'materialQty', 'wastage', 'materialRate', 'labourRate', 'component'].includes(prop)) {
                                       // Recalculate this row
                                       recalculateChildRow(row);
                                       
@@ -3356,7 +4668,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                           td.style.backgroundColor = '#e8f4f8';
                                           td.style.color = '#1e4d6b';
                                           td.style.fontWeight = '700';
-                                          td.style.padding = '14px 8px';
+                                          td.style.padding = '8px';
                                           td.style.fontSize = '15px';
                                           td.style.textAlign = 'right';
                                           td.style.borderTop = '2px solid #64b5f6';
@@ -3378,7 +4690,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                           td.style.backgroundColor = '#e8f4f8';
                                           td.style.color = '#1e4d6b';
                                           td.style.fontWeight = '700';
-                                          td.style.padding = '14px 8px';
+                                          td.style.padding = '8px';
                                           td.style.fontSize = '12px';
                                           td.style.textAlign = 'right';
                                           td.style.borderTop = '2px solid #64b5f6';
@@ -3390,6 +4702,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                         cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
                                           td.style.backgroundColor = '#e8f4f8';
                                           td.style.color = '#1e4d6b';
+                                          td.style.padding = '8px';
                                           td.style.borderTop = '2px solid #64b5f6';
                                           td.style.borderBottom = '2px solid #64b5f6';
                                           td.innerHTML = '';
@@ -3489,7 +4802,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     }
                                   } else {
                                     // For child rows (non-group headers)
-                                    if (prop === 'component' || prop === 'wastage' || prop === 'materialRate') {
+                                    if (prop === 'component' || prop === 'consumptionRate' || prop === 'wastage' || prop === 'materialRate') {
                                       cellProperties.readOnly = false; // Editable
                                     }
                                     
@@ -3523,7 +4836,124 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                         </Card.Body>
                       </Card>
                     </Tab>
+
+                    <Tab eventKey="indirectExpense" title="Floor Wise Indirect Expense">
+                      <Card style={{ border: 'none' }}>
+                        <Card.Body>
+                          {activeTab !== 'indirectExpense' ? null : (
+                          <div style={{ padding: '1rem 0' }}>
+                            {(() => {
+                              // Show loading state
+                              if (loadingData) {
+                                return (
+                                  <div style={{ padding: '40px', textAlign: 'center' }}>
+                                    <Spinner animation="border" size="sm" /> Loading...
+                                  </div>
+                                );
+                              }
+
+                              // Show message if no floor selected
+                              if (!localSelectedFloor) {
+                                return (
+                                  <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                                    Please select a floor to view indirect expenses.
+                                  </div>
+                                );
+                              }
+
+                              // Validate data
+                              const isValid = indirectExpenseData && 
+                                            Array.isArray(indirectExpenseData) && 
+                                            indirectExpenseData.length > 0 &&
+                                            getIndirectExpenseColumns && 
+                                            Array.isArray(getIndirectExpenseColumns) && 
+                                            getIndirectExpenseColumns.length > 0;
+
+                              if (!isValid) {
+                                return (
+                                  <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                                    {!indirectExpenseData || !Array.isArray(indirectExpenseData) || indirectExpenseData.length === 0
+                                      ? 'No indirect expense data available. Please ensure material pricing is calculated first.'
+                                      : 'Table configuration error. Please refresh the page.'}
+                                  </div>
+                                );
+                              }
+
+                              // Get floor summary data
+                              const floorSummary = indirectExpenseCache.current[localSelectedFloor];
+                              const floorTotalAmount = floorSummary?.floorTotalAmount || 0;
+                              const totalIndirectExpense = floorSummary?.totalIndirectExpense || 0;
+                              const grandTotal = floorSummary?.grandTotal || 0;
+
+                              return (
+                                <>
+                                  {/* Summary Cards */}
+                                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ 
+                                      flex: 1, 
+                                      padding: '1rem', 
+                                      backgroundColor: '#f0f9ff', 
+                                      borderRadius: '8px',
+                                      border: '1px solid #bae6fd'
+                                    }}>
+                                      <div style={{ fontSize: '0.875rem', color: '#0369a1', marginBottom: '0.25rem' }}>Floor Total (Direct)</div>
+                                      <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#0c4a6e' }}>
+                                        {currency} {floorTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                    <div style={{ 
+                                      flex: 1, 
+                                      padding: '1rem', 
+                                      backgroundColor: '#fef3c7', 
+                                      borderRadius: '8px',
+                                      border: '1px solid #fde68a'
+                                    }}>
+                                      <div style={{ fontSize: '0.875rem', color: '#92400e', marginBottom: '0.25rem' }}>Total Indirect Expense</div>
+                                      <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#78350f' }}>
+                                        {currency} {totalIndirectExpense.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                    <div style={{ 
+                                      flex: 1, 
+                                      padding: '1rem', 
+                                      backgroundColor: '#dcfce7', 
+                                      borderRadius: '8px',
+                                      border: '1px solid #86efac'
+                                    }}>
+                                      <div style={{ fontSize: '0.875rem', color: '#166534', marginBottom: '0.25rem' }}>Grand Total</div>
+                                      <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#14532d' }}>
+                                        {currency} {grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Indirect Expense Table */}
+                                  <HotTable
+                                    ref={indirectExpenseTableRef}
+                                    data={indirectExpenseData}
+                                    columns={getIndirectExpenseColumns}
+                                    colHeaders={true}
+                                    rowHeaders={true}
+                                    width="100%"
+                                    height="auto"
+                                    licenseKey="non-commercial-and-evaluation"
+                                    stretchH="all"
+                                    autoWrapRow={true}
+                                    autoWrapCol={true}
+                                    manualColumnResize={true}
+                                    contextMenu={false}
+                                    afterChange={handleIndirectExpenseChange}
+                                  />
+                                </>
+                              );
+                            })()}
+                          </div>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    </Tab>
                   </Tabs>
+                  </>
                   )}
                 </Col>
               </Row>
@@ -3577,16 +5007,23 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         </Modal.Header>
         <Modal.Body>
           <Alert variant="info">
-            This will copy all quantity data from the source floor to the target floor.
+            This will copy all quantity data from the source floor to the selected target floor(s).
           </Alert>
           <Form.Group className="mb-3">
             <Form.Label>Copy From (Source Floor)</Form.Label>
             <Form.Select
               value={copySourceFloor}
-              onChange={(e) => setCopySourceFloor(e.target.value)}
+              onChange={(e) => {
+                setCopySourceFloor(e.target.value);
+                // Remove selected source from target floors if present
+                setCopyTargetFloors(prev => prev.filter(f => f !== e.target.value));
+              }}
             >
               <option value="">-- Select Source Floor --</option>
-              {floors.map((floor, idx) => (
+              {floors.filter(floor => 
+                !floor.toLowerCase().includes('foundation') && 
+                !floor.toLowerCase().includes('basement')
+              ).map((floor, idx) => (
                 <option key={idx} value={floor}>
                   {floor}
                 </option>
@@ -3594,18 +5031,52 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label>Copy To (Target Floor)</Form.Label>
-            <Form.Select
-              value={copyTargetFloor}
-              onChange={(e) => setCopyTargetFloor(e.target.value)}
-            >
-              <option value="">-- Select Target Floor --</option>
-              {floors.map((floor, idx) => (
-                <option key={idx} value={floor}>
-                  {floor}
-                </option>
-              ))}
-            </Form.Select>
+            <Form.Label>Copy To (Target Floors - Select Multiple)</Form.Label>
+            <div style={{ 
+              maxHeight: '180px', 
+              overflowY: 'auto', 
+              border: '1px solid #dee2e6', 
+              borderRadius: '4px', 
+              padding: '10px',
+              backgroundColor: '#f8f9fa'
+            }}>
+              {floors.filter(floor => 
+                floor !== copySourceFloor && 
+                !floor.toLowerCase().includes('foundation') && 
+                !floor.toLowerCase().includes('basement')
+              ).length === 0 ? (
+                <div className="text-muted text-center py-2">
+                  {copySourceFloor ? 'No available floors to copy to' : 'Please select a source floor first'}
+                </div>
+              ) : (
+                floors.filter(floor => 
+                  floor !== copySourceFloor && 
+                  !floor.toLowerCase().includes('foundation') && 
+                  !floor.toLowerCase().includes('basement')
+                ).map((floor, idx) => (
+                  <Form.Check
+                    key={idx}
+                    type="checkbox"
+                    id={`target-floor-${idx}`}
+                    label={floor}
+                    checked={copyTargetFloors.includes(floor)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCopyTargetFloors(prev => [...prev, floor]);
+                      } else {
+                        setCopyTargetFloors(prev => prev.filter(f => f !== floor));
+                      }
+                    }}
+                    className="mb-2"
+                  />
+                ))
+              )}
+            </div>
+            {copyTargetFloors.length > 0 && (
+              <Form.Text className="text-muted">
+                Selected: {copyTargetFloors.length} floor(s)
+              </Form.Text>
+            )}
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
@@ -3615,11 +5086,39 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           <Button 
             variant="primary" 
             onClick={handleCopyFloorData}
-            disabled={!copySourceFloor || !copyTargetFloor}
+            disabled={!copySourceFloor || !copyTargetFloors || copyTargetFloors.length === 0}
           >
             Copy Data
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* PDF Viewer Modal */}
+      <Modal 
+        show={showPdfModal} 
+        onHide={() => setShowPdfModal(false)} 
+        size="xl"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>BOQ Estimation PDF Preview</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ height: '80vh', padding: 0 }}>
+          {pdfFloors.length > 0 ? (
+            <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
+              <BOQPDFDocument 
+                floors={pdfFloors} 
+                floorDataCache={floorDataCache.current} 
+                materialDataCache={materialDataCache.current} 
+                currency={currency} 
+              />
+            </PDFViewer>
+          ) : (
+            <div className="d-flex align-items-center justify-content-center h-100">
+              <p className="text-muted">No data available to generate PDF</p>
+            </div>
+          )}
+        </Modal.Body>
       </Modal>
     </Container>
   );

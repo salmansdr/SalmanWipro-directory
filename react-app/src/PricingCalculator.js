@@ -37,6 +37,7 @@ const PricingCalculator = () => {
   const [carpetAreaSqFt, setCarpetAreaSqFt] = useState("");
   // Alert message state for success/error notifications
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
+  const [hasMaterialData, setHasMaterialData] = useState(false);
 const [step, setStep] = useState(1);
 
    // --- Utility Defaults ---
@@ -61,6 +62,8 @@ const [step, setStep] = useState(1);
     const [floors, setFloors] = useState(1);
     const [lift, setLift] = useState(false);
     const [groundFloorHasRooms, setGroundFloorHasRooms] = useState(false);
+    const [lockEdit, setLockEdit] = useState(false);
+    const [lockDelete, setLockDelete] = useState(false);
     const [basementCount, setBasementCount] = useState(0);
     const [flatsPerFloor, setFlatsPerFloor] = useState('');
     const [floorBHKConfigs, setFloorBHKConfigs] = useState({});
@@ -86,6 +89,7 @@ const [step, setStep] = useState(1);
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
   const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
   const [, setStep3GridData] = useState([]);
+  const [isExpandedView, setIsExpandedView] = useState(false);
 
   const handleBeamColumnConfigChange = (floor, section, field, value) => {
     setBeamColumnConfig(prevConfig => {
@@ -336,6 +340,8 @@ const boqFloorsList = React.useMemo(() => [
       // Estimation-specific configuration
       basementCount: Number(basementCount) || 0,
       groundFloorHasRooms: groundFloorHasRooms || false,
+      lockEdit: lockEdit || false,
+      lockDelete: lockDelete || false,
       
       // Floor configuration with embedded room details (Step 2)
       floorConfiguration: Array.from({ length: Number(floors) + 1 }, (_, floorIdx) => {
@@ -522,6 +528,61 @@ const boqFloorsList = React.useMemo(() => [
 
       //console.log('Saving BOQ data:', allFloorsData);
 
+      // Validate Material Amount data if available
+      if (window.BOQEstimation_getAllMaterialData) {
+        const allMaterialData = window.BOQEstimation_getAllMaterialData();
+        
+        if (allMaterialData && allMaterialData.length > 0) {
+          const validationErrors = [];
+          
+          // Check each floor's material data
+          allMaterialData.forEach(floorData => {
+            if (!floorData.components || !Array.isArray(floorData.components)) return;
+            
+            // Check each component (group)
+            floorData.components.forEach(component => {
+              const componentName = component.component || 'Unknown Component';
+              const groupMaterialAmount = parseFloat(component.materialAmount) || 0;
+              
+              // Sum child material amounts
+              let childSum = 0;
+              if (component.materials && Array.isArray(component.materials)) {
+                component.materials.forEach(material => {
+                  childSum += parseFloat(material.materialAmount) || 0;
+                });
+              }
+              
+              // Check if group has material amount but no child rows
+              if (groupMaterialAmount > 0 && component.materials && component.materials.length === 0) {
+                validationErrors.push(`Floor "${floorData.floorName}" - Component "${componentName}": Group has material amount (${groupMaterialAmount.toFixed(2)}) but no child material rows.`);
+              }
+              
+              // Check if sum doesn't match (with tolerance for rounding)
+              if (component.materials && component.materials.length > 0) {
+                const difference = Math.abs(groupMaterialAmount - childSum);
+                if (difference > 0.01) { // Allow 1 paisa tolerance
+                  validationErrors.push(`Floor "${floorData.floorName}" - Component "${componentName}": Material amount mismatch. Group total: ${groupMaterialAmount.toFixed(2)}, Child sum: ${childSum.toFixed(2)}, Difference: ${difference.toFixed(2)}`);
+                }
+              }
+            });
+          });
+          
+          // If validation errors found, show them and stop save
+          if (validationErrors.length > 0) {
+            const errorMessage = 'Material Amount Validation Failed:\n\n' + validationErrors.join('\n\n');
+            setAlertMessage({
+              show: true,
+              type: 'danger',
+              message: errorMessage
+            });
+            setTimeout(() => {
+              setAlertMessage({ show: false, type: '', message: '' });
+            }, 10000);
+            return;
+          }
+        }
+      }
+
       const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
       
       // Get estimationMasterId from first floor (all floors share same estimation)
@@ -683,10 +744,19 @@ const boqFloorsList = React.useMemo(() => [
         companyId: companyId,
         createdBy: existingRecordId ? undefined : username, // Only set on create
         modifiedBy: username,
-        floors: allMaterialData.map(floorData => ({
-          floorName: floorData.floorName,
-          components: floorData.components
-        }))
+        floors: allMaterialData.map(floorData => {
+          const floorObject = {
+            floorName: floorData.floorName,
+            components: floorData.components
+          };
+          
+          // Add Expense if it exists
+          if (floorData.Expense) {
+            floorObject.Expense = floorData.Expense;
+          }
+          
+          return floorObject;
+        })
       };
 
       //console.log('Material payload:', payload);
@@ -746,6 +816,8 @@ const boqFloorsList = React.useMemo(() => [
         setFloors(step1Data.projectDetails?.floors || 1);
         setBasementCount(step1Data.projectDetails?.basementCount || 0);
         setGroundFloorHasRooms(step1Data.projectDetails?.groundFloorHasRooms || false);
+        setLockEdit(step1Data.projectDetails?.lockEdit || false);
+        setLockDelete(step1Data.projectDetails?.lockDelete || false);
         setLift(step1Data.projectDetails?.liftIncluded || false);
         alert('Step 1 data loaded successfully!');
       } catch (error) {
@@ -895,6 +967,12 @@ const boqFloorsList = React.useMemo(() => [
           if (projectData.groundFloorHasRooms !== undefined) {
             setGroundFloorHasRooms(projectData.groundFloorHasRooms);
           }
+          if (projectData.lockEdit !== undefined) {
+            setLockEdit(projectData.lockEdit);
+          }
+          if (projectData.lockDelete !== undefined) {
+            setLockDelete(projectData.lockDelete);
+          }
           if (projectData.basementCount !== undefined) {
             setBasementCount(projectData.basementCount);
           }
@@ -1022,6 +1100,27 @@ const boqFloorsList = React.useMemo(() => [
     loadProjectData();
   }, [mode, id]);
 
+  // --- Check if material data exists ---
+  useEffect(() => {
+    const checkMaterialData = async () => {
+      if (id) {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-estimation-master/${id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setHasMaterialData(data && data.records && data.records.length > 0);
+          } else {
+            setHasMaterialData(false);
+          }
+        } catch (error) {
+          console.error('Error checking material data:', error);
+          setHasMaterialData(false);
+        }
+      }
+    };
+    checkMaterialData();
+  }, [id]);
+
   // --- Load Projects from API ---
   useEffect(() => {
     const fetchProjects = async () => {
@@ -1034,7 +1133,7 @@ const boqFloorsList = React.useMemo(() => [
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
-          console.log('Projects fetched:', data);
+          
           
           // Handle both array and grouped object structures
           let projectsList = [];
@@ -1049,7 +1148,12 @@ const boqFloorsList = React.useMemo(() => [
             ];
           }
           
-          setProjects(projectsList);
+          // Filter out projects with status "completed" (case-insensitive)
+          const filteredProjects = projectsList.filter(project => 
+            project.status && project.status.toLowerCase() !== 'completed'
+          );
+          
+          setProjects(filteredProjects);
         } else {
           console.error('Failed to fetch projects');
         }
@@ -2914,7 +3018,12 @@ useEffect(() => {
           )}
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div style={{ 
+        display: step === 3 && isExpandedView ? 'none' : 'flex',
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        marginBottom: '1.5rem'
+      }}>
         <Button 
           variant="outline-secondary" 
           size="sm" 
@@ -2953,7 +3062,7 @@ useEffect(() => {
       )}
       {/* Removed bhkExtracted, bhkLoading, bhkError references */}
       {/* Step Indicator */}
-      <div className="wizard-indicator">
+      <div className="wizard-indicator" style={{ display: step === 3 && isExpandedView ? 'none' : 'flex' }}>
         {[1,2,3].map(s => (
           <span key={s} style={{ position: 'relative', display: 'inline-block' }}>
             <span
@@ -3146,15 +3255,15 @@ useEffect(() => {
                     <Form.Select 
                       value={selectedProject} 
                       onChange={handleProjectSelect}
-                      disabled={isViewMode}
+                      disabled={isViewMode || hasMaterialData}
                       style={{
                         borderRadius: '6px',
                         border: '1px solid #ced4da',
                         padding: '0.75rem',
                         fontSize: '0.9rem',
                         height: '42px',
-                        backgroundColor: isViewMode ? '#f8f9fa' : '#fff',
-                        color: isViewMode ? '#6c757d' : '#495057'
+                        backgroundColor: (isViewMode || hasMaterialData) ? '#f8f9fa' : '#fff',
+                        color: (isViewMode || hasMaterialData) ? '#6c757d' : '#495057'
                       }}
                     >
                       <option value="">Select Project</option>
@@ -3329,14 +3438,30 @@ useEffect(() => {
                     <div style={{ 
                       display: 'flex', 
                       alignItems: 'center',
+                      gap: '20px',
                       height: '42px',
-                      paddingLeft: '0.75rem'
+                      paddingLeft: '0.75rem',
+                      flexWrap: 'nowrap'
                     }}>
                       <Form.Check 
                         type="checkbox" 
                         label="Has Rooms" 
                         checked={groundFloorHasRooms} 
                         onChange={e => setGroundFloorHasRooms(e.target.checked)}
+                        disabled={isViewMode}
+                      />
+                      <Form.Check 
+                        type="switch" 
+                        label="Lock Edit" 
+                        checked={lockEdit} 
+                        onChange={e => setLockEdit(e.target.checked)}
+                        disabled={isViewMode}
+                      />
+                      <Form.Check 
+                        type="switch" 
+                        label="Lock Delete" 
+                        checked={lockDelete} 
+                        onChange={e => setLockDelete(e.target.checked)}
                         disabled={isViewMode}
                       />
                     </div>
@@ -3800,13 +3925,12 @@ useEffect(() => {
         {/* BOQ Estimation Component - Render once and keep mounted */}
         {id && selectedProjectId && Number(floors) > 0 && (
           <div style={{ display: step === 3 ? 'block' : 'none' }}>
-            <div style={{ width: '100%', margin: '0 auto 1rem auto', padding: '0.5rem 0 0.2rem 0', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
-              <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>Floor Component</h5>
-            </div>
             {/* BOQ Estimation Component */}
             <BOQEstimation 
               estimationMasterId={id} 
               floorsList={boqFloorsList}
+              isExpandedView={isExpandedView}
+              onToggleExpandedView={setIsExpandedView}
             />
             
           </div>

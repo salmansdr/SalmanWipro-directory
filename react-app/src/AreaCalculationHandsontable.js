@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Container, Button, Form, Alert } from 'react-bootstrap';
+import { Container, Button, Form, Alert, Tabs, Tab } from 'react-bootstrap';
 import { FaPlus, FaSave, FaFileExcel, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
@@ -15,11 +15,19 @@ const AreaCalculationHandsontable = () => {
   const [gradeOptions, setGradeOptions] = useState([]);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [unitOptions, setUnitOptions] = useState([]);
+  const [activeTab, setActiveTab] = useState('direct');
+  const [indirectExpenseData, setIndirectExpenseData] = useState([
+    { expenseHead: '', Foundation: 0, Basement: 0, Floors: 0 }
+  ]);
+  const [indirectExpenseDocId, setIndirectExpenseDocId] = useState(null);
+  const [userId] = useState(localStorage.getItem('userId') || 'User');
+  const [loadedDocData, setLoadedDocData] = useState(null);
   
   const hotTableRefs = {
     Foundation: useRef(null),
     Basement: useRef(null),
-    Floors: useRef(null)
+    Floors: useRef(null),
+    IndirectExpense: useRef(null)
   };
 
   const floorSections = ['Foundation', 'Basement', 'Floors'];
@@ -85,11 +93,74 @@ const AreaCalculationHandsontable = () => {
     }
   }, [apiBaseUrl]);
 
+  const loadIndirectExpenseData = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/IndirectExpenseLogic`);
+      if (!response.ok) throw new Error('Failed to fetch indirect expense data');
+      
+      const result = await response.json();
+      
+      // Extract data from API response wrapper {recordCount, data: [...]}
+      const data = result.data && result.data.length > 0 ? result.data[0] : result;
+      
+      // Store document ID for updates
+      if (data._id) {
+        setIndirectExpenseDocId(data._id);
+        setLoadedDocData(data);
+      }
+      
+      // Transform single object structure back to grid format
+      // Expecting structure: {Foundation: [{head, allocationPercent}], Basement: [...], Floors: [...]}
+      if (data && data.Foundation && Array.isArray(data.Foundation)) {
+        const expenseHeads = new Set();
+        
+        // Collect all unique expense heads
+        [data.Foundation, data.Basement, data.Floors].forEach(floorData => {
+          if (Array.isArray(floorData)) {
+            floorData.forEach(item => {
+              if (item.head) {
+                expenseHeads.add(item.head);
+              }
+            });
+          }
+        });
+        
+        // Create grid rows
+        const gridData = Array.from(expenseHeads).map(head => {
+          const foundationItem = data.Foundation?.find(item => item.head === head);
+          const basementItem = data.Basement?.find(item => item.head === head);
+          const floorsItem = data.Floors?.find(item => item.head === head);
+          
+          return {
+            expenseHead: head,
+            Foundation: foundationItem?.allocationPercent || 0,
+            Basement: basementItem?.allocationPercent || 0,
+            Floors: floorsItem?.allocationPercent || 0
+          };
+        });
+        
+        setIndirectExpenseData(gridData.length > 0 ? gridData : [
+          { expenseHead: '', Foundation: 0, Basement: 0, Floors: 0 }
+        ]);
+      } else {
+        setIndirectExpenseData([
+          { expenseHead: '', Foundation: 0, Basement: 0, Floors: 0 }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading indirect expense data:', error);
+      setIndirectExpenseData([
+        { expenseHead: '', Foundation: 0, Basement: 0, Floors: 0 }
+      ]);
+    }
+  }, [apiBaseUrl]);
+
   useEffect(() => {
     loadCalculations();
     loadGradeOptions();
     loadUnitOptions();
-  }, [loadCalculations, loadGradeOptions, loadUnitOptions]);
+    loadIndirectExpenseData();
+  }, [loadCalculations, loadGradeOptions, loadUnitOptions, loadIndirectExpenseData]);
 
   // Convert config data to table rows for a specific section
   const getTableDataForSection = (section) => {
@@ -461,6 +532,87 @@ const AreaCalculationHandsontable = () => {
     }));
   };
 
+  // Indirect Expense handlers
+  const handleAddIndirectExpenseRow = () => {
+    const hotInstance = hotTableRefs.IndirectExpense.current?.hotInstance;
+    if (hotInstance) {
+      const rowCount = hotInstance.countRows();
+      hotInstance.alter('insert_row_below', rowCount);
+    }
+  };
+
+  const handleSaveIndirectExpense = async () => {
+    try {
+      const hotInstance = hotTableRefs.IndirectExpense.current?.hotInstance;
+      if (!hotInstance) return;
+
+      const sourceData = hotInstance.getSourceData();
+      
+      // Filter out empty rows
+      const validRows = sourceData.filter(row => row.expenseHead && row.expenseHead.trim() !== '');
+
+      if (validRows.length === 0) {
+        setAlertMessage({ 
+          show: true, 
+          type: 'warning', 
+          message: 'No data to save. Please add expense heads.' 
+        });
+        return;
+      }
+
+      // Transform to single object structure
+      const dataToSave = {
+        Foundation: validRows.map(row => ({
+          head: row.expenseHead,
+          allocationPercent: parseFloat(row.Foundation) || 0
+        })),
+        Basement: validRows.map(row => ({
+          head: row.expenseHead,
+          allocationPercent: parseFloat(row.Basement) || 0
+        })),
+        Floors: validRows.map(row => ({
+          head: row.expenseHead,
+          allocationPercent: parseFloat(row.Floors) || 0
+        })),
+        createdBy: indirectExpenseDocId && loadedDocData ? loadedDocData.createdBy : userId,
+        modifiedBy: userId
+      };
+
+      // Use PUT for update if document exists, POST for create
+      const method = indirectExpenseDocId ? 'PUT' : 'POST';
+      const url = indirectExpenseDocId 
+        ? `${apiBaseUrl}/api/IndirectExpenseLogic/${indirectExpenseDocId}`
+        : `${apiBaseUrl}/api/IndirectExpenseLogic`;
+
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save indirect expense data');
+      }
+
+      await loadIndirectExpenseData();
+      
+      setAlertMessage({ 
+        show: true, 
+        type: 'success', 
+        message: 'Indirect expense data saved successfully!' 
+      });
+      
+      setTimeout(() => setAlertMessage({ show: false, type: '', message: '' }), 3000);
+    } catch (error) {
+      console.error('Error saving indirect expense:', error);
+      setAlertMessage({ 
+        show: true, 
+        type: 'danger', 
+        message: `Error saving: ${error.message}` 
+      });
+    }
+  };
+
   const renderSectionTable = (section) => {
     const data = getTableDataForSection(section);
     const isCollapsed = collapsedSections[section];
@@ -581,7 +733,7 @@ const AreaCalculationHandsontable = () => {
     <Container fluid style={{ padding: '2rem' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h2 style={{ color: '#1976d2', fontWeight: 600, margin: 0 }}>
-          Area Calculation Master
+          Calculation Method for Direct and Indirect Expenses
         </h2>
       </div>
 
@@ -595,36 +747,148 @@ const AreaCalculationHandsontable = () => {
         </Alert>
       )}
 
-      <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <Form.Label style={{ marginBottom: 0, fontWeight: 500 }}>Filter by Floor:</Form.Label>
-        <Form.Select 
-          style={{ width: '200px' }}
-          value={floorFilter}
-          onChange={(e) => setFloorFilter(e.target.value)}
-        >
-          <option value="All">All Floors</option>
-          {floorSections.map(section => (
-            <option key={section} value={section}>{section}</option>
-          ))}
-        </Form.Select>
-      </div>
+      <Tabs
+        activeKey={activeTab}
+        onSelect={(k) => setActiveTab(k)}
+        className="mb-3"
+      >
+        <Tab eventKey="direct" title="Direct Expense">
+          <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <Form.Label style={{ marginBottom: 0, fontWeight: 500 }}>Filter by Floor:</Form.Label>
+            <Form.Select 
+              style={{ width: '200px' }}
+              value={floorFilter}
+              onChange={(e) => setFloorFilter(e.target.value)}
+            >
+              <option value="All">All Floors</option>
+              {floorSections.map(section => (
+                <option key={section} value={section}>{section}</option>
+              ))}
+            </Form.Select>
+          </div>
 
-      {floorSections
-        .filter(section => floorFilter === 'All' || floorFilter === section)
-        .map(section => renderSectionTable(section))
-      }
+          {floorSections
+            .filter(section => floorFilter === 'All' || floorFilter === section)
+            .map(section => renderSectionTable(section))
+          }
 
-      <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-        <h6 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>Excel-like Features:</h6>
-        <ul style={{ marginBottom: 0, paddingLeft: '1.5rem' }}>
-          <li>Click any cell to edit</li>
-          <li>Use Tab/Enter to navigate between cells</li>
-          <li>Right-click for context menu (copy, paste, insert/remove rows)</li>
-          <li>Drag row numbers to reorder</li>
-          <li>Copy/paste from Excel works!</li>
-          <li>Use Ctrl+Z / Ctrl+Y for undo/redo</li>
-        </ul>
-      </div>
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+            <h6 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>Excel-like Features:</h6>
+            <ul style={{ marginBottom: 0, paddingLeft: '1.5rem' }}>
+              <li>Click any cell to edit</li>
+              <li>Use Tab/Enter to navigate between cells</li>
+              <li>Right-click for context menu (copy, paste, insert/remove rows)</li>
+              <li>Drag row numbers to reorder</li>
+              <li>Copy/paste from Excel works!</li>
+              <li>Use Ctrl+Z / Ctrl+Y for undo/redo</li>
+            </ul>
+          </div>
+        </Tab>
+
+        <Tab eventKey="indirect" title="Indirect Expense">
+          <div style={{ marginBottom: '2rem' }}>
+            <div 
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                padding: '0.75rem 1rem',
+                fontWeight: 600,
+                fontSize: '1.1rem',
+                borderRadius: '4px 4px 0 0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span>Indirect Expense Allocation ({indirectExpenseData.length} items)</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button 
+                  size="sm" 
+                  variant="light"
+                  onClick={handleAddIndirectExpenseRow}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  <FaPlus /> Add Row
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="success"
+                  onClick={handleSaveIndirectExpense}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  <FaSave /> Save
+                </Button>
+              </div>
+            </div>
+            
+            <div style={{ border: '1px solid #ddd', borderTop: 'none' }}>
+              <HotTable
+                ref={hotTableRefs.IndirectExpense}
+                data={indirectExpenseData}
+                columns={[
+                  {
+                    data: 'expenseHead',
+                    title: 'Expense Head',
+                    width: 250,
+                    type: 'text'
+                  },
+                  {
+                    data: 'Foundation',
+                    title: 'Foundation (%)',
+                    width: 150,
+                    type: 'numeric',
+                    numericFormat: {
+                      pattern: '0.00'
+                    }
+                  },
+                  {
+                    data: 'Basement',
+                    title: 'Basement (%)',
+                    width: 150,
+                    type: 'numeric',
+                    numericFormat: {
+                      pattern: '0.00'
+                    }
+                  },
+                  {
+                    data: 'Floors',
+                    title: 'Floors (%)',
+                    width: 150,
+                    type: 'numeric',
+                    numericFormat: {
+                      pattern: '0.00'
+                    }
+                  }
+                ]}
+                colHeaders={true}
+                rowHeaders={true}
+                width="100%"
+                height="auto"
+                licenseKey="non-commercial-and-evaluation"
+                stretchH="all"
+                contextMenu={['row_above', 'row_below', 'remove_row', 'undo', 'redo', 'copy', 'cut']}
+                manualRowMove={true}
+                manualColumnMove={false}
+                manualColumnResize={true}
+                manualRowResize={true}
+                selectionMode="multiple"
+                outsideClickDeselects={false}
+              />
+            </div>
+
+            <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+              <h6 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>Instructions:</h6>
+              <ul style={{ marginBottom: 0, paddingLeft: '1.5rem' }}>
+                <li>Enter expense head names in the first column</li>
+                <li>Enter percentage allocation for each floor (Foundation, Basement, Floors)</li>
+                <li>Use Tab/Enter to navigate between cells</li>
+                <li>Right-click for context menu to add/remove rows</li>
+                <li>Click Save to store the data</li>
+              </ul>
+            </div>
+          </div>
+        </Tab>
+      </Tabs>
     </Container>
   );
 };

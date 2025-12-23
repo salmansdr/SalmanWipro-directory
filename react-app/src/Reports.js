@@ -105,22 +105,24 @@ const pdfStyles = StyleSheet.create({
     padding: 6,
     fontSize: 9,
   },
-  col1: { width: '25%', paddingRight: 5 },
-  col2: { width: '15%', textAlign: 'right', paddingRight: 5 },
-  col3: { width: '15%', textAlign: 'right', paddingRight: 5 },
-  col4: { width: '15%', textAlign: 'right', paddingRight: 5 },
-  col5: { width: '15%', textAlign: 'right', paddingRight: 5 },
-  col6: { width: '15%', textAlign: 'right' },
-  // Floor-wise columns (9 columns)
-  colF1: { width: '15%', paddingRight: 3 },
-  colF2: { width: '12%', paddingRight: 3 },
-  colF3: { width: '8%', textAlign: 'right', paddingRight: 3 },
-  colF4: { width: '7%', textAlign: 'center', paddingRight: 3 },
-  colF5: { width: '12%', textAlign: 'right', paddingRight: 3 },
-  colF6: { width: '12%', textAlign: 'right', paddingRight: 3 },
-  colF7: { width: '12%', textAlign: 'right', paddingRight: 3 },
+  col1: { width: '20%', paddingRight: 5 },
+  col2: { width: '13%', textAlign: 'right', paddingRight: 5 },
+  col3: { width: '13%', textAlign: 'right', paddingRight: 5 },
+  col4: { width: '13%', textAlign: 'right', paddingRight: 5 },
+  col5: { width: '13%', textAlign: 'right', paddingRight: 5 },
+  col6: { width: '13%', textAlign: 'right', paddingRight: 5 },
+  col7: { width: '15%', textAlign: 'right' },
+  // Floor-wise columns (10 columns)
+  colF1: { width: '12%', paddingRight: 3 },
+  colF2: { width: '10%', paddingRight: 3 },
+  colF3: { width: '7%', textAlign: 'right', paddingRight: 3 },
+  colF4: { width: '6%', textAlign: 'center', paddingRight: 3 },
+  colF5: { width: '11%', textAlign: 'right', paddingRight: 3 },
+  colF6: { width: '11%', textAlign: 'right', paddingRight: 3 },
+  colF7: { width: '11%', textAlign: 'right', paddingRight: 3 },
   colF8: { width: '11%', textAlign: 'right', paddingRight: 3 },
-  colF9: { width: '11%', textAlign: 'right' },
+  colF9: { width: '11%', textAlign: 'right', paddingRight: 3 },
+  colF10: { width: '10%', textAlign: 'right' },
   pageNumber: {
     position: 'absolute',
     fontSize: 8,
@@ -229,9 +231,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
             <Text style={pdfStyles.col1}>Name of Item</Text>
             <Text style={pdfStyles.col2}>Material Cost</Text>
             <Text style={pdfStyles.col3}>Labour Cost</Text>
-            <Text style={pdfStyles.col4}>Total Cost</Text>
-            <Text style={pdfStyles.col5}>Cost/Sqft</Text>
-            <Text style={pdfStyles.col6}>Percentile</Text>
+            <Text style={pdfStyles.col4}>Other Expenses</Text>
+            <Text style={pdfStyles.col5}>Total Cost</Text>
+            <Text style={pdfStyles.col6}>Cost/Sqft</Text>
+            <Text style={pdfStyles.col7}>Percentile</Text>
           </View>
           {validCategoryData.map((row, index) => {
             if (row.isGrandTotal) {
@@ -240,9 +243,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                   <Text style={pdfStyles.col1}>Grand Total</Text>
                   <Text style={pdfStyles.col2}>{row.materialCost?.toFixed(2) || '0.00'}</Text>
                   <Text style={pdfStyles.col3}>{row.labourCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.col4}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.col5}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
-                  <Text style={pdfStyles.col6}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
+                  <Text style={pdfStyles.col4}>{row.otherExpense?.toFixed(2) || '0.00'}</Text>
+                  <Text style={pdfStyles.col5}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
+                  <Text style={pdfStyles.col6}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
+                  <Text style={pdfStyles.col7}>{Math.round(row.percentileCost || 0)}%</Text>
                 </View>
               );
             }
@@ -251,9 +255,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                 <Text style={pdfStyles.col1}>{row.category}</Text>
                 <Text style={pdfStyles.col2}>{row.materialCost?.toFixed(2) || '0.00'}</Text>
                 <Text style={pdfStyles.col3}>{row.labourCost?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.col4}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.col5}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.col6}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
+                <Text style={pdfStyles.col4}>{row.otherExpense?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.col5}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.col6}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.col7}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
               </View>
             );
           })}
@@ -277,9 +282,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
             <Text style={pdfStyles.colF4}>Unit</Text>
             <Text style={pdfStyles.colF5}>Material Cost</Text>
             <Text style={pdfStyles.colF6}>Labour Cost</Text>
-            <Text style={pdfStyles.colF7}>Total Cost</Text>
-            <Text style={pdfStyles.colF8}>Cost/Sqft</Text>
-            <Text style={pdfStyles.colF9}>Percentile</Text>
+            <Text style={pdfStyles.colF7}>Other Expenses</Text>
+            <Text style={pdfStyles.colF8}>Total Cost</Text>
+            <Text style={pdfStyles.colF9}>Cost/Sqft</Text>
+            <Text style={pdfStyles.colF10}>Percentile</Text>
           </View>
           {validFloorData.map((row, index) => {
             if (row.isGroupHeader) {
@@ -298,9 +304,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                   <Text style={pdfStyles.colF4}></Text>
                   <Text style={pdfStyles.colF5}>{row.materialCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
                   <Text style={pdfStyles.colF6}>{row.labourCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF7}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF9}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
+                  <Text style={pdfStyles.colF7}>{row.otherExpense?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF8}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF9}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF10}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
                 </View>
               );
             }
@@ -313,9 +320,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                   <Text style={pdfStyles.colF4}></Text>
                   <Text style={pdfStyles.colF5}>{row.materialCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
                   <Text style={pdfStyles.colF6}>{row.labourCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF7}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF8}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
-                  <Text style={pdfStyles.colF9}>{Math.round(row.percentileCost || 0)}%</Text>
+                  <Text style={pdfStyles.colF7}>{row.otherExpense?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF8}>{row.totalCost?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF9}>{row.costPerSft?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</Text>
+                  <Text style={pdfStyles.colF10}>{Math.round(row.percentileCost || 0)}%</Text>
                 </View>
               );
             }
@@ -327,9 +335,10 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
                 <Text style={pdfStyles.colF4}>{row.unit || ''}</Text>
                 <Text style={pdfStyles.colF5}>{row.materialCost?.toFixed(2) || '0.00'}</Text>
                 <Text style={pdfStyles.colF6}>{row.labourCost?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.colF7}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.colF8}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
-                <Text style={pdfStyles.colF9}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
+                <Text style={pdfStyles.colF7}>{row.otherExpense?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.colF8}>{row.totalCost?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.colF9}>{row.costPerSft?.toFixed(2) || '0.00'}</Text>
+                <Text style={pdfStyles.colF10}>{row.percentileCost?.toFixed(2) || '0.00'}%</Text>
               </View>
             );
           })}
@@ -595,6 +604,7 @@ function Reports() {
       let floorSubtotal = {
         materialCost: 0,
         labourCost: 0,
+        otherExpense: 0,
         totalCost: 0,
         costPerSft: 0,
         percentileCost: 0
@@ -602,6 +612,7 @@ function Reports() {
       let grandTotal = {
         materialCost: 0,
         labourCost: 0,
+        otherExpense: 0,
         totalCost: 0,
         costPerSft: 0,
         percentileCost: 0
@@ -617,6 +628,7 @@ function Reports() {
             category: '',
             materialCost: floorSubtotal.materialCost,
             labourCost: floorSubtotal.labourCost,
+            otherExpense: floorSubtotal.otherExpense,
             totalCost: floorSubtotal.totalCost,
             costPerSft: floorSubtotal.costPerSft,
             percentileCost: floorSubtotal.percentileCost
@@ -625,6 +637,7 @@ function Reports() {
           floorSubtotal = {
             materialCost: 0,
             labourCost: 0,
+            otherExpense: 0,
             totalCost: 0,
             costPerSft: 0,
             percentileCost: 0
@@ -641,6 +654,7 @@ function Reports() {
             category: '',
             materialCost: null,
             labourCost: null,
+            otherExpense: null,
             totalCost: null,
             costPerSft: null,
             percentileCost: null
@@ -658,12 +672,14 @@ function Reports() {
         // Accumulate subtotal and grand total
         floorSubtotal.materialCost += item.materialCost || 0;
         floorSubtotal.labourCost += item.labourCost || 0;
+        floorSubtotal.otherExpense += item.otherExpense || 0;
         floorSubtotal.totalCost += item.totalCost || 0;
         floorSubtotal.costPerSft += item.costPerSft || 0;
         floorSubtotal.percentileCost += item.percentileCost || 0;
 
         grandTotal.materialCost += item.materialCost || 0;
         grandTotal.labourCost += item.labourCost || 0;
+        grandTotal.otherExpense += item.otherExpense || 0;
         grandTotal.totalCost += item.totalCost || 0;
         grandTotal.costPerSft += item.costPerSft || 0;
         grandTotal.percentileCost += item.percentileCost || 0;
@@ -678,6 +694,7 @@ function Reports() {
           category: '',
           materialCost: floorSubtotal.materialCost,
           labourCost: floorSubtotal.labourCost,
+          otherExpense: floorSubtotal.otherExpense,
           totalCost: floorSubtotal.totalCost,
           costPerSft: floorSubtotal.costPerSft,
           percentileCost: floorSubtotal.percentileCost
@@ -693,6 +710,7 @@ function Reports() {
           category: '',
           materialCost: grandTotal.materialCost,
           labourCost: grandTotal.labourCost,
+          otherExpense: grandTotal.otherExpense,
           totalCost: grandTotal.totalCost,
           costPerSft: grandTotal.costPerSft,
           percentileCost: grandTotal.percentileCost
@@ -715,6 +733,7 @@ function Reports() {
         category: 'Grand Total',
         materialCost: 0,
         labourCost: 0,
+        otherExpense: 0,
         totalCost: 0,
         costPerSft: 0,
         percentileCost: 0,
@@ -724,6 +743,7 @@ function Reports() {
       reportData.categoryWiseCosts.forEach(item => {
         grandTotal.materialCost += item.materialCost || 0;
         grandTotal.labourCost += item.labourCost || 0;
+        grandTotal.otherExpense += item.otherExpense || 0;
         grandTotal.totalCost += item.totalCost || 0;
         grandTotal.costPerSft += item.costPerSft || 0;
         grandTotal.percentileCost += item.percentileCost || 0;
@@ -948,29 +968,30 @@ function Reports() {
       // Project Info Row 1
       ['Project Name', reportData?.projectDetails?.projectName || 'N/A', '', '', '', ''],
       // Project Info Row 2
-      ['Project Address', reportData?.projectDetails?.location || 'N/A', '', '', '', ''],
+      ['Project Address', reportData?.projectDetails?.location || 'N/A', '', '', '', '', ''],
       // Project Info Row 3
-      ['Project Type', reportData?.projectDetails?.projectType || 'N/A', '', '', '', ''],
+      ['Project Type', reportData?.projectDetails?.projectType || 'N/A', '', '', '', '', ''],
       // Empty row
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
       // Section Header
-      ['PROJECT SUMMARY', '', '', '', '', ''],
+      ['PROJECT SUMMARY', '', '', '', '', '', ''],
       // Empty row
-      ['', '', '', '', '', ''],
+      ['', '', '', '', '', '', ''],
       // Table Headers
-      ['S.L No', 'Name of Item', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Total Cost (${currencySymbol})`, 'Percentile Cost (%)']
+      ['S.L No', 'Name of Item', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, 'Percentile Cost (%)']
     ];
     
     // Add category data rows with serial numbers
     categoryWiseData.forEach((row, index) => {
       if (row.isGrandTotal) {
-        categorySummaryData.push(['', 'Grand Total', row.materialCost || 0, row.labourCost || 0, row.totalCost || 0, row.percentileCost || 0]);
+        categorySummaryData.push(['', 'Grand Total', row.materialCost || 0, row.labourCost || 0, row.otherExpense || 0, row.totalCost || 0, Math.round(row.percentileCost || 0)]);
       } else {
         categorySummaryData.push([
           String(index + 1).padStart(2, '0'),
           row.category,
           row.materialCost || 0,
           row.labourCost || 0,
+          row.otherExpense || 0,
           row.totalCost || 0,
           row.percentileCost || 0
         ]);
@@ -979,20 +1000,20 @@ function Reports() {
     
     const ws2 = XLSX.utils.aoa_to_sheet(categorySummaryData);
     
-    ws2['!cols'] = [{ wch: 10 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+    ws2['!cols'] = [{ wch: 10 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
     
     // Merge cells and apply styling
     ws2['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Company name
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Address
-      { s: { r: 3, c: 1 }, e: { r: 3, c: 5 } }, // Project Name value
-      { s: { r: 4, c: 1 }, e: { r: 4, c: 5 } }, // Project Address value
-      { s: { r: 5, c: 1 }, e: { r: 5, c: 5 } }, // Project Type value
-      { s: { r: 7, c: 0 }, e: { r: 7, c: 5 } }  // PROJECT SUMMARY header
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // Company name
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // Address
+      { s: { r: 3, c: 1 }, e: { r: 3, c: 6 } }, // Project Name value
+      { s: { r: 4, c: 1 }, e: { r: 4, c: 6 } }, // Project Address value
+      { s: { r: 5, c: 1 }, e: { r: 5, c: 6 } }, // Project Type value
+      { s: { r: 7, c: 0 }, e: { r: 7, c: 6 } }  // PROJECT SUMMARY header
     ];
     
     // Company Name styling (Row 1)
-    ['A1', 'B1', 'C1', 'D1', 'E1', 'F1'].forEach(cell => {
+    ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1'].forEach(cell => {
       if (!ws2[cell]) ws2[cell] = {};
       ws2[cell].s = {
         font: { bold: true, sz: 14 },
@@ -1001,7 +1022,7 @@ function Reports() {
     });
     
     // Address styling (Row 2)
-    ['A2', 'B2', 'C2', 'D2', 'E2', 'F2'].forEach(cell => {
+    ['A2', 'B2', 'C2', 'D2', 'E2', 'F2', 'G2'].forEach(cell => {
       if (!ws2[cell]) ws2[cell] = {};
       ws2[cell].s = {
         font: { sz: 11 },
@@ -1024,8 +1045,8 @@ function Reports() {
       };
     });
     
-    // Project info values styling (Rows 4-6, Columns B-F)
-    ['B4', 'C4', 'D4', 'E4', 'F4', 'B5', 'C5', 'D5', 'E5', 'F5', 'B6', 'C6', 'D6', 'E6', 'F6'].forEach(cell => {
+    // Project info values styling (Rows 4-6, Columns B-G)
+    ['B4', 'C4', 'D4', 'E4', 'F4', 'G4', 'B5', 'C5', 'D5', 'E5', 'F5', 'G5', 'B6', 'C6', 'D6', 'E6', 'F6', 'G6'].forEach(cell => {
       if (!ws2[cell]) ws2[cell] = {};
       ws2[cell].s = {
         alignment: { horizontal: "left", vertical: "center" },
@@ -1039,7 +1060,7 @@ function Reports() {
     });
     
     // PROJECT SUMMARY header styling (Row 8)
-    ['A8', 'B8', 'C8', 'D8', 'E8', 'F8'].forEach(cell => {
+    ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8'].forEach(cell => {
       if (!ws2[cell]) ws2[cell] = {};
       ws2[cell].s = {
         font: { bold: true, sz: 12 },
@@ -1067,7 +1088,7 @@ function Reports() {
       }
     };
     
-    ['A10', 'B10', 'C10', 'D10', 'E10', 'F10'].forEach(cell => {
+    ['A10', 'B10', 'C10', 'D10', 'E10', 'F10', 'G10'].forEach(cell => {
       if (!ws2[cell]) ws2[cell] = {};
       ws2[cell].s = headerStyle;
     });
@@ -1090,7 +1111,7 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws2[cellRef]) ws2[cellRef] = {};
           ws2[cellRef].s = {
@@ -1112,7 +1133,7 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws2[cellRef]) ws2[cellRef] = {};
           ws2[cellRef].s = {
@@ -1129,27 +1150,27 @@ function Reports() {
     XLSX.utils.book_append_sheet(wb, ws2, 'Project Summary');
     
     // ===== SHEET 3: Floor-wise Details =====
-    const floorHeaders = ['Category','Component Name',  'Quantity', 'Unit', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)'];
+    const floorHeaders = ['Category','Component Name',  'Quantity', 'Unit', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)'];
     const floorData = [];
     
     floorWiseData.forEach((row, index) => {
       if (row.isGroupHeader) {
-        floorData.push([row.floorName, '', '', '', '', '', '', '', '']);
+        floorData.push([row.floorName, '', '', '', '', '', '', '', '', '']);
       } else if (row.isSubtotal) {
-        floorData.push(['Subtotal', '', '', '', row.materialCost || 0, row.labourCost || 0, row.totalCost || 0, row.costPerSft || 0, row.percentileCost || 0]);
+        floorData.push(['Subtotal', '', '', '', row.materialCost || 0, row.labourCost || 0, row.otherExpense || 0, row.totalCost || 0, row.costPerSft || 0, row.percentileCost || 0]);
       } else if (row.isGrandTotal) {
-        floorData.push(['Grand Total', '', '', '', row.materialCost || 0, row.labourCost || 0, row.totalCost || 0, row.costPerSft || 0, row.percentileCost || 0]);
+        floorData.push(['Grand Total', '', '', '', row.materialCost || 0, row.labourCost || 0, row.otherExpense || 0, row.totalCost || 0, row.costPerSft || 0, Math.round(row.percentileCost || 0)]);
       } else {
-        floorData.push([row.category,row.componentName,  row.totalQuantity || '', row.unit || '', row.materialCost || 0, row.labourCost || 0, row.totalCost || 0, row.costPerSft || 0, row.percentileCost || 0]);
+        floorData.push([row.category, row.componentName, row.totalQuantity || '', row.unit || '', row.materialCost || 0, row.labourCost || 0, row.otherExpense || 0, row.totalCost || 0, row.costPerSft || 0, row.percentileCost || 0]);
       }
     });
     
     const ws3 = XLSX.utils.aoa_to_sheet([floorHeaders, ...floorData]);
     
-    ws3['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+    ws3['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
     
     // Header row styling
-    ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'].forEach(cell => {
+    ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1', 'J1'].forEach(cell => {
       if (!ws3[cell]) ws3[cell] = {};
       ws3[cell].s = headerStyle;
     });
@@ -1174,13 +1195,13 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws3[cellRef]) ws3[cellRef] = { v: '' };
           ws3[cellRef].s = groupHeaderStyle;
         });
         
-        ws3['!merges'].push({ s: { r: rowNum - 1, c: 0 }, e: { r: rowNum - 1, c: 8 } });
+        ws3['!merges'].push({ s: { r: rowNum - 1, c: 0 }, e: { r: rowNum - 1, c: 9 } });
         
       } else if (row.isSubtotal) {
         const subtotalStyle = {
@@ -1195,7 +1216,7 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws3[cellRef]) ws3[cellRef] = {};
           ws3[cellRef].s = {
@@ -1220,14 +1241,14 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws3[cellRef]) ws3[cellRef] = {};
           ws3[cellRef].s = {
             ...grandTotalStyle,
             alignment: { horizontal: (col === 'A' || col === 'B' || col === 'C' || col === 'D') ? 'left' : 'right', vertical: 'center' }
           };
-          if (col === 'I' && ws3[cellRef].v != null) {
+          if (col === 'J' && ws3[cellRef].v != null) {
             // Round percentage in grandTotal row
             ws3[cellRef].v = Math.round(ws3[cellRef].v);
             ws3[cellRef].z = '0';
@@ -1247,7 +1268,7 @@ function Reports() {
           }
         };
         
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(col => {
           const cellRef = `${col}${rowNum}`;
           if (!ws3[cellRef]) ws3[cellRef] = {};
           ws3[cellRef].s = {
@@ -1662,7 +1683,7 @@ function Reports() {
                       <HotTable
                         ref={summaryTableRef}
                         data={categoryWiseData}
-                        colHeaders={['Category', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
+                        colHeaders={['Category', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
                         columns={[
                           { data: 'category', type: 'text', readOnly: true },
                           { 
@@ -1673,6 +1694,12 @@ function Reports() {
                           },
                           { 
                             data: 'labourCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'otherExpense', 
                             type: 'numeric', 
                             numericFormat: { pattern: '0,0.00' },
                             readOnly: true 
@@ -1720,7 +1747,13 @@ function Reports() {
                                 td.style.textAlign = 'left';
                               } else {
                                 // Format numeric values
-                                const formattedValue = value != null ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                                let formattedValue;
+                                if (col === 6) {
+                                  // Percentile Cost - round to whole number
+                                  formattedValue = value != null ? Math.round(value).toString() : '';
+                                } else {
+                                  formattedValue = value != null ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                                }
                                 td.innerHTML = formattedValue;
                                 td.style.textAlign = 'right';
                               }
@@ -1738,7 +1771,7 @@ function Reports() {
                       <HotTable
                         ref={floorWiseTableRef}
                         data={floorWiseData}
-                        colHeaders={['Component Name', 'Category', 'Quantity', 'Unit', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
+                        colHeaders={['Component Name', 'Category', 'Quantity', 'Unit', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
                         columns={[
                           { data: 'componentName', type: 'text', readOnly: true },
                           { data: 'category', type: 'text', readOnly: true },
@@ -1757,6 +1790,12 @@ function Reports() {
                           },
                           { 
                             data: 'labourCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'otherExpense', 
                             type: 'numeric', 
                             numericFormat: { pattern: '0,0.00' },
                             readOnly: true 
@@ -1860,7 +1899,13 @@ function Reports() {
                                 td.innerHTML = '';
                               } else {
                                 // Format numeric values
-                                const formattedValue = value != null ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                                let formattedValue;
+                                if (col === 9) {
+                                  // Percentile Cost - round to whole number
+                                  formattedValue = value != null ? Math.round(value).toString() : '';
+                                } else {
+                                  formattedValue = value != null ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                                }
                                 td.innerHTML = formattedValue;
                                 td.style.textAlign = 'right';
                               }
