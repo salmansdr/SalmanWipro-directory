@@ -73,16 +73,16 @@ const pdfStyles = StyleSheet.create({
   col5: { width: '15%', paddingRight: 4, textAlign: 'right' },
   // Material grid columns
   matCol1: { width: '18%', paddingRight: 3 },
-  matCol2: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol2: { width: '8%', paddingRight: 2, textAlign: 'right', fontSize: 7 },
   matCol3: { width: '7%', paddingRight: 3, textAlign: 'right' },
   matCol4: { width: '7%', paddingRight: 3, textAlign: 'right' },
   matCol5: { width: '7%', paddingRight: 3, textAlign: 'right' },
-  matCol6: { width: '7%', paddingRight: 3, textAlign: 'right' },
+  matCol6: { width: '8%', paddingRight: 2, textAlign: 'right', fontSize: 7 },
   matCol7: { width: '7%', paddingRight: 3, textAlign: 'right' },
-  matCol8: { width: '8%', paddingRight: 3, textAlign: 'right' },
+  matCol8: { width: '7%', paddingRight: 3, textAlign: 'right' },
   matCol9: { width: '10%', paddingRight: 5, textAlign: 'right' },
   matCol10: { width: '10%', paddingRight: 5, textAlign: 'right' },
-  matCol11: { width: '12%', paddingRight: 3, textAlign: 'right' },
+  matCol11: { width: '11%', paddingRight: 3, textAlign: 'right' },
   tableRowGroupHeader: {
     flexDirection: 'row',
     backgroundColor: '#4a5568',
@@ -211,7 +211,7 @@ const BOQPDFDocument = ({ floors, floorDataCache, materialDataCache, currency })
                   <View key={`mat-${index}`} style={rowStyle}>
                     <Text style={pdfStyles.matCol1}>{row.component || ''}</Text>
                     <Text style={pdfStyles.matCol2}>
-                      {isGroupHeader ? formatNum(row.volume) : ''}
+                      {isGroupHeader ? `${formatNum(row.volume)} ${row.unit || ''}` : ''}
                     </Text>
                     <Text style={pdfStyles.matCol3}>
                       {!isGroupHeader ? formatNum(row.consumptionRate) : ''}
@@ -223,7 +223,7 @@ const BOQPDFDocument = ({ floors, floorDataCache, materialDataCache, currency })
                       {!isGroupHeader ? formatNum(row.wastage) : ''}
                     </Text>
                     <Text style={pdfStyles.matCol6}>
-                      {!isGroupHeader ? formatNum(row.totalQty) : ''}
+                      {!isGroupHeader ? `${formatNum(row.totalQty)} ${row.uom || ''}` : ''}
                     </Text>
                     <Text style={pdfStyles.matCol7}>
                       {!isGroupHeader ? formatNum(row.materialRate) : ''}

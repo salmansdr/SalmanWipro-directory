@@ -3,6 +3,7 @@ import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGrou
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
+import Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
 import { PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
@@ -247,8 +248,8 @@ const PurchaseOrderPDF = ({ poData, currency }) => {
           <Text style={pdfStyles.sectionTitle}>Details of Products</Text>
           <View style={pdfStyles.tableHeader}>
             <Text style={pdfStyles.col1}>S/L</Text>
-            <Text style={pdfStyles.col2}>Item Name</Text>
-            <Text style={pdfStyles.col3}>Brand</Text>
+            <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? 'Work Scope' : 'Item Name'}</Text>
+            <Text style={pdfStyles.col3}>Description</Text>
             <Text style={pdfStyles.col4}>Quantity Unit</Text>
             <Text style={pdfStyles.col5}>Rate ({currency || 'INR'})</Text>
             <Text style={pdfStyles.col6}>Amount ({currency || 'INR'})</Text>
@@ -256,8 +257,8 @@ const PurchaseOrderPDF = ({ poData, currency }) => {
           {(poData.items || []).map((item, index) => (
             <View key={index} style={pdfStyles.tableRow}>
               <Text style={pdfStyles.col1}>{index + 1}</Text>
-              <Text style={pdfStyles.col2}>{item.itemName || ''}</Text>
-              <Text style={pdfStyles.col3}>{item.brand || ''}</Text>
+              <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? (item.workScope || '') : (item.itemName || '')}</Text>
+              <Text style={pdfStyles.col3}>{item.description || ''}</Text>
               <Text style={pdfStyles.col4}>{item.purchaseQty || 0} {item.unit || ''}</Text>
               <Text style={pdfStyles.col5}>{Number(item.rate || 0).toFixed(2)}</Text>
               <Text style={pdfStyles.col6}>{Number(item.amount || 0).toFixed(2)}</Text>
@@ -318,10 +319,7 @@ const PurchaseOrders = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [materialRequirements, setMaterialRequirements] = useState([]);
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [componentRequirements, setComponentRequirements] = useState([]);
   const [currency, setCurrency] = useState('');
   const [userName] = useState(localStorage.getItem('username') || '');
   const [userFullName] = useState(localStorage.getItem('fullName') || '');
@@ -344,6 +342,7 @@ const PurchaseOrders = () => {
     poNumber: '',
     poDate: '',
     purchaseType: 'project',
+    itemType: 'Material',
     supplierId: '',
     supplierName: '',
     supplierEmail: '',
@@ -376,18 +375,6 @@ const PurchaseOrders = () => {
       }
     }
   }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showCategoryDropdown && !event.target.closest('.category-dropdown-wrapper')) {
-        setShowCategoryDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showCategoryDropdown]);
 
   useEffect(() => {
     if (viewMode === 'list') {
@@ -432,7 +419,11 @@ const PurchaseOrders = () => {
       const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`);
       if (projectsResponse.ok) {
         const projectsData = await projectsResponse.json();
-        setProjects(Array.isArray(projectsData) ? projectsData : []);
+        // Filter out completed projects
+        const activeProjects = Array.isArray(projectsData) 
+          ? projectsData.filter(project => project.status !== 'Completed') 
+          : [];
+        setProjects(activeProjects);
       }
 
       // Load Users for approver dropdown
@@ -455,7 +446,7 @@ const PurchaseOrders = () => {
         setUnits(unitsArray);
       } else {
         // Fallback to default units
-        setUnits(['bag', 'cft', 'kg', 'pcs', 'litre', 'box', 'ft', 'sqft', 'meter', 'sq meter', 'running meter', 'nos', 'set', 'roll', 'sheet', 'cum']);
+        //setUnits(['bag', 'cft', 'kg', 'pcs', 'litre', 'box', 'ft', 'sqft', 'meter', 'sq meter', 'running meter', 'nos', 'set', 'roll', 'sheet', 'cum']);
       }
     } catch (error) {
       console.error('Error loading dropdown data:', error);
@@ -513,16 +504,20 @@ const PurchaseOrders = () => {
       ...prev,
       projectName: projectName,
       projectId: projectId,
-      deliveryLocation: prev.purchaseType === 'project' && selectedProject ? (selectedProject.location || '') : prev.deliveryLocation
+      deliveryLocation: prev.purchaseType === 'project' && selectedProject ? (selectedProject.location || '') : prev.deliveryLocation,
+      items: [] // Clear grid items when project changes
     }));
+
+    
 
     // Fetch material requirements if project is selected
     if (selectedProject && selectedProject._id) {
       await fetchMaterialRequirements(selectedProject._id);
     } else {
       setMaterialRequirements([]);
-      setAvailableCategories([]);
-      setSelectedCategories([]);
+      setComponentRequirements([]);
+      
+      
     }
   };
 
@@ -531,86 +526,67 @@ const PurchaseOrders = () => {
       const response = await fetch(`${apiBaseUrl}/api/ProjectEstimation/report-by-project/${projectId}`);
       if (response.ok) {
         const data = await response.json();
+        
+        // Handle Material Requirements
         if (data.materialRequirements && Array.isArray(data.materialRequirements) && data.materialRequirements.length > 0) {
           setMaterialRequirements(data.materialRequirements);
-          
-          // Extract distinct subcategories
-          const distinctCategories = [...new Set(
-            data.materialRequirements
-              .map(item => item.subCategory)
-              .filter(cat => cat) // Remove null/undefined
-          )].sort();
-          
-          setAvailableCategories(distinctCategories);
         } else {
-          // No material requirements found
           setMaterialRequirements([]);
-          setAvailableCategories([]);
-          setSelectedCategories([]);
+        }
+        
+        // Handle Component Requirements (for Service)
+        if (data.componentRequirements && Array.isArray(data.componentRequirements) && data.componentRequirements.length > 0) {
+          setComponentRequirements(data.componentRequirements);
+        } else {
+          setComponentRequirements([]);
         }
       } else {
         // API call failed or no data
         setMaterialRequirements([]);
-        setAvailableCategories([]);
-        setSelectedCategories([]);
+        setComponentRequirements([]);
       }
     } catch (error) {
       console.error('Error fetching material requirements:', error);
       setMaterialRequirements([]);
-      setAvailableCategories([]);
-      setSelectedCategories([]);
+      setComponentRequirements([]);
       setAlertMessage({ show: true, type: 'warning', message: 'Failed to load material requirements' });
     }
   };
 
-  const handleCategorySelection = (category) => {
-    const newSelected = selectedCategories.includes(category)
-      ? selectedCategories.filter(cat => cat !== category)
-      : [...selectedCategories, category];
-    
-    setSelectedCategories(newSelected);
-    
-    // Filter and populate items based on selected categories
-    if (newSelected.length > 0) {
-      const filteredItems = materialRequirements
-        .filter(item => newSelected.includes(item.subCategory))
-        .map(item => {
-          // Find the material item to get the _id
-          const materialItem = materialItems.find(mi => {
-            const itemData = mi.itemData || mi;
-            return itemData.material === item.materialName;
-          });
-          const itemData = materialItem?.itemData || materialItem;
-          
-          return {
-            itemCode: itemData?._id || itemData?.materialId || '',
-            unit: item.unit || '',
-            boqQty: item.totalQty || 0,
-            purchaseQty: item.totalQty || 0, // Default to BOQ quantity
-            rate: item.materialRate || '',
-            amount: item.materialRate && item.totalQty ? (item.totalQty * item.materialRate).toFixed(2) : ''
-          };
+  
+
+  
+
+ 
+
+  // Common function to get dropdown items based on purchase type, item type, and project selection
+  const getDropdownItems = () => {
+    // For general purchase type, show all materials
+    if (formData.purchaseType === 'general') {
+      if (formData.itemType === 'Service') {
+        return componentRequirements.map(item => item.componentName || '');
+      } else {
+        return materialItems.map(item => {
+          const itemData = item.itemData || item;
+          return itemData.material || '';
         });
-      
-      setFormData(prev => ({
-        ...prev,
-        items: filteredItems
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        items: []
-      }));
+      }
     }
+    
+    // For project purchase type, show only project-specific materials/services
+    if (formData.purchaseType === 'project' && formData.projectId) {
+      if (formData.itemType === 'Service') {
+        // Show only components from the selected project
+        return componentRequirements.map(item => item.componentName || '');
+      } else {
+        // Show only materials from the selected project's materialRequirements
+        return materialRequirements.map(item => item.materialName || '');
+      }
+    }
+    
+    // Default: return empty array for project type without project selected
+    return [];
   };
-
-  const toggleCategoryDropdown = () => {
-    setShowCategoryDropdown(!showCategoryDropdown);
-  };
-
-  const filteredCategories = availableCategories.filter(cat =>
-    cat.toLowerCase().includes(categoryFilter.toLowerCase())
-  );
 
   const handlePurchaseTypeChange = (e) => {
     const purchaseType = e.target.value;
@@ -619,10 +595,7 @@ const PurchaseOrders = () => {
       // If switching to general, clear project name and delivery location
       if (purchaseType === 'general') {
         setMaterialRequirements([]);
-        setAvailableCategories([]);
-        setSelectedCategories([]);
-        setCategoryFilter('');
-        setShowCategoryDropdown(false);
+        setComponentRequirements([]);
         return {
           ...prev,
           purchaseType: purchaseType,
@@ -638,6 +611,15 @@ const PurchaseOrders = () => {
         purchaseType: purchaseType
       };
     });
+  };
+
+  const handleItemTypeChange = async (e) => {
+    const itemType = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      itemType: itemType,
+      items: []
+    }));
   };
 
   // Common function to save purchase order with different status
@@ -743,6 +725,7 @@ const PurchaseOrders = () => {
       const submitData = {
         ...formData,
         status: status,
+        itemType: formData.itemType || 'Material', // Explicitly include itemType
         approverUserId: approverUserId,
         approverComments: approverCommentsArray,
         supplierName: undefined,    // Remove supplierName
@@ -758,7 +741,20 @@ const PurchaseOrders = () => {
             // Remove projectName
         // Remove itemName from each item
         items: formData.items?.map(item => {
-          // Find the material ID if itemCode contains the name
+          // For Service type, save workScope instead of itemCode
+          if (formData.itemType === 'Service') {
+            return {
+              workScope: item.itemCode || item.workScope,
+              description: item.description,
+              unit: item.unit,
+              boqQty: item.boqQty,
+              purchaseQty: item.purchaseQty,
+              rate: item.rate,
+              amount: item.amount
+            };
+          }
+          
+          // For Material type, find the material ID
           let materialId = item.itemId || item.itemCode;
           if (!item.itemId) {
             const materialItem = materialItems.find(mi => {
@@ -773,7 +769,7 @@ const PurchaseOrders = () => {
           
           return {
             itemCode: materialId,
-            brand: item.brand,
+            description: item.description,
             unit: item.unit,
             boqQty: item.boqQty,
             purchaseQty: item.purchaseQty,
@@ -986,6 +982,7 @@ const PurchaseOrders = () => {
       poNumber: '',
       poDate: '',
       purchaseType: 'project',
+      itemType: 'Material',
       supplierId: '',
       supplierName: '',
       supplierEmail: '',
@@ -1002,10 +999,6 @@ const PurchaseOrders = () => {
       items: []
     });
     setMaterialRequirements([]);
-    setAvailableCategories([]);
-    setSelectedCategories([]);
-    setCategoryFilter('');
-    setShowCategoryDropdown(false);
     setEditMode(false);
   };
 
@@ -1030,11 +1023,28 @@ const PurchaseOrders = () => {
     setViewMode('form');
   };
 
-  const handleViewPO = (po) => {
+  const handleViewPO = async (po) => {
+   
+    
+    // If PO has a project, fetch material/component requirements first
+    if (po.projectId) {
+      await fetchMaterialRequirements(po.projectId);
+    }
+    
     // Transform items: if itemCode is an ObjectId, convert to material name
     const transformedPO = {
       ...po,
+      itemType: po.itemType || 'Material',
       items: po.items?.map(item => {
+        // For Service type, use workScope field
+        if (po.itemType === 'Service' && item.workScope) {
+          return {
+            ...item,
+            itemCode: item.workScope,
+            workScope: item.workScope
+          };
+        }
+        
         // If itemName exists (from backend), use it for itemCode
         if (item.itemName) {
           return {
@@ -1084,14 +1094,34 @@ const PurchaseOrders = () => {
     setFormData(transformedPO);
     setEditMode(false);
     setIsViewMode(true);
+    
+    
+    
+    
+    
     setViewMode('form');
   };
 
-  const handleEditPO = (po) => {
+  const handleEditPO = async (po) => {
+    // If PO has a project, fetch material/component requirements first
+    if (po.projectId) {
+      await fetchMaterialRequirements(po.projectId);
+    }
+   
     // Transform items: if itemCode is an ObjectId, convert to material name
     const transformedPO = {
       ...po,
+      itemType: po.itemType || 'Material',
       items: po.items?.map(item => {
+        // For Service type, use workScope field
+        if (po.itemType === 'Service' && item.workScope) {
+          return {
+            ...item,
+            itemCode: item.workScope,
+            workScope: item.workScope
+          };
+        }
+        
         // If itemName exists (from backend), use it for itemCode
         if (item.itemName) {
           return {
@@ -1142,6 +1172,9 @@ const PurchaseOrders = () => {
     setEditMode(true);
     // Set view mode to true for ApprovalRequest status (read-only except approver section)
     setIsViewMode(po.status === 'ApprovalRequest');
+    
+    console.log('transformedPO.itemType:', transformedPO.itemType);
+    
     setViewMode('form');
   };
 
@@ -1242,7 +1275,9 @@ const PurchaseOrders = () => {
                   <th style={{ width: '12%' }}>Project Name</th>
                   <th style={{ width: '8%' }}>Delivery Date</th>
                   <th style={{ width: '10%' }}>Mode of Payment</th>
-                  <th style={{ width: '7%' }}>Status</th>
+                  <th style={{ width: '10%' }}>Item Type</th>
+                  <th style={{ width: '5%' }}>Status</th>
+
                   <th style={{ width: '10%' }}>Created By</th>
                   <th style={{ width: '10%' }}>Modified By</th>
                   <th style={{ width: '10%' }}>Actions</th>
@@ -1273,6 +1308,7 @@ const PurchaseOrders = () => {
                       <td>{po.projectName}</td>
                       <td>{po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString('en-GB') : ''}</td>
                       <td>{po.modeOfPayment}</td>
+                      <td>{po.itemType || 'Material'}</td>
                       <td>{getStatusBadge(po.status)}</td>
                       <td>{po.createdByUserName || '-'}</td>
                       <td>{po.modifiedByUserName || '-'}</td>
@@ -1472,7 +1508,7 @@ const PurchaseOrders = () => {
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Supplier & Project Information</h5>
               <Row>
-                <Col md={3}>
+                <Col md={2}>
                   <Form.Group className="mb-3">
                     <Form.Label>Purchase Type <span className="text-danger">*</span></Form.Label>
                     <Form.Select
@@ -1487,7 +1523,22 @@ const PurchaseOrders = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={3}>
+                <Col md={2}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Item Type <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                      name="itemType"
+                      value={formData.itemType}
+                      onChange={handleItemTypeChange}
+                      disabled={isViewMode}
+                      required
+                    >
+                      <option value="Material">Material</option>
+                      <option value="Service">Service</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={formData.purchaseType === 'project' ? 4 : 5}>
                   <Form.Group className="mb-3">
                     <Form.Label>Supplier Name <span className="text-danger">*</span></Form.Label>
                     <Form.Select
@@ -1527,7 +1578,9 @@ const PurchaseOrders = () => {
                     </Form.Group>
                   </Col>
                 )}
-                <Col md={formData.purchaseType === 'project' ? 3 : 6}>
+              </Row>
+              <Row>
+                <Col md={formData.purchaseType === 'project'  ? 6 : 12}>
                   <Form.Group className="mb-3">
                     <Form.Label>Delivery Location <span className="text-danger">*</span></Form.Label>
                     <Form.Control
@@ -1542,80 +1595,6 @@ const PurchaseOrders = () => {
                     />
                   </Form.Group>
                 </Col>
-                {formData.purchaseType === 'project' && availableCategories.length > 0 && (
-                  <Col md={12}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Material Categories</Form.Label>
-                      <div className="position-relative category-dropdown-wrapper" style={{ maxWidth: '400px' }}>
-                        <div 
-                          className="form-control d-flex justify-content-between align-items-center"
-                          onClick={!isViewMode ? toggleCategoryDropdown : undefined}
-                          style={{ 
-                            cursor: isViewMode ? 'not-allowed' : 'pointer',
-                            backgroundColor: isViewMode ? '#e9ecef' : 'white',
-                            paddingRight: '10px'
-                          }}
-                        >
-                          <span className={selectedCategories.length > 0 ? 'text-dark' : 'text-muted'}>
-                            {selectedCategories.length > 0 
-                              ? `${selectedCategories.length} category(ies) selected` 
-                              : 'Select categories...'}
-                          </span>
-                          <i className={`bi bi-chevron-${showCategoryDropdown ? 'up' : 'down'}`}></i>
-                        </div>
-                        
-                        {showCategoryDropdown && (
-                          <Card 
-                            className="position-absolute shadow-lg border" 
-                            style={{ 
-                              zIndex: 1000, 
-                              maxHeight: '300px', 
-                              overflowY: 'auto',
-                              marginTop: '2px',
-                              width: '100%'
-                            }}
-                          >
-                            <Card.Body className="p-2">
-                              <Form.Control
-                                type="text"
-                                placeholder="Search categories..."
-                                value={categoryFilter}
-                                onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="mb-2"
-                                autoFocus
-                              />
-                              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                {filteredCategories.length > 0 ? (
-                                  filteredCategories.map((category, index) => (
-                                    <Form.Check
-                                      key={index}
-                                      type="checkbox"
-                                      id={`category-${index}`}
-                                      label={category}
-                                      checked={selectedCategories.includes(category)}
-                                      onChange={() => handleCategorySelection(category)}
-                                      className="mb-2"
-                                    />
-                                  ))
-                                ) : (
-                                  <div className="text-muted text-center py-2">
-                                    No categories found
-                                  </div>
-                                )}
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        )}
-                      </div>
-                      <Form.Text className="text-muted">
-                        {selectedCategories.length > 0 
-                          ? `${materialRequirements.filter(item => selectedCategories.includes(item.subCategory)).length} items will be added to order`
-                          : 'Select one or more categories to populate order items'
-                        }
-                      </Form.Text>
-                    </Form.Group>
-                  </Col>
-                )}
               </Row>
             </div>
 
@@ -1623,21 +1602,41 @@ const PurchaseOrders = () => {
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Order Items</h5>
               <HotTable
+                key={`${formData.projectId}-${formData.itemType}`}
                 ref={hotTableRef}
                 data={[
-                  ...((formData.items && formData.items.length > 0) ? formData.items : [{
-                    itemCode: '',
-                    brand: '',
-                    unit: '',
-                    boqQty: 0,
-                    purchaseQty: 0,
-                    rate: '',
-                    amount: ''
-                  }]),
+                  ...((formData.items && formData.items.length > 0) ? formData.items : [
+                    {
+                      itemCode: '',
+                      description: '',
+                      unit: '',
+                      boqQty: 0,
+                      purchaseQty: 0,
+                      rate: '',
+                      amount: ''
+                    },
+                    {
+                      itemCode: '',
+                      description: '',
+                      unit: '',
+                      boqQty: 0,
+                      purchaseQty: 0,
+                      rate: '',
+                      amount: ''
+                    },
+                    {
+                      itemCode: '',
+                      description: '',
+                      unit: '',
+                      boqQty: 0,
+                      purchaseQty: 0,
+                      rate: '',
+                      amount: ''
+                    }
+                  ]),
                   {
                     itemCode: 'Total:',
                     description: '',
-                    brand: '',
                     unit: '',
                     boqQty: '',
                     purchaseQty: '',
@@ -1648,60 +1647,22 @@ const PurchaseOrders = () => {
                   }
                 ]}
                 colHeaders={isViewMode 
-                  ? ['Material', 'Brand', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
-                  : ['Material', 'Brand', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                  ? [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
+                  : [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                 }
                 columns={[
                   {
                     data: 'itemCode',
                     type: 'dropdown',
-                    source: materialItems.map(item => {
-                      const itemData = item.itemData || item;
-                      return itemData.material || '';
-                    }),
-                    strict: false,
-                    filter: false,
-                    width: 200,
-                    renderer: (instance, td, row, col, prop, value, cellProperties) => {
-                      const rowData = instance.getSourceDataAtRow(row);
-                      
-                      // If itemName exists (data from backend), use it
-                      if (rowData && rowData.itemName) {
-                        td.innerHTML = rowData.itemName;
-                        return td;
-                      }
-                      
-                      // If value is already a material name (from dropdown selection), show it
-                      const materialItem = materialItems.find(item => {
-                        const itemData = item.itemData || item;
-                        return itemData.material === value;
-                      });
-                      
-                      if (materialItem) {
-                        td.innerHTML = value;
-                        return td;
-                      }
-                      
-                      // If value is an ID, lookup the material name
-                      const itemById = materialItems.find(item => {
-                        const itemData = item.itemData || item;
-                        return (itemData._id || itemData.materialId) === value;
-                      });
-                      
-                      if (itemById) {
-                        const itemData = itemById.itemData || itemById;
-                        td.innerHTML = itemData.material || '';
-                      } else {
-                        td.innerHTML = value || '';
-                      }
-                      
-                      return td;
-                    }
+                    source: getDropdownItems(),
+                    strict: true,
+                    allowInvalid: false,
+                    width: 200
                   },
                   {
-                    data: 'brand',
+                    data: 'description',
                     type: 'text',
-                    width: 120
+                    width: 250
                   },
                   {
                     data: 'unit',
@@ -1742,7 +1703,29 @@ const PurchaseOrders = () => {
                       pattern: '0,0.00'
                     },
                     width: 120,
-                    readOnly: true
+                    readOnly: true,
+                    renderer: function(instance, td, row, col, prop, value, cellProperties) {
+                      const rowData = instance.getSourceDataAtRow(row);
+                      
+                      // If this is the total row, handle specially
+                      if (rowData && rowData.isTotalRow) {
+                        Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                        return td;
+                      }
+                      
+                      // For regular rows, only show amount if there's actual data
+                      if (!value || value === 0 || value === '' || value === '0') {
+                        // Check if the row has any data
+                        if (rowData && (!rowData.itemCode || rowData.itemCode === '')) {
+                          td.innerHTML = '';
+                          td.className = 'htRight htMiddle';
+                          return td;
+                        }
+                      }
+                      
+                      Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                      return td;
+                    }
                   },
                   ...(!isViewMode ? [{
                     data: 'action',
@@ -1769,7 +1752,7 @@ const PurchaseOrders = () => {
                         const currentData = instance.getSourceData();
                         const newItems = currentData.filter(item => !item.isTotalRow).map(item => ({
                           itemCode: item.itemCode || '',
-                          brand: item.brand || '',
+                          description: item.description || '',
                           unit: item.unit || '',
                           boqQty: item.boqQty || 0,
                           purchaseQty: item.purchaseQty || 0,
@@ -1781,7 +1764,7 @@ const PurchaseOrders = () => {
                         // Insert new blank row after current row
                         newItems.splice(row + 1, 0, {
                           itemCode: '',
-                          brand: '',
+                          description: '',
                           unit: '',
                           boqQty: 0,
                           purchaseQty: 0,
@@ -1804,7 +1787,7 @@ const PurchaseOrders = () => {
                             index !== row && !item.isTotalRow
                           ).map(item => ({
                             itemCode: item.itemCode || '',
-                            brand: item.brand || '',
+                            description: item.description || '',
                             unit: item.unit || '',
                             boqQty: item.boqQty || 0,
                             purchaseQty: item.purchaseQty || 0,
@@ -1865,7 +1848,7 @@ const PurchaseOrders = () => {
                 afterRenderer={(td, row, col, prop, value, cellProperties) => {
                   const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
                     itemCode: '',
-                    brand: '',
+                    description: '',
                     unit: '',
                     boqQty: 0,
                     purchaseQty: 0,
@@ -1897,16 +1880,36 @@ const PurchaseOrders = () => {
                   if (!changes || source === 'loadData') return;
 
                   changes.forEach(([row, prop, oldValue, newValue]) => {
-                    // Get current items or initialize with empty array
-                    const currentItems = formData.items.length > 0 ? formData.items : [{
-                      itemCode: '',
-                      brand: '',
-                      unit: '',
-                      boqQty: 0,
-                      purchaseQty: 0,
-                      rate: '',
-                      amount: ''
-                    }];
+                    // Get current items or initialize with 3 empty rows
+                    const currentItems = formData.items.length > 0 ? formData.items : [
+                      {
+                        itemCode: '',
+                        description: '',
+                        unit: '',
+                        boqQty: 0,
+                        purchaseQty: 0,
+                        rate: '',
+                        amount: ''
+                      },
+                      {
+                        itemCode: '',
+                        description: '',
+                        unit: '',
+                        boqQty: 0,
+                        purchaseQty: 0,
+                        rate: '',
+                        amount: ''
+                      },
+                      {
+                        itemCode: '',
+                        description: '',
+                        unit: '',
+                        boqQty: 0,
+                        purchaseQty: 0,
+                        rate: '',
+                        amount: ''
+                      }
+                    ];
                     
                     // Skip if this is the total row
                     if (row >= currentItems.length) return;
@@ -1917,7 +1920,7 @@ const PurchaseOrders = () => {
                     if (!newItems[row]) {
                       newItems[row] = {
                         itemCode: '',
-                        brand: '',
+                        description: '',
                         unit: '',
                         boqQty: 0,
                         purchaseQty: 0,
@@ -1927,26 +1930,81 @@ const PurchaseOrders = () => {
                     }
 
                     // Handle item code selection
-                    if (prop === 'itemCode' && newValue) {
-                      const selectedItem = materialItems.find(item => {
-                        const itemData = item.itemData || item;
-                        return itemData.material === newValue;
-                      });
-                      
-                      if (selectedItem) {
-                        const itemData = selectedItem.itemData || selectedItem;
+                    if (prop === 'itemCode') {
+                      if (!newValue || newValue === '') {
+                        // If itemCode is cleared/empty, clear the entire row
                         newItems[row] = {
-                          ...newItems[row],
-                          itemCode: itemData.material || '',  // Store material name for display
-                          itemId: itemData._id || itemData.materialId || '',  // Store ID separately
-                          materialName: itemData.material || '',
-                          brand: itemData.default_brand || '',
-                          unit: itemData.unit || '',
-                          rate: itemData.defaultRate || 0,
-                          boqQty: newItems[row].boqQty || 0,
-                          purchaseQty: newItems[row].purchaseQty || newItems[row].boqQty || 1,
-                          amount: (newItems[row].purchaseQty || newItems[row].boqQty || 1) * (itemData.defaultRate || 0)
+                          itemCode: '',
+                          description: '',
+                          unit: '',
+                          boqQty: 0,
+                          purchaseQty: 0,
+                          rate: '',
+                          amount: ''
                         };
+                      } else if (formData.itemType === 'Service') {
+                        // Handle Service/Component selection
+                        const selectedComponent = componentRequirements.find(item => 
+                          item.componentName === newValue
+                        );
+                        
+                        if (selectedComponent) {
+                          newItems[row] = {
+                            ...newItems[row],
+                            itemCode: selectedComponent.componentName || '',
+                            description: selectedComponent.componentName || '',
+                            unit: selectedComponent.unit || '',
+                            boqQty: selectedComponent.totalVolume || 0,
+                            purchaseQty: selectedComponent.totalVolume || 0,
+                            rate: newItems[row].rate || 0,
+                            amount: (selectedComponent.totalVolume || 0) * (newItems[row].rate || 0)
+                          };
+                        }
+                      } else {
+                        // Handle Material selection
+                        if (formData.purchaseType === 'project') {
+                          // For project purchases, use materialRequirements
+                          const selectedMaterial = materialRequirements.find(item => 
+                            item.materialName === newValue
+                          );
+                          
+                          if (selectedMaterial) {
+                            newItems[row] = {
+                              ...newItems[row],
+                              itemCode: selectedMaterial.materialName || '',
+                              itemId: selectedMaterial.materialId || '',
+                              materialName: selectedMaterial.materialName || '',
+                              description: selectedMaterial.materialName || '',
+                              unit: selectedMaterial.unit || '',
+                              rate: selectedMaterial.materialRate || 0,
+                              boqQty: selectedMaterial.totalQty || 0,
+                              purchaseQty: 0,
+                              amount: 0
+                            };
+                          }
+                        } else {
+                          // For general purchases, use materialItems
+                          const selectedItem = materialItems.find(item => {
+                            const itemData = item.itemData || item;
+                            return itemData.material === newValue;
+                          });
+                          
+                          if (selectedItem) {
+                            const itemData = selectedItem.itemData || selectedItem;
+                            newItems[row] = {
+                              ...newItems[row],
+                              itemCode: itemData.material || '',
+                              itemId: itemData._id || itemData.materialId || '',
+                              materialName: itemData.material || '',
+                              description: itemData.default_brand || '',
+                              unit: itemData.unit || '',
+                              rate: itemData.defaultRate || 0,
+                              boqQty: 0,
+                              purchaseQty: 0,
+                              amount: 0
+                            };
+                          }
+                        }
                       }
                     }
 

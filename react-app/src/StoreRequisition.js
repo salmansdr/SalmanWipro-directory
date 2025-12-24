@@ -69,6 +69,99 @@ const StoreRequisition = () => {
     }));
   };
 
+  const handleAddItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, {
+        itemCode: '',
+        itemDescription: '',
+        unit: '',
+        requestedQty: 0,
+        availableStock: 0,
+        approvedQty: 0
+      }]
+    }));
+  };
+
+  const handleRemoveItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const handleKeyDown = (e, rowIndex, colIndex) => {
+    const totalCols = 6; // itemCode, itemDescription, unit, requestedQty, availableStock, approvedQty
+    const totalRows = formData.items.length;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Move backward
+        if (colIndex > 0) {
+          focusCell(rowIndex, colIndex - 1);
+        } else if (rowIndex > 0) {
+          focusCell(rowIndex - 1, totalCols - 1);
+        }
+      } else {
+        // Move forward
+        if (colIndex < totalCols - 1) {
+          focusCell(rowIndex, colIndex + 1);
+        } else if (rowIndex < totalRows - 1) {
+          focusCell(rowIndex + 1, 0);
+        }
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (rowIndex < totalRows - 1) {
+        focusCell(rowIndex + 1, colIndex);
+      } else {
+        // Add new row on Enter in last row
+        handleAddItem();
+        setTimeout(() => focusCell(rowIndex + 1, 0), 100);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (rowIndex < totalRows - 1) {
+        focusCell(rowIndex + 1, colIndex);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (rowIndex > 0) {
+        focusCell(rowIndex - 1, colIndex);
+      }
+    } else if (e.key === 'ArrowLeft' && e.target.selectionStart === 0) {
+      e.preventDefault();
+      if (colIndex > 0) {
+        focusCell(rowIndex, colIndex - 1);
+      }
+    } else if (e.key === 'ArrowRight' && e.target.selectionStart === e.target.value.length) {
+      e.preventDefault();
+      if (colIndex < totalCols - 1) {
+        focusCell(rowIndex, colIndex + 1);
+      }
+    }
+  };
+
+  const focusCell = (rowIndex, colIndex) => {
+    const input = document.querySelector(`input[data-row="${rowIndex}"][data-col="${colIndex}"], select[data-row="${rowIndex}"][data-col="${colIndex}"]`);
+    if (input) {
+      input.focus();
+      if (input.type !== 'select-one') {
+        input.select();
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -483,14 +576,118 @@ const StoreRequisition = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan="8" className="text-center text-muted py-4">
-                      Click "Add Item" button to add materials to this requisition
-                    </td>
-                  </tr>
+                  {formData.items.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center text-muted py-4">
+                        Click "Add Item" button to add materials to this requisition
+                      </td>
+                    </tr>
+                  ) : (
+                    formData.items.map((item, index) => (
+                      <tr key={index}>
+                        <td>{index + 1}</td>
+                        <td>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            value={item.itemCode}
+                            onChange={(e) => handleItemChange(index, 'itemCode', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 0)}
+                            data-row={index}
+                            data-col="0"
+                            placeholder="Item code"
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            value={item.itemDescription}
+                            onChange={(e) => handleItemChange(index, 'itemDescription', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 1)}
+                            data-row={index}
+                            data-col="1"
+                            placeholder="Item description"
+                          />
+                        </td>
+                        <td>
+                          <Form.Select
+                            size="sm"
+                            value={item.unit}
+                            onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 2)}
+                            data-row={index}
+                            data-col="2"
+                          >
+                            <option value="">Select</option>
+                            <option value="Nos">Nos</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Ton">Ton</option>
+                            <option value="Ltr">Ltr</option>
+                            <option value="Cum">Cum</option>
+                            <option value="Sqm">Sqm</option>
+                            <option value="Rft">Rft</option>
+                            <option value="Bag">Bag</option>
+                            <option value="Box">Box</option>
+                          </Form.Select>
+                        </td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            size="sm"
+                            value={item.requestedQty}
+                            onChange={(e) => handleItemChange(index, 'requestedQty', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 3)}
+                            data-row={index}
+                            data-col="3"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            size="sm"
+                            value={item.availableStock}
+                            onChange={(e) => handleItemChange(index, 'availableStock', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 4)}
+                            data-row={index}
+                            data-col="4"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            size="sm"
+                            value={item.approvedQty}
+                            onChange={(e) => handleItemChange(index, 'approvedQty', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, index, 5)}
+                            data-row={index}
+                            data-col="5"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                          />
+                        </td>
+                        <td>
+                          <Button 
+                            variant="danger" 
+                            size="sm"
+                            onClick={() => handleRemoveItem(index)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </Table>
-              <Button variant="outline-info" size="sm">
+              <Button variant="outline-info" size="sm" onClick={handleAddItem}>
                 <i className="bi bi-plus-circle me-2"></i>Add Item
               </Button>
             </div>

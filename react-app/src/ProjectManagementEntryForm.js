@@ -100,7 +100,7 @@ function ProjectManagement() {
       setSellingPrice(p.sellingPrice || '');
       setStartDate(p.startDate || '');
       setEndDate(p.endDate || '');
-      setStatus(p.status || 'Upcoming');
+      setStatus(p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1).toLowerCase() : 'Upcoming');
       
       // Populate stages from database
       if (p.stages && Array.isArray(p.stages)) {
