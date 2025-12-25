@@ -463,8 +463,8 @@ const boqFloorsList = React.useMemo(() => [
         throw new Error(errorMessage);
       }
       
-      const savedData = await response.json();
-      console.log('Project saved successfully:', savedData);
+      
+     
       
       // Show success message
       setAlertMessage({
@@ -764,7 +764,7 @@ const boqFloorsList = React.useMemo(() => [
       let response;
       if (existingRecordId) {
         // UPDATE existing record
-        console.log('Updating existing material record with ID:', existingRecordId);
+       // console.log('Updating existing material record with ID:', existingRecordId);
         response = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/${existingRecordId}`, {
           method: 'PUT',
           headers: {
@@ -774,7 +774,7 @@ const boqFloorsList = React.useMemo(() => [
         });
       } else {
         // CREATE new record
-        console.log('Creating new material record');
+       // console.log('Creating new material record');
         response = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour`, {
           method: 'POST',
           headers: {
@@ -789,8 +789,7 @@ const boqFloorsList = React.useMemo(() => [
         throw new Error(errorData.message || `Server error: ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log('Material data save successful:', result);
+      
 
     } catch (error) {
       console.error('Error saving material data:', error);
@@ -1126,9 +1125,20 @@ const boqFloorsList = React.useMemo(() => [
     const fetchProjects = async () => {
       try {
         const companyId = localStorage.getItem('selectedCompanyId');
-        const endpoint = companyId 
-          ? `${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`
-          : `${apiBaseUrl}/api/Projects/basic`;
+
+        // Use different endpoints based on mode
+        let endpoint;
+        if (mode === 'new') {
+          // For new mode, use basic-without-estimation endpoint
+          endpoint = companyId 
+            ? `${apiBaseUrl}/api/Projects/basic-without-estimation?companyId=${companyId}`
+            : `${apiBaseUrl}/api/Projects/basic-without-estimation`;
+        } else {
+          // For edit/view mode, use basic endpoint
+          endpoint = companyId 
+            ? `${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`
+            : `${apiBaseUrl}/api/Projects/basic`;
+        }
         
         const response = await fetch(endpoint);
         if (response.ok) {
@@ -1162,7 +1172,7 @@ const boqFloorsList = React.useMemo(() => [
       }
     };
     fetchProjects();
-  }, []);
+  }, [mode]);
 
   // --- Handler for Project Selection ---
   const handleProjectSelect = (e) => {
@@ -1189,8 +1199,7 @@ const boqFloorsList = React.useMemo(() => [
         setFloors(project.floors || project.numberOfFloors || 1);
         setBasementCount(project.basementCount || 0);
         setFlatsPerFloor(project.flatsPerFloor || project.flats_per_floor || '');
-        console.log('Project selected:', project);
-        console.log('Construction Area set to:', constructionArea);
+       
       }
     } else {
       // Clear fields if no project selected
@@ -1203,18 +1212,18 @@ const boqFloorsList = React.useMemo(() => [
   // --- Load Beam & Column Config from API ---
 useEffect(() => {
   const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-  console.log('Fetching beam-column config from:', `${apiUrl}/api/RoomConfiguration/beam-column-configurations`);
+ 
   fetch(`${apiUrl}/api/RoomConfiguration/beam-column-configurations`)
     .then(res => res.json())
     .then(data => {
-      console.log('Beam-column config received:', data);
+      
       // Extract configurations array from response
       const configArray = data.configurations || data;
       if (Array.isArray(configArray) && configArray.length > 0) {
         setBeamColumnConfig(configArray);
         // Initialize with Foundation floor data
         const foundationConfig = configArray.find(item => item.floor === 'Foundation');
-        console.log('Foundation config:', foundationConfig);
+        
         if (foundationConfig) {
           setBCFloorHeight(foundationConfig.floorHeight || 0);
           setBCBeamGridSpacing(foundationConfig.beam?.gridSpacing || 0);
@@ -1750,7 +1759,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
           }
         }
         
-        console.log('Modal originalRooms:', originalRooms);
+      
         const roomTypeMap = new Map();
         originalRooms.forEach(room => {
           let baseType;
@@ -1774,7 +1783,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             // Use room.name as the mapping key
             roomMapping.set(rooms[0].name, rooms[0]);
             // Debug log for mapping
-            console.log('[Mapping] Single:', rooms[0].name, JSON.stringify(rooms[0]));
+            
           } else {
             rooms.forEach((room, index) => {
               const displayName = `${baseType} ${index + 1}`;
@@ -1782,12 +1791,12 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
               // Use room.name as the mapping key
               roomMapping.set(room.name, room);
               // Debug log for mapping
-              console.log('[Mapping] Multi:', room.name, JSON.stringify(room));
+             
             });
           }
         });
         // Debug: Log dynamicColumns before setting
-        console.log('Modal dynamicColumns:', dynamicColumns);
+        
         setDynamicRoomColumns(dynamicColumns);
         // Only set default room details if not already present (preserve user edits)
         const key = `${floorIdx}-${idx}`;
@@ -1808,13 +1817,8 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             };
             roomMapping.forEach((roomData, displayName) => {
               // Debug: Show the displayName and full roomData for mapping
-              console.log('Mapping room:', displayName, JSON.stringify(roomData));
-              // Debug: Show Window object if present
-              if (roomData.Window || roomData.window) {
-                console.log('Window object for', displayName, roomData.Window || roomData.window);
-              } else {
-                console.log('No Window object for', displayName);
-              }
+             
+             
               // Support both 'Door'/'door' and 'Window'/'window' keys (case-insensitive)
               const doorObjRaw = roomData.Door || roomData.door;
               const windowObjRaw = roomData.Window || roomData.window;
@@ -1840,7 +1844,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             });
           }
           // Debug: Show the full roomDetails object after mapping Door fields
-          console.log('Modal roomDetails loaded from JSON:', roomDetails);
+         
           if (prev[key]) {
             return prev;
           }
@@ -3152,7 +3156,41 @@ useEffect(() => {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4} sm={12} className="mb-3">
+              <Col md={3} sm={12} className="mb-3">
+                <Form.Group>
+                  <Form.Label style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: '500', 
+                    color: '#495057', 
+                    marginBottom: '0.5rem',
+                    display: 'block'
+                  }}>
+                    Select Project
+                  </Form.Label>
+                  <Form.Select 
+                    value={selectedProject} 
+                    onChange={handleProjectSelect}
+                    disabled={isViewMode || hasMaterialData}
+                    style={{
+                      borderRadius: '6px',
+                      border: '1px solid #ced4da',
+                      padding: '0.75rem',
+                      fontSize: '0.9rem',
+                      height: '42px',
+                      backgroundColor: (isViewMode || hasMaterialData) ? '#f8f9fa' : '#fff',
+                      color: (isViewMode || hasMaterialData) ? '#6c757d' : '#495057'
+                    }}
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map(project => (
+                      <option key={project._id} value={project._id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6} sm={12} className="mb-3">
                 <Form.Group>
                   <Form.Label style={{ 
                     fontSize: '0.9rem', 
@@ -3183,98 +3221,11 @@ useEffect(() => {
                   />
                 </Form.Group>
               </Col>
-              <Col md={2} sm={6} className="mb-3">
-                <Form.Group>
-                  <Form.Label style={{ 
-                    fontSize: '0.9rem', 
-                    fontWeight: '500', 
-                    color: '#495057', 
-                    marginBottom: '0.5rem',
-                    display: 'block'
-                  }}>
-                    Create Date
-                  </Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    value={createDate} 
-                    readOnly
-                    style={{ 
-                      backgroundColor: '#f8f9fa', 
-                      color: '#6c757d',
-                      borderRadius: '6px',
-                      border: '1px solid #e9ecef',
-                      padding: '0.75rem',
-                      fontSize: '0.9rem',
-                      height: '42px'
-                    }}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <Form.Group>
-                  <Form.Label style={{ 
-                    fontSize: '0.9rem', 
-                    fontWeight: '500', 
-                    color: '#495057', 
-                    marginBottom: '0.5rem',
-                    display: 'block'
-                  }}>
-                    User Name
-                  </Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    value={userName} 
-                    readOnly
-                    style={{ 
-                      backgroundColor: '#f8f9fa', 
-                      color: '#6c757d',
-                      borderRadius: '6px',
-                      border: '1px solid #e9ecef',
-                      padding: '0.75rem',
-                      fontSize: '0.9rem',
-                      height: '42px'
-                    }}
-                  />
-                </Form.Group>
-              </Col>
+              
             </Row>
 
             <Form>
               <Row className="mb-4">
-                <Col md={3} sm={12} className="mb-3">
-                  <Form.Group>
-                    <Form.Label style={{ 
-                      fontSize: '0.9rem', 
-                      fontWeight: '500', 
-                      color: '#495057', 
-                      marginBottom: '0.5rem',
-                      display: 'block'
-                    }}>
-                      Select Project
-                    </Form.Label>
-                    <Form.Select 
-                      value={selectedProject} 
-                      onChange={handleProjectSelect}
-                      disabled={isViewMode || hasMaterialData}
-                      style={{
-                        borderRadius: '6px',
-                        border: '1px solid #ced4da',
-                        padding: '0.75rem',
-                        fontSize: '0.9rem',
-                        height: '42px',
-                        backgroundColor: (isViewMode || hasMaterialData) ? '#f8f9fa' : '#fff',
-                        color: (isViewMode || hasMaterialData) ? '#6c757d' : '#495057'
-                      }}
-                    >
-                      <option value="">Select Project</option>
-                      {projects.map(project => (
-                        <option key={project._id} value={project._id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
                 <Col md={3} sm={6} className="mb-3">
                   <Form.Group>
                     <Form.Label style={{

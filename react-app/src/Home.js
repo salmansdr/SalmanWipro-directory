@@ -94,12 +94,12 @@ function Home() {
       ? `${apiUrl}/api/Projects/all-data?companyId=${companyId}`
       : `${apiUrl}/api/Projects/all-data`;
     
-    console.log('Fetching projects from:', endpoint);
+    //console.log('Fetching projects from:', endpoint);
     
     fetch(endpoint)
       .then(res => res.json())
       .then(data => {
-        console.log('Raw API data:', data);
+        //console.log('Raw API data:', data);
         let processedData;
         
         // Check if API returns a flat array of projects

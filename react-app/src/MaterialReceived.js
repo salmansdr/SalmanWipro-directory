@@ -549,6 +549,8 @@ const MaterialReceived = () => {
   const [grns, setGrns] = useState([]);
   const [filteredGrns, setFilteredGrns] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [movementTypeFilter, setMovementTypeFilter] = useState('All');
+  const [supplierFilter, setSupplierFilter] = useState('All');
   const [editMode, setEditMode] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const [showMovementTypeModal, setShowMovementTypeModal] = useState(false);
@@ -704,19 +706,31 @@ const MaterialReceived = () => {
   }, [viewMode]);
 
   useEffect(() => {
-    // Filter GRNs based on search term
-    if (searchTerm.trim() === '') {
-      setFilteredGrns(grns);
-    } else {
-      const filtered = grns.filter(grn => 
+    // Filter GRNs based on search term and movement type filter
+    let filtered = grns;
+    
+    // Apply movement type filter
+    if (movementTypeFilter && movementTypeFilter !== 'All') {
+      filtered = filtered.filter(grn => grn.movementType === movementTypeFilter);
+    }
+    
+    // Apply supplier filter
+    if (supplierFilter && supplierFilter !== 'All') {
+      filtered = filtered.filter(grn => grn.supplierName === supplierFilter);
+    }
+    
+    // Apply search term filter
+    if (searchTerm.trim() !== '') {
+      filtered = filtered.filter(grn => 
         grn.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         grn.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredGrns(filtered);
     }
-  }, [searchTerm, grns]);
+    
+    setFilteredGrns(filtered);
+  }, [searchTerm, grns, movementTypeFilter, supplierFilter]);
 
   useEffect(() => {
     if (viewMode === 'form') {
@@ -1892,11 +1906,67 @@ const MaterialReceived = () => {
             <Table striped bordered hover responsive style={{ fontSize: '0.875rem' }}>
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: '8%' }}>Movement Type</th>
+                  <th style={{ width: '8%' }}>
+                    <div className="d-flex flex-column">
+                      <span>Movement Type</span>
+                      <div className="mt-1">
+                        <InputGroup size="sm">
+                          <Form.Select
+                            value={movementTypeFilter}
+                            onChange={(e) => setMovementTypeFilter(e.target.value)}
+                            style={{ fontSize: '0.8rem' }}
+                          >
+                            <option value="All">All</option>
+                            {movementTypes.map(type => (
+                              <option key={type.value} value={type.value}>{type.label}</option>
+                            ))}
+                          </Form.Select>
+                          {movementTypeFilter !== 'All' && (
+                            <Button 
+                              variant="outline-light" 
+                              size="sm"
+                              onClick={() => setMovementTypeFilter('All')}
+                              title="Clear filter"
+                            >
+                              <i className="fas fa-times"></i>
+                            </Button>
+                          )}
+                        </InputGroup>
+                      </div>
+                    </div>
+                  </th>
                   <th style={{ width: '15%' }}>Reference Number</th>
                   <th style={{ width: '9%' }}>Reference Date</th>
                   <th style={{ width: '12%' }}>PO Number</th>
-                  <th style={{ width: '12%' }}>Supplier Name</th>
+                  <th style={{ width: '12%' }}>
+                    <div className="d-flex flex-column">
+                      <span>Supplier Name</span>
+                      <div className="mt-1">
+                        <InputGroup size="sm">
+                          <Form.Select
+                            value={supplierFilter}
+                            onChange={(e) => setSupplierFilter(e.target.value)}
+                            style={{ fontSize: '0.8rem' }}
+                          >
+                            <option value="All">All</option>
+                            {Array.from(new Set(grns.map(grn => grn.supplierName).filter(Boolean))).sort().map(supplier => (
+                              <option key={supplier} value={supplier}>{supplier}</option>
+                            ))}
+                          </Form.Select>
+                          {supplierFilter !== 'All' && (
+                            <Button 
+                              variant="outline-light" 
+                              size="sm"
+                              onClick={() => setSupplierFilter('All')}
+                              title="Clear filter"
+                            >
+                              <i className="fas fa-times"></i>
+                            </Button>
+                          )}
+                        </InputGroup>
+                      </div>
+                    </div>
+                  </th>
                   <th style={{ width: '11%' }}>Invoice Number</th>
                   <th style={{ width: '9%' }}>Invoice Date</th>
                   

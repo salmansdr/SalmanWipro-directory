@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react';
 import { Container, Row, Col, Card, Form, Tabs, Tab, Button, Modal } from 'react-bootstrap';
-import 'handsontable/dist/handsontable.full.css';
+import 'handsontable/dist/handsontable.full.min.css';
 import * as XLSX from 'xlsx-js-style';
 import { registerAllModules } from 'handsontable/registry';
 import { PDFDownloadLink, PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
@@ -1679,7 +1679,7 @@ function Reports() {
               <Card.Body>
                 <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
                   <Tab eventKey="summary" title="Summary">
-                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }} className="handsontable-wrapper">
                       <HotTable
                         ref={summaryTableRef}
                         data={categoryWiseData}
@@ -1724,7 +1724,7 @@ function Reports() {
                             readOnly: true 
                           }
                         ]}
-                        rowHeaders={true}
+                        rowHeaders={false}
                         width="100%"
                         height={categoryWiseData.length * 40 + 50}
                         autoRowSize={false}
@@ -1732,6 +1732,7 @@ function Reports() {
                         licenseKey="non-commercial-and-evaluation"
                         stretchH="all"
                         className="htMiddle"
+                        rowHeights={30}
                         cells={(row, col) => {
                           const cellProperties = {};
                           
@@ -1767,7 +1768,7 @@ function Reports() {
                     </div>
                   </Tab>
                   <Tab eventKey="floorwise" title="Floor-wise">
-                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }} className="handsontable-wrapper">
                       <HotTable
                         ref={floorWiseTableRef}
                         data={floorWiseData}
@@ -1820,7 +1821,7 @@ function Reports() {
                             readOnly: true 
                           }
                         ]}
-                        rowHeaders={true}
+                        rowHeaders={false}
                         width="100%"
                         height={floorWiseData.length * 40 + 50}
                         autoRowSize={false}
@@ -1828,6 +1829,7 @@ function Reports() {
                         licenseKey="non-commercial-and-evaluation"
                         stretchH="all"
                         className="htMiddle"
+                        rowHeights={30}
                         filters={true}
                         dropdownMenu={true}
                         beforeOnCellMouseDown={(event, coords) => {
@@ -1919,7 +1921,7 @@ function Reports() {
                     </div>
                   </Tab>
                   <Tab eventKey="detailed" title="Detailed Material">
-                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }} className="handsontable-wrapper">
                       {Array.isArray(processedDetailedData) && processedDetailedData.length > 0 ? (
                         <HotTable
                           ref={detailedTableRef}
@@ -1968,7 +1970,7 @@ function Reports() {
                             },
                             { data: 'remarks', type: 'text', readOnly: true, width: 120 }
                           ]}
-                          rowHeaders={true}
+                          rowHeaders={false}
                           width="100%"
                           height={processedDetailedData.length * 40 + 50}
                           autoRowSize={false}
@@ -1976,6 +1978,7 @@ function Reports() {
                           licenseKey="non-commercial-and-evaluation"
                           stretchH="all"
                           className="htMiddle"
+                          rowHeights={30}
                           filters={true}
                           dropdownMenu={true}
                           beforeOnCellMouseDown={(event, coords) => {

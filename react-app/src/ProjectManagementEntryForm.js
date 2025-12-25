@@ -3,6 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Dropdown, DropdownButton, Alert, Modal } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { HotTable } from '@handsontable/react';
+import 'handsontable/dist/handsontable.full.min.css';
+
 
 
 const statusOptions = ['Upcoming', 'Running', 'Completed','Closed'];
@@ -47,6 +50,7 @@ function ProjectManagement() {
   const [showViewer, setShowViewer] = useState(false);
   const [viewerContent, setViewerContent] = useState({ type: '', data: '', name: '' });
   const [loading, setLoading] = useState(false);
+  const [availableStageNames, setAvailableStageNames] = useState([]);
 
   // Populate form fields - fetch from API if ID is provided
   useEffect(() => {
@@ -103,24 +107,31 @@ function ProjectManagement() {
       setStatus(p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1).toLowerCase() : 'Upcoming');
       
       // Populate stages from database
-      if (p.stages && Array.isArray(p.stages)) {
-        const updatedStages = stageNames.map(name => {
-          const dbStage = p.stages.find(s => typeof s === 'string' ? s === name : s.name === name);
-          if (dbStage) {
-            // If stage exists in DB
-            if (typeof dbStage === 'string') {
-              // Old format: just stage name means involvement=true
-              return { name, involvement: true, status: false };
-            } else {
-              // New format: object with involvement and status
-              return { 
-                name, 
-                involvement: dbStage.involvement || true, 
-                status: dbStage.status || false 
-              };
-            }
+      if (p.stages && Array.isArray(p.stages) && p.stages.length > 0) {
+        const updatedStages = p.stages.map(dbStage => {
+          if (typeof dbStage === 'string') {
+            // Old format: just stage name
+            return { 
+              name: dbStage, 
+              status: '',
+              planStartDate: '',
+              planEndDate: '',
+              actualStartDate: '',
+              actualEndDate: '',
+              remarks: ''
+            };
+          } else {
+            // New format: object with fields
+            return { 
+              name: dbStage.name || '', 
+              status: typeof dbStage.status === 'boolean' ? (dbStage.status ? 'Completed' : '') : (dbStage.status || ''),
+              planStartDate: dbStage.planStartDate || '',
+              planEndDate: dbStage.planEndDate || '',
+              actualStartDate: dbStage.actualStartDate || '',
+              actualEndDate: dbStage.actualEndDate || '',
+              remarks: dbStage.remarks || ''
+            };
           }
-          return { name, involvement: false, status: false };
         });
         setStages(updatedStages);
       }
@@ -164,8 +175,34 @@ function ProjectManagement() {
     loadProjectData();
   }, [location.state]);
 
+  // Fetch available project stages from API
+  useEffect(() => {
+    const fetchProjectStages = async () => {
+      try {
+        const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+       // const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+        const response = await fetch(`${apiBaseUrl}/api/Projects/stages`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0 && data[0].projectStages) {
+            const stagesList = data[0].projectStages.map(s => s.stageName);
+            setAvailableStageNames(stagesList);
+          } 
+        } 
+      } catch (error) {
+        console.error('Error fetching project stages:', error);
+        setAvailableStageNames(stageNames);
+      }
+    };
+    fetchProjectStages();
+  }, []);
+
   // Stages section state
-  const [stages, setStages] = useState(stageNames.map(name => ({ name, involvement: false, status: false })));
+  const [stages, setStages] = useState([
+    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
+    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
+    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' }
+  ]);
 
   // Documentation section state
   const [docs, setDocs] = useState(docNames.map(name => ({ name, file: null })));
@@ -193,8 +230,16 @@ function ProjectManagement() {
   }, []);
 
   // Handlers
-  const handleStageChange = (idx, field) => {
-    setStages(stages.map((s, i) => i === idx ? { ...s, [field]: !s[field] } : s));
+  const handleStageChange = (changes, source) => {
+    if (source === 'loadData' || !changes) return;
+    
+    const newStages = [...stages];
+    changes.forEach(([row, prop, oldValue, newValue]) => {
+      if (newStages[row]) {
+        newStages[row][prop] = newValue;
+      }
+    });
+    setStages(newStages);
   };
   const handleDocUpload = (idx, file) => {
     if (!file) return; // Ignore if no file selected (user cancelled)
@@ -289,11 +334,15 @@ function ProjectManagement() {
         endDate: endDate,
         status: status.toLowerCase(),
         stages: stages
-          .filter(s => s.involvement)
+          .filter(s => s.name) // Only save stages with a name
           .map(s => ({
             name: s.name,
-            involvement: s.involvement,
-            status: s.status
+            status: s.status,
+            planStartDate: s.planStartDate || '',
+            planEndDate: s.planEndDate || '',
+            actualStartDate: s.actualStartDate || '',
+            actualEndDate: s.actualEndDate || '',
+            remarks: s.remarks || ''
           })),
         projectdocuments: projectDocuments,
         amenities: [
@@ -395,18 +444,16 @@ function ProjectManagement() {
                   <Col md={4}><Form.Group><Form.Label>Land Area (Katha/Sq ft)</Form.Label><Form.Control value={landArea} onChange={e => setLandArea(e.target.value)} placeholder="e.g., 5 Katha / 3500 sq ft" /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Construction Area (Sq ft)</Form.Label><Form.Control type="number" value={constructionArea} onChange={e => setConstructionArea(e.target.value)} placeholder="Total construction area" /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Number of Floors</Form.Label><Form.Control type="number" min={1} value={floors} onChange={e => setFloors(Number(e.target.value))} required /></Form.Group></Col>
+                </Row>
+                <Row className="mb-3">
                   <Col md={4}><Form.Group><Form.Label>Flats per Floor</Form.Label><Form.Control type="number" min={1} value={flatsPerFloor} onChange={e => setFlatsPerFloor(Number(e.target.value))} required /></Form.Group></Col>
-                </Row>
-                <Row className="mb-3">
-                  {/* Project Image input removed since image state is not used */}
                   <Col md={4}><Form.Group><Form.Label>Basement Count</Form.Label><Form.Control type="number" min={0} value={basementCount} onChange={e => setBasementCount(Number(e.target.value))} /></Form.Group></Col>
-                  <Col md={8}><Form.Group><Form.Label>Selling Price Details</Form.Label><Form.Control as="textarea" rows={2} value={sellingPrice} onChange={e => setSellingPrice(e.target.value)} required /></Form.Group></Col>
+                  <Col md={4}><Form.Group><Form.Label>Project Start Date</Form.Label><Form.Control type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required /></Form.Group></Col>
                 </Row>
                 <Row className="mb-3">
-                  <Col md={6}><Form.Group><Form.Label>Project Start Date</Form.Label><Form.Control type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required /></Form.Group></Col>
-                  <Col md={6}><Form.Group><Form.Label>Estimate End Date</Form.Label><Form.Control type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required /></Form.Group></Col>
-                </Row>
-                <Row className="mb-3">
+                  <Col md={4}><Form.Group><Form.Label>Estimate End Date</Form.Label><Form.Control type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required /></Form.Group></Col>
+                  
+                  <Col md={4}><Form.Group><Form.Label>Selling Price Details</Form.Label><Form.Control type="text" value={sellingPrice} onChange={e => setSellingPrice(e.target.value)} placeholder="e.g., ₹1Cr - ₹1.5Cr" required /></Form.Group></Col>
                   <Col md={4}><Form.Group><Form.Label>Status</Form.Label><Form.Select value={status} onChange={e => setStatus(e.target.value)}>{statusOptions.map(opt => <option key={opt}>{opt}</option>)}</Form.Select></Form.Group></Col>
                 </Row>
               </Card.Body>
@@ -416,24 +463,112 @@ function ProjectManagement() {
             <Card className="mb-4">
               <Card.Header as="h5" className="bg-info text-white">Project Stages</Card.Header>
               <Card.Body>
-                <table className="table table-bordered table-sm">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Stage Name</th>
-                      <th>Involvement</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stages.map((stage, idx) => (
-                      <tr key={stage.name}>
-                        <td>{stage.name}</td>
-                        <td><Form.Check type="checkbox" checked={stage.involvement} onChange={() => handleStageChange(idx, 'involvement')} /></td>
-                        <td><Form.Check type="checkbox" checked={stage.status} onChange={() => handleStageChange(idx, 'status')} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div style={{ overflow: 'auto' }} className="handsontable-wrapper">
+                  <HotTable
+                    data={stages}
+                    colHeaders={['Stage Name', 'Status', 'Plan Start Date', 'Plan End Date', 'Actual Start Date', 'Actual End Date', 'Remarks', 'Action']}
+                    columns={[
+                      {
+                        data: 'name',
+                        type: 'dropdown',
+                        source: availableStageNames,
+                        width: 200
+                      },
+                      {
+                        data: 'status',
+                        type: 'dropdown',
+                        source: ['Planned', 'In Progress', 'Completed', 'Delayed'],
+                        width: 120
+                      },
+                      {
+                        data: 'planStartDate',
+                        type: 'date',
+                        dateFormat: 'YYYY-MM-DD',
+                        correctFormat: true,
+                        width: 130
+                      },
+                      {
+                        data: 'planEndDate',
+                        type: 'date',
+                        dateFormat: 'YYYY-MM-DD',
+                        correctFormat: true,
+                        width: 130
+                      },
+                      {
+                        data: 'actualStartDate',
+                        type: 'date',
+                        dateFormat: 'YYYY-MM-DD',
+                        correctFormat: true,
+                        width: 130
+                      },
+                      {
+                        data: 'actualEndDate',
+                        type: 'date',
+                        dateFormat: 'YYYY-MM-DD',
+                        correctFormat: true,
+                        width: 130
+                      },
+                      {
+                        data: 'remarks',
+                        type: 'text',
+                        width: 200
+                      },
+                      {
+                        data: 'action',
+                        readOnly: true,
+                        renderer: (instance, td, row, col, prop, value, cellProperties) => {
+                          td.innerHTML = '';
+                          td.style.textAlign = 'center';
+                          
+                          // Add row button
+                          const addBtn = document.createElement('button');
+                          addBtn.className = 'btn btn-success btn-sm me-1';
+                          addBtn.innerHTML = '<i class="bi bi-plus"></i>';
+                          addBtn.onclick = () => {
+                            const currentData = instance.getSourceData();
+                            const newStages = [...currentData];
+                            newStages.splice(row + 1, 0, {
+                              name: '',
+                              status: '',
+                              planStartDate: '',
+                              planEndDate: '',
+                              actualStartDate: '',
+                              actualEndDate: '',
+                              remarks: ''
+                            });
+                            setStages(newStages);
+                          };
+                          td.appendChild(addBtn);
+                          
+                          // Delete row button - only show if there's more than 1 row
+                          if (stages.length > 1) {
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'btn btn-danger btn-sm';
+                            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                            deleteBtn.onclick = () => {
+                              const currentData = instance.getSourceData();
+                              const newStages = currentData.filter((_, index) => index !== row);
+                              setStages(newStages);
+                            };
+                            td.appendChild(deleteBtn);
+                          }
+                          
+                          return td;
+                        },
+                        width: 100
+                      }
+                    ]}
+                    afterChange={handleStageChange}
+                    stretchH="all"
+                    width="100%"
+                    height="auto"
+                    licenseKey="non-commercial-and-evaluation"
+                    className="htCenter htMiddle"
+                    rowHeaders={true}
+                    rowHeights={30}
+                    colWidths={[200, 120, 130, 130, 130, 130, 200, 100]}
+                  />
+                </div>
               </Card.Body>
             </Card>
 

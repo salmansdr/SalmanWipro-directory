@@ -3974,13 +3974,14 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           {/* Header with Title and Toggle */}
           <div style={{ 
             display: 'flex', 
-            justifyContent: 'center', 
+            justifyContent: 'space-between', 
             alignItems: 'center', 
             marginBottom: '1rem', 
             paddingBottom: '0.5rem', 
             borderBottom: '1px solid #e0e0e0',
             flexShrink: 0,
-            position: 'relative'
+            flexWrap: 'wrap',
+            gap: '0.5rem'
           }}>
             <h5 style={{ fontWeight: 600, color: '#1976d2', margin: 0, fontSize: '1.18rem', letterSpacing: '0.5px' }}>
               Floor Component
@@ -3992,7 +3993,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 label="Expanded View"
                 checked={isExpandedView}
                 onChange={(e) => onToggleExpandedView(e.target.checked)}
-                style={{ fontSize: '14px', fontWeight: 500, position: 'absolute', right: 0 }}
+                style={{ fontSize: '14px', fontWeight: 500, margin: 0 }}
               />
             )}
           </div>
@@ -4888,9 +4889,13 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               return (
                                 <>
                                   {/* Summary Cards */}
-                                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                  <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                    gap: '1rem', 
+                                    marginBottom: '1.5rem' 
+                                  }}>
                                     <div style={{ 
-                                      flex: 1, 
                                       padding: '1rem', 
                                       backgroundColor: '#f0f9ff', 
                                       borderRadius: '8px',
@@ -4902,7 +4907,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                       </div>
                                     </div>
                                     <div style={{ 
-                                      flex: 1, 
                                       padding: '1rem', 
                                       backgroundColor: '#fef3c7', 
                                       borderRadius: '8px',
@@ -4914,7 +4918,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                       </div>
                                     </div>
                                     <div style={{ 
-                                      flex: 1, 
                                       padding: '1rem', 
                                       backgroundColor: '#dcfce7', 
                                       borderRadius: '8px',
@@ -4928,6 +4931,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   </div>
 
                                   {/* Indirect Expense Table */}
+                                  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                                   <HotTable
                                     ref={indirectExpenseTableRef}
                                     data={indirectExpenseData}
@@ -4944,6 +4948,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     contextMenu={false}
                                     afterChange={handleIndirectExpenseChange}
                                   />
+                                  </div>
                                 </>
                               );
                             })()}
