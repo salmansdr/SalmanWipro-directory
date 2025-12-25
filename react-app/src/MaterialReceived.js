@@ -1806,25 +1806,136 @@ const MaterialReceived = () => {
                           {filteredPOs.map((po) => (
                             <div
                               key={po._id}
-                              onClick={() => {
-                                const mappedItems = po.items.map(item => ({
-                                  itemCode: item.itemName || item.itemCode || '',
-                                  itemId: item.itemCode || '',
-                                  itemName: item.itemName || '',
-                                  unit: item.unit || '',
-                                  orderedQty: item.purchaseQty || 0,
-                                  receivedQty: 0,
-                                  rate: item.rate || 0,
-                                  amount: 0
-                                }));
-                                
-                                setPoItems(mappedItems); // Store PO items for dropdown
-                                setFormData(prev => ({
-                                  ...prev,
-                                  originalGrnPo: po.poNumber
-                                }));
-                                setPoSearchTerm(''); // Clear search to show all POs
-                                setShowPODropdown(false);
+                              onClick={async () => {
+                                try {
+                                  // Fetch material received records for this PO
+                                  const companyId = localStorage.getItem('selectedCompanyId');
+                                  const response = await fetch(`${apiBaseUrl}/api/MaterialReceived/by-po/${po._id}?companyId=${companyId}`);
+                                  
+                                  if (!response.ok) {
+                                    setAlertMessage({
+                                      show: true,
+                                      type: 'danger',
+                                      message: 'Failed to fetch material received records for this PO'
+                                    });
+                                    return;
+                                  }
+                                  
+                                  const result = await response.json();
+                                  
+                                  if (!result.data || result.data.length === 0) {
+                                    setAlertMessage({
+                                      show: true,
+                                      type: 'warning',
+                                      message: 'No material received records found for this PO'
+                                    });
+                                    return;
+                                  }
+                                  
+                                  // Get the first GRN record (most recent)
+                                  const grnRecord = result.data[0];
+                                  
+                                  // Find the correct supplier from the GRN record
+                                  const correctSupplier = suppliers.find(s => s.supplierName === grnRecord.supplierName);
+                                  const correctLocation = locations.find(l => l.locationName === grnRecord.receivingLocationName);
+                                  
+                                  let message = '';
+                                  let needsUpdate = false;
+                                  
+                                  // Check and update supplier if needed
+                                  if (formData.supplierId !== grnRecord.supplierId) {
+                                    if (correctSupplier) {
+                                      needsUpdate = true;
+                                      message += `Supplier set to "${grnRecord.supplierName}". `;
+                                    } else {
+                                      setAlertMessage({
+                                        show: true,
+                                        type: 'danger',
+                                        message: `Supplier "${grnRecord.supplierName}" from PO not found in supplier list`
+                                      });
+                                      return;
+                                    }
+                                  }
+                                  
+                                  // Check and update location if needed
+                                  if (formData.sourceLocationId !== grnRecord.receivingLocationId) {
+                                    if (correctLocation) {
+                                      needsUpdate = true;
+                                      message += `Location set to "${grnRecord.receivingLocationName}". `;
+                                    } else {
+                                      setAlertMessage({
+                                        show: true,
+                                        type: 'danger',
+                                        message: `Location "${grnRecord.receivingLocationName}" from PO not found in location list`
+                                      });
+                                      return;
+                                    }
+                                  }
+                                  
+                                  // Map items from GRN record with lot numbers
+                                  const mappedItems = grnRecord.items.map(item => ({
+                                    itemCode: item.itemName || '',
+                                    itemId: item.itemId || '',
+                                    itemName: item.itemName || '',
+                                    unit: item.unit || '',
+                                    lotNo: item.lotNo || '',
+                                    lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
+                                    orderedQty: item.orderedQty || 0,
+                                    receivedQty: 0,
+                                    rate: item.rate || 0,
+                                    amount: 0
+                                  }));
+                                  
+                                  // Store items in poItems for dropdown source
+                                  setPoItems(mappedItems);
+                                  
+                                  // Update form data with correct supplier, location, and empty grid (user will select manually)
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    supplierId: correctSupplier?._id || prev.supplierId,
+                                    supplierName: correctSupplier?.supplierName || prev.supplierName,
+                                    sourceLocationId: correctLocation?._id || prev.sourceLocationId,
+                                    sourceLocationName: correctLocation?.locationName || prev.sourceLocationName,
+                                    originalGrnPo: po.poNumber,
+                                    items: [{
+                                      itemCode: '',
+                                      itemName: '',
+                                      unit: '',
+                                      lotNo: '',
+                                      lotControlled: false,
+                                      orderedQty: 0,
+                                      receivedQty: 0,
+                                      rate: 0,
+                                      amount: 0
+                                    }]
+                                  }));
+                                  
+                                  setPoSearchTerm('');
+                                  setShowPODropdown(false);
+                                  
+                                  // Show success message
+                                  if (needsUpdate) {
+                                    setAlertMessage({
+                                      show: true,
+                                      type: 'success',
+                                      message: message + 'Items loaded successfully for grid selection.'
+                                    });
+                                  } else {
+                                    setAlertMessage({
+                                      show: true,
+                                      type: 'success',
+                                      message: 'Items loaded successfully for grid selection.'
+                                    });
+                                  }
+                                  
+                                } catch (error) {
+                                  console.error('Error fetching material received records:', error);
+                                  setAlertMessage({
+                                    show: true,
+                                    type: 'danger',
+                                    message: 'Error loading material received records: ' + error.message
+                                  });
+                                }
                               }}
                               style={{
                                 padding: '8px',
@@ -2182,7 +2293,7 @@ const MaterialReceived = () => {
                         ? ['Item', 'Lot No', 'Unit', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                         : ['Item', 'Lot No', 'Unit', 'PO Qty','Recd. Till Now','Pending', 'Received Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action'])
                     : formData.movementType === 'Return'
-                    ? ['Item', 'Lot No', 'Unit', 'Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                    ? ['Item', 'Lot No', 'Unit', 'PO Qty', 'Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                     : ['Item', 'Lot No', 'Unit', 'Stock Qty', 'Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                 }
                 columns={
@@ -2570,6 +2681,16 @@ const MaterialReceived = () => {
                           className: 'htMiddle bg-light',
                           width: 100
                         },
+                        ...(formData.movementType === 'Return' ? [{
+                          data: 'orderedQty',
+                          type: 'numeric',
+                          numericFormat: {
+                            pattern: '0,0.00'
+                          },
+                          readOnly: true,
+                          className: 'htRight htMiddle bg-light',
+                          width: 110
+                        }] : []),
                         ...(formData.movementType !== 'Return' ? [{
                           data: 'stockQty',
                           type: 'numeric',
@@ -2628,6 +2749,7 @@ const MaterialReceived = () => {
                                 unit: item.unit || '',
                                 lotNo: item.lotNo || '',
                                 lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
+                                orderedQty: item.orderedQty || 0,
                                 stockQty: item.stockQty || 0,
                                 receivedQty: item.receivedQty || 0,
                                 rate: item.rate || 0,
@@ -2641,6 +2763,7 @@ const MaterialReceived = () => {
                                 unit: '',
                                 lotNo: '',
                                 lotControlled: false,
+                                orderedQty: 0,
                                 stockQty: 0,
                                 receivedQty: 0,
                                 rate: 0,
@@ -2664,6 +2787,7 @@ const MaterialReceived = () => {
                                     unit: item.unit || '',
                                     lotNo: item.lotNo || '',
                                     lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
+                                    orderedQty: item.orderedQty || 0,
                                     stockQty: item.stockQty || 0,
                                     receivedQty: item.receivedQty || 0,
                                     rate: item.rate || 0,
@@ -2941,7 +3065,7 @@ const MaterialReceived = () => {
                               unit: selectedItem.unit || '',
                               lotNo: newItems[row].lotNo || '',
                               lotControlled: selectedItem.lotControlled || false,
-                              stockQty: 0,
+                              orderedQty: selectedItem.orderedQty || 0,
                               rate: selectedItem.rate || 0,
                               amount: 0
                             };
