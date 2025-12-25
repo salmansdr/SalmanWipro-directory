@@ -1908,7 +1908,7 @@ const MaterialReceived = () => {
                 <tr>
                   <th style={{ width: '8%' }}>
                     <div className="d-flex flex-column">
-                      <span>Movement Type</span>
+                      <span>Type</span>
                       <div className="mt-1">
                         <InputGroup size="sm">
                           <Form.Select
@@ -1935,10 +1935,10 @@ const MaterialReceived = () => {
                       </div>
                     </div>
                   </th>
-                  <th style={{ width: '15%' }}>Reference Number</th>
-                  <th style={{ width: '9%' }}>Reference Date</th>
-                  <th style={{ width: '12%' }}>PO Number</th>
-                  <th style={{ width: '12%' }}>
+                  <th style={{ width: '15%', verticalAlign: 'top' }}>Reference Number</th>
+                  <th style={{ width: '9%', verticalAlign: 'top' }}>Reference Date</th>
+                  <th style={{ width: '12%', verticalAlign: 'top' }}>PO Number</th>
+                  <th style={{ width: '12%', verticalAlign: 'top' }}>
                     <div className="d-flex flex-column">
                       <span>Supplier Name</span>
                       <div className="mt-1">
@@ -1967,10 +1967,10 @@ const MaterialReceived = () => {
                       </div>
                     </div>
                   </th>
-                  <th style={{ width: '11%' }}>Invoice Number</th>
-                  <th style={{ width: '9%' }}>Invoice Date</th>
+                  <th style={{ width: '11%', verticalAlign: 'top' }}>Invoice Number</th>
+                  <th style={{ width: '9%', verticalAlign: 'top' }}>Invoice Date</th>
                   
-                  <th style={{ width: '10%' }}>Actions</th>
+                  <th style={{ width: '10%', verticalAlign: 'top' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>

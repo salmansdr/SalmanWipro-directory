@@ -233,8 +233,11 @@ const UserManagement = () => {
         companyIds: userForm.companyIds || []
       };
       
-      // Include password only for new users and when SSO is not enabled
-      if (!editingUser && !userForm.useSso && userForm.password) {
+      // Include password only when SSO is not enabled
+      // If SSO is enabled, explicitly set password to empty string to clear it
+      if (userForm.useSso) {
+        payload.password = '';
+      } else if (!editingUser && userForm.password) {
         payload.password = userForm.password;
       }
       
@@ -628,27 +631,25 @@ const UserManagement = () => {
               </Col>
             </Row>
 
-            {/* Authentication Method - only for new users */}
-            {!editingUser && (
-              <>
-                <hr />
-                <h6>Authentication Method</h6>
-                <Row className="mb-3">
-                  <Col md={12}>
-                    <Form.Group>
-                      <Form.Check
-                        type="checkbox"
-                        label="Enable Single Sign-On (SSO) - User will login with Google/Microsoft account"
-                        name="useSso"
-                        checked={userForm.useSso}
-                        onChange={(e) => setUserForm(prev => ({ ...prev, useSso: e.target.checked }))}
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
+            {/* Authentication Method - always display */}
+            <hr />
+            <h6>Authentication Method</h6>
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Check
+                    type="checkbox"
+                    label="Enable Single Sign-On (SSO) - User will login with Google/Microsoft account"
+                    name="useSso"
+                    checked={userForm.useSso}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, useSso: e.target.checked }))}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
 
-                {/* Password fields - only shown when SSO is not enabled */}
-                {!userForm.useSso && (
+            {/* Password fields - only shown when SSO is not enabled */}
+            {!userForm.useSso && (
                   <>
                     <h6>Password</h6>
                     <Row className="mb-3">
@@ -685,8 +686,7 @@ const UserManagement = () => {
                     </Row>
                   </>
                 )}
-              </>
-            )}
+
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={closeModal}>
