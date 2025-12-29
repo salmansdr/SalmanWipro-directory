@@ -123,6 +123,7 @@ function ProjectDetails() {
                 <th>Location</th>
                 <th>Start Date</th>
                 <th>End Date</th>
+                <th>Status</th>
                 {(permissions.edit || permissions.delete) && (
                   <th className="text-center">Actions</th>
                 )}
@@ -139,6 +140,16 @@ function ProjectDetails() {
                   <td>{project.location}</td>
                   <td>{project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB') : ''}</td>
                   <td>{project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB') : ''}</td>
+                  <td>
+                    <span className={`badge bg-${
+                      project.status === 'completed' ? 'success' :
+                      project.status === 'running' ? 'primary' :
+                      project.status === 'upcoming' ? 'warning' :
+                      project.status === 'closed' ? 'secondary' : 'info'
+                    }`}>
+                      {project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'N/A'}
+                    </span>
+                  </td>
                   {(permissions.edit || permissions.delete) && (
                     <td className="text-center">
                       {permissions.edit && (

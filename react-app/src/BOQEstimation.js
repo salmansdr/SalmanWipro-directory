@@ -315,6 +315,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
   const [currency, setCurrency] = useState('INR');
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfFloors, setPdfFloors] = useState([]);
+  const [showOnlyGroupHeaders, setShowOnlyGroupHeaders] = useState(false); // Toggle for showing only group headers in quantity grid
+  const [showOnlyGroupHeadersMaterial, setShowOnlyGroupHeadersMaterial] = useState(false); // Toggle for showing only group headers in material grid
   
   const quantityTableRef = useRef(null);
   const materialTableRef = useRef(null);
@@ -2605,6 +2607,76 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       floorDataCache.current[localSelectedFloor].gridData = updatedData;
     }
     
+    // Delete corresponding component from material grid and cache
+    if (localSelectedFloor && groupHeader.component) {
+      const componentName = groupHeader.component;
+      
+      // Update material data state to remove the component and its children
+      setMaterialData(prevData => {
+        if (!Array.isArray(prevData)) return prevData;
+        
+        const newData = [];
+        let skipUntilNextGroup = false;
+        
+        for (let i = 0; i < prevData.length; i++) {
+          const row = prevData[i];
+          
+          if (row.isGroupHeader) {
+            if (row.component === componentName) {
+              // Found the group to delete - skip it and all following child rows
+              skipUntilNextGroup = true;
+              continue;
+            } else {
+              // Different group header - stop skipping
+              skipUntilNextGroup = false;
+              newData.push(row);
+            }
+          } else if (row.isGrandTotal) {
+            // Keep grand total
+            skipUntilNextGroup = false;
+            newData.push(row);
+          } else {
+            // Child row - only keep if not skipping
+            if (!skipUntilNextGroup) {
+              newData.push(row);
+            }
+          }
+        }
+        
+        return newData;
+      });
+      
+      // Update material cache directly
+      const currentMaterialCache = materialDataCache.current[localSelectedFloor];
+      if (currentMaterialCache && Array.isArray(currentMaterialCache)) {
+        const newCache = [];
+        let skipUntilNextGroup = false;
+        
+        for (let i = 0; i < currentMaterialCache.length; i++) {
+          const row = currentMaterialCache[i];
+          
+          if (row.isGroupHeader) {
+            if (row.component === componentName) {
+              skipUntilNextGroup = true;
+              continue;
+            } else {
+              skipUntilNextGroup = false;
+              newCache.push(row);
+            }
+          } else if (row.isGrandTotal) {
+            skipUntilNextGroup = false;
+            newCache.push(row);
+          } else {
+            if (!skipUntilNextGroup) {
+              newCache.push(row);
+            }
+          }
+        }
+        
+        materialDataCache.current[localSelectedFloor] = newCache;
+      }
+    }
+    
     setAlertMessage({
       show: true,
       type: 'success',
@@ -2839,21 +2911,97 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           const labourAmount = parseFloat((volumeQty * labourRate).toFixed(2));
           updatedMaterialData[matGroupIndex].labourAmount = labourAmount;
           
-          // Recalculate child materials based on new volume (preserve user's rates and wastage)
-          // Only recalculate for RCC components, preserve manual entries for others
-          let totalMaterialAmount = 0;
-          let childIndex = matGroupIndex + 1;
-          let shouldRecalculateMaterialAmount = false;
+          // Check if this component has child rows
+          const hasChildren = (matGroupIndex + 1 < updatedMaterialData.length) && 
+                             !updatedMaterialData[matGroupIndex + 1].isGroupHeader && 
+                             !updatedMaterialData[matGroupIndex + 1].isGrandTotal;
           
-          // Get RCC config if this is an RCC component
-          let rccConfig = null;
-          if (qtyRow.mixture && rccConfigData.length > 0) {
-            rccConfig = rccConfigData.find(config =>
+          let skipRecalculation = false;
+          
+          // If no children and this is an RCC component with volume > 0, generate child rows
+          if (!hasChildren && qtyRow.mixture && volumeQty > 0 && rccConfigData.length > 0) {
+            const rccConfig = rccConfigData.find(config =>
               config.grade && config.grade.toLowerCase() === qtyRow.mixture.toLowerCase()
             );
-            // Only recalculate material amounts if we have RCC config
-            shouldRecalculateMaterialAmount = !!rccConfig;
+            
+            if (rccConfig) {
+              // Generate child material rows
+              const materials = [
+                { name: 'Cement', data: rccConfig.cement },
+                { name: 'Steel', data: rccConfig.steel },
+                { name: 'Sand', data: rccConfig.sand },
+                { name: 'Aggregate 20mm', data: rccConfig.aggregate_20mm },
+                { name: 'Aggregate 40mm', data: rccConfig.aggregate_40mm },
+                { name: 'Water', data: rccConfig.water },
+                { name: 'Bricks', data: rccConfig.bricks }
+              ];
+              
+              const childMaterialRows = [];
+              let totalMaterialAmount = 0;
+              
+              materials.forEach(material => {
+                if (material.data && material.data.quantity) {
+                  const matQty = parseFloat(material.data.quantity) || 0;
+                  const materialQty = (volumeQty * matQty).toFixed(2);
+                  const wastage = parseFloat(material.data.wastage) || 0;
+                  const totalQty = (parseFloat(materialQty) * (1 + wastage / 100)).toFixed(2);
+                  
+                  const materialName = material.data.material || material.name;
+                  const materialId = material.data._id || material.data.materialId || '';
+                  const defaultRate = parseFloat(material.data.defaultRate) || 0;
+                  
+                  const materialAmt = parseFloat(totalQty * defaultRate);
+                  totalMaterialAmount += materialAmt;
+                  
+                  childMaterialRows.push({
+                    component: materialName,
+                    materialId: materialId,
+                    volume: '',
+                    unit: '',
+                    consumptionRate: matQty,
+                    materialQty: parseFloat(materialQty),
+                    wastage: wastage,
+                    totalQty: parseFloat(totalQty),
+                    uom: material.data.unit || 'KG',
+                    materialRate: defaultRate,
+                    labourRate: '',
+                    materialAmount: materialAmt.toFixed(2),
+                    labourAmount: '',
+                    totalAmount: materialAmt.toFixed(2),
+                    remarks: '',
+                    isGroupHeader: false
+                  });
+                }
+              });
+              
+              // Insert child rows after the group header
+              updatedMaterialData.splice(matGroupIndex + 1, 0, ...childMaterialRows);
+              
+              // Update group header amounts
+              updatedMaterialData[matGroupIndex].materialAmount = parseFloat(totalMaterialAmount.toFixed(2));
+              updatedMaterialData[matGroupIndex].totalAmount = parseFloat((totalMaterialAmount + labourAmount).toFixed(2));
+              
+              // Skip the recalculation logic below since we just generated fresh children
+              skipRecalculation = true;
+            }
           }
+          
+          // Recalculate child materials based on new volume (preserve user's rates and wastage)
+          // Only recalculate for RCC components, preserve manual entries for others
+          if (!skipRecalculation) {
+            let totalMaterialAmount = 0;
+            let childIndex = matGroupIndex + 1;
+            let shouldRecalculateMaterialAmount = false;
+            
+            // Get RCC config if this is an RCC component
+            let rccConfig = null;
+            if (qtyRow.mixture && rccConfigData.length > 0) {
+              rccConfig = rccConfigData.find(config =>
+                config.grade && config.grade.toLowerCase() === qtyRow.mixture.toLowerCase()
+              );
+              // Only recalculate material amounts if we have RCC config
+              shouldRecalculateMaterialAmount = !!rccConfig;
+            }
           
           while (childIndex < updatedMaterialData.length && !updatedMaterialData[childIndex].isGroupHeader) {
             const childRow = updatedMaterialData[childIndex];
@@ -2916,15 +3064,61 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             const existingMaterialAmount = parseFloat(updatedMaterialData[matGroupIndex].materialAmount) || 0;
             updatedMaterialData[matGroupIndex].totalAmount = parseFloat((existingMaterialAmount + labourAmount).toFixed(2));
           }
+          } // End of if (!skipRecalculation)
           
         } else {
           // New component - generate and add to cache
+          console.log('New component detected:', qtyRow.component, 'quantity:', qtyRow.quantity);
           const newMaterialRows = generateMaterialDataForFloor([qtyRow]);
-          if (newMaterialRows.length > 0) {
-            // Insert after last material group
-            // Remove grand total from new rows before adding
+          console.log('Generated material rows:', newMaterialRows);
+          
+          // Find the correct insertion position based on quantity grid order
+          const qtyComponentIndex = currentQuantityData.findIndex(r => r.isGroupHeader && r.component === qtyRow.component);
+          
+          // Find what component comes after this one in quantity grid
+          let nextComponent = null;
+          for (let i = qtyComponentIndex + 1; i < currentQuantityData.length; i++) {
+            if (currentQuantityData[i].isGroupHeader) {
+              nextComponent = currentQuantityData[i].component;
+              break;
+            }
+          }
+          
+          // Find insertion index in material data
+          let insertIndex = updatedMaterialData.length;
+          if (nextComponent) {
+            const nextMatIndex = updatedMaterialData.findIndex(r => r.isGroupHeader && r.component === nextComponent);
+            if (nextMatIndex >= 0) {
+              insertIndex = nextMatIndex;
+            }
+          }
+          
+          if (newMaterialRows && newMaterialRows.length > 0) {
+            // Insert at correct position
             const newRowsWithoutGrandTotal = newMaterialRows.filter(row => !row.isGrandTotal);
-            updatedMaterialData.push(...newRowsWithoutGrandTotal);
+            updatedMaterialData.splice(insertIndex, 0, ...newRowsWithoutGrandTotal);
+            console.log('Added material rows for new component at index', insertIndex);
+          } else {
+            // Component with zero volume or couldn't generate - add placeholder group header
+            console.log('Adding placeholder for component with zero/no volume at index', insertIndex);
+            updatedMaterialData.splice(insertIndex, 0, {
+              component: qtyRow.component,
+              category: qtyRow.category || '',
+              volume: parseFloat(qtyRow.quantity) || 0,
+              unit: qtyRow.unit || 'Cum',
+              consumptionRate: '',
+              materialQty: '',
+              wastage: '',
+              totalQty: '',
+              uom: '',
+              materialRate: '',
+              labourRate: parseFloat(qtyRow.labourRate) || 0,
+              materialAmount: 0,
+              labourAmount: 0,
+              totalAmount: 0,
+              remarks: '',
+              isGroupHeader: true
+            });
           }
         }
       }
@@ -2935,11 +3129,29 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     
 
     
-    // If material tab is active, update display immediately
-    if (activeTab === 'material') {
-
-      setMaterialData(updatedMaterialData);
-    }
+    // Update display - always update to keep material tab in sync
+    // Add grand total for display
+    const dataWithGrandTotal = [
+      ...updatedMaterialData,
+      {
+        component: 'GRAND TOTAL',
+        volume: '',
+        unit: '',
+        consumptionRate: '',
+        materialQty: '',
+        wastage: '',
+        totalQty: '',
+        uom: '',
+        materialRate: '',
+        labourRate: '',
+        materialAmount: 0,
+        labourAmount: 0,
+        totalAmount: 0,
+        remarks: '',
+        isGrandTotal: true
+      }
+    ];
+    setMaterialData(dataWithGrandTotal);
   }, [localSelectedFloor, rccConfigData, activeTab, generateMaterialDataForFloor]);
 
   // Watch for quantity data changes and update material cache
@@ -3114,22 +3326,29 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const rowData = hotInstance.getSourceDataAtRow(row);
     if (!rowData || rowData.isGroupHeader) return;
     
-    // Find the parent group header to get volume
-    const allData = hotInstance.getSourceData();
-    let volume = 0;
-    for (let i = row - 1; i >= 0; i--) {
-      if (allData[i] && allData[i].isGroupHeader && !allData[i].isGrandTotal) {
-        volume = parseFloat(allData[i].volume) || 0;
-        break;
+    const consumptionRate = parseFloat(rowData.consumptionRate) || 0;
+    let materialQty;
+    
+    if (consumptionRate === 0) {
+      // Use manually entered materialQty when consumptionRate is 0 or empty
+      materialQty = parseFloat(rowData.materialQty) || 0;
+    } else {
+      // Calculate materialQty from consumptionRate and volume
+      const allData = hotInstance.getSourceData();
+      let volume = 0;
+      for (let i = row - 1; i >= 0; i--) {
+        if (allData[i] && allData[i].isGroupHeader && !allData[i].isGrandTotal) {
+          volume = parseFloat(allData[i].volume) || 0;
+          break;
+        }
       }
+      materialQty = parseFloat((volume * consumptionRate).toFixed(2));
+      // Update materialQty in the row
+      hotInstance.setDataAtRowProp(row, 'materialQty', materialQty.toFixed(2), 'recalculate');
     }
     
-    // Calculate materialQty from consumptionRate and volume
-    const consumptionRate = parseFloat(rowData.consumptionRate) || 0;
-    const materialQty = (volume * consumptionRate).toFixed(2);
-    
     const wastage = parseFloat(rowData.wastage) || 0;
-    const totalQty = parseFloat(materialQty) * (1 + wastage / 100);
+    const totalQty = materialQty * (1 + wastage / 100);
     
     const materialRate = parseFloat(rowData.materialRate) || 0;
     const labourRate = parseFloat(rowData.labourRate) || 0;
@@ -3138,7 +3357,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const labourAmount = (totalQty * labourRate).toFixed(2);
     const totalAmount = (parseFloat(materialAmount) + parseFloat(labourAmount)).toFixed(2);
     
-    hotInstance.setDataAtRowProp(row, 'materialQty', materialQty, 'recalculate');
     hotInstance.setDataAtRowProp(row, 'totalQty', totalQty.toFixed(2), 'recalculate');
     hotInstance.setDataAtRowProp(row, 'materialAmount', materialAmount, 'recalculate');
     hotInstance.setDataAtRowProp(row, 'labourAmount', labourAmount, 'recalculate');
@@ -3199,7 +3417,16 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       numericFormat: {
         pattern: '0.00'
       },
-      readOnly: true
+      readOnly: function(row, col) {
+        const instance = this.instance;
+        const rowData = instance.getSourceDataAtRow(row);
+        if (!rowData) return true;
+        // Group headers are read-only
+        if (rowData.isGroupHeader) return true;
+        // Child rows: editable only when consumptionRate is 0 or empty
+        const consumptionRate = parseFloat(rowData.consumptionRate) || 0;
+        return consumptionRate !== 0;
+      }
     },
     {
       data: 'wastage',
@@ -3507,13 +3734,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       numericFormat: {
         pattern: '0.00'
       },
-      className: 'htRight',
-      readOnly: function(row, col) {
-        const instance = this.instance;
-        const rowData = instance.getSourceDataAtRow(row);
-        // Group headers are read-only (auto-calculated), child rows are editable
-        return rowData && rowData.isGroupHeader;
-      }
+      className: 'htRight'
     },
     {
       data: 'unit',
@@ -3544,100 +3765,22 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       type: 'dropdown',
       source: gradeOptions,
       className: 'htCenter htMiddle',
+      readOnly: function(row, col) {
+        const instance = this.instance;
+        const rowData = instance.getSourceDataAtRow(row);
+        // Only editable for group headers
+        return !rowData || !rowData.isGroupHeader;
+      },
       renderer: function(instance, td, row, col, prop, value, cellProperties) {
-        // Render the dropdown normally FIRST
-        Handsontable.renderers.DropdownRenderer.apply(this, arguments);
+        const rowData = instance.getSourceDataAtRow(row);
         
-        // Add info icon AFTER dropdown rendering
-        if (value && value.trim() !== '' && window.BOQ_rccConfigData) {
-          // Find matching RCC configuration
-          const matchingConfig = window.BOQ_rccConfigData.find(config => {
-            if (!config.grade) return false;
-            
-            const configGrade = config.grade.toLowerCase().trim();
-            const cellValue = value.toLowerCase().trim();
-            
-            // Try exact match first
-            if (configGrade === cellValue) return true;
-            
-            // Try partial match
-            if (configGrade.includes(cellValue) || cellValue.includes(configGrade)) return true;
-            
-            // Try matching the core part (e.g., "M20")
-            const coreMatch = cellValue.match(/\((.*?)(\)|$)/);
-            if (coreMatch && configGrade.includes(coreMatch[1])) return true;
-            
-            return false;
-          });
-          
-          if (matchingConfig) {
-            // Wrap the existing content and add icon
-            const existingContent = td.innerHTML;
-            
-            td.innerHTML = existingContent + `<span class="mixture-info-icon" style="color: #3b82f6; cursor: pointer; font-size: 16px; font-weight: bold; margin-left: 5px;">&#9432;</span>`;
-            
-            td.style.position = 'relative';
-            
-            // Create tooltip div
-            const tooltipDiv = document.createElement('div');
-            tooltipDiv.className = 'boq-mixture-tooltip';
-            tooltipDiv.style.cssText = `
-              position: absolute;
-              background: #2d3748;
-              color: white;
-              padding: 12px 16px;
-              border-radius: 6px;
-              font-size: 12px;
-              z-index: 99999;
-              min-width: 280px;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-              display: none;
-              top: 100%;
-              left: 0;
-              margin-top: 5px;
-              white-space: nowrap;
-            `;
-            
-            tooltipDiv.innerHTML = `
-              <div style="font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #4a5568; padding-bottom: 6px; color: #60a5fa;">
-                Material Composition - ${matchingConfig.grade}
-              </div>
-              <div style="line-height: 1.8;">
-                <div>🔹 <strong>Cement:</strong> ${matchingConfig.cement || 'N/A'} bags</div>
-                <div>🔹 <strong>Sand:</strong> ${matchingConfig.sand || 'N/A'} cft</div>
-                <div>🔹 <strong>Aggregate 20mm:</strong> ${matchingConfig.aggregate_20mm || 'N/A'} cft</div>
-                <div>🔹 <strong>Aggregate 40mm:</strong> ${matchingConfig.aggregate_40mm || 'N/A'} cft</div>
-                <div>🔹 <strong>Steel:</strong> ${matchingConfig.steel || 'N/A'} kg</div>
-                <div>🔹 <strong>Water:</strong> ${matchingConfig.water || 'N/A'} liters</div>
-              </div>
-              <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #4a5568; font-size: 10px; color: #94a3b8; text-align: center;">
-                Click icon to close
-              </div>
-            `;
-            
-            td.appendChild(tooltipDiv);
-            
-            // Find the info icon and attach click handler
-            const infoIcon = td.querySelector('.mixture-info-icon');
-            if (infoIcon) {
-              let isTooltipVisible = false;
-              infoIcon.onclick = function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                isTooltipVisible = !isTooltipVisible;
-                tooltipDiv.style.display = isTooltipVisible ? 'block' : 'none';
-              };
-            }
-            
-            // Close tooltip when clicking outside
-            setTimeout(() => {
-              document.addEventListener('click', function closeTooltip(e) {
-                if (!td.contains(e.target)) {
-                  tooltipDiv.style.display = 'none';
-                }
-              }, { once: false });
-            }, 100);
-          }
+        if (rowData && rowData.isGroupHeader) {
+          // Use default dropdown renderer for group headers
+          Handsontable.renderers.DropdownRenderer.apply(this, arguments);
+        } else {
+          // Empty cell for child rows
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          td.innerHTML = '';
         }
         
         return td;
@@ -4100,7 +4243,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                           
                           {activeTab !== 'quantity' ? null : (
                           <>
-                          {/* Legend for +/- buttons */}
+                          {/* Legend for +/- buttons and Toggle */}
                           <div style={{ 
                             display: 'flex', 
                             gap: '20px', 
@@ -4109,35 +4252,51 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                             backgroundColor: '#f8f9fa', 
                             borderRadius: '6px',
                             border: '1px solid #dee2e6',
-                            fontSize: '0.9rem'
+                            fontSize: '0.9rem',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ 
-                                fontWeight: 'bold', 
-                                color: '#28a745', 
-                                fontSize: '16px',
-                                border: '1px solid #28a745',
-                                background: '#f0fff4',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                minWidth: '28px',
-                                textAlign: 'center'
-                              }}>+</span>
-                              <span style={{ color: '#495057' }}>Addition (adds to total)</span>
+                            <div style={{ display: 'flex', gap: '20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ 
+                                  fontWeight: 'bold', 
+                                  color: '#28a745', 
+                                  fontSize: '16px',
+                                  border: '1px solid #28a745',
+                                  background: '#f0fff4',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  minWidth: '28px',
+                                  textAlign: 'center'
+                                }}>+</span>
+                                <span style={{ color: '#495057' }}>Addition (adds to total)</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ 
+                                  fontWeight: 'bold', 
+                                  color: '#dc3545', 
+                                  fontSize: '16px',
+                                  border: '1px solid #dc3545',
+                                  background: '#fff5f5',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  minWidth: '28px',
+                                  textAlign: 'center'
+                                }}>-</span>
+                                <span style={{ color: '#495057' }}>Deduction (subtracts from total - e.g., doors, windows)</span>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ 
-                                fontWeight: 'bold', 
-                                color: '#dc3545', 
-                                fontSize: '16px',
-                                border: '1px solid #dc3545',
-                                background: '#fff5f5',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                minWidth: '28px',
-                                textAlign: 'center'
-                              }}>-</span>
-                              <span style={{ color: '#495057' }}>Deduction (subtracts from total - e.g., doors, windows)</span>
+                            
+                            {/* Toggle for showing only group headers */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <Form.Check 
+                                type="switch"
+                                id="toggle-group-headers"
+                                label="Show Summary Only"
+                                checked={showOnlyGroupHeaders}
+                                onChange={(e) => setShowOnlyGroupHeaders(e.target.checked)}
+                                style={{ marginBottom: 0 }}
+                              />
                             </div>
                           </div>
                           
@@ -4199,9 +4358,19 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                     );
                                   }
                                   
+                                  // Calculate hidden rows based on toggle
+                                  const hiddenRowsIndices = [];
+                                  if (showOnlyGroupHeaders) {
+                                    quantityData.forEach((row, index) => {
+                                      if (!row.isGroupHeader) {
+                                        hiddenRowsIndices.push(index);
+                                      }
+                                    });
+                                  }
+                                  
                                   return (
                                     <HotTable
-                                      key={`quantity-${localSelectedFloor}`}
+                                      key={`quantity-${localSelectedFloor}-${showOnlyGroupHeaders ? 'summary' : 'detail'}`}
                                       ref={quantityTableRef}
                                       data={quantityData}
                                       columns={columns}
@@ -4243,6 +4412,10 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               preventOverflow="horizontal"
                               contextMenu={true}
                               manualColumnResize={true}
+                              hiddenRows={{
+                                rows: hiddenRowsIndices,
+                                indicators: false
+                              }}
                               fixedColumnsLeft={1}
                               fixedRowsTop={1}
                               beforeOnCellContextMenu={(event, coords) => {
@@ -4318,17 +4491,26 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                       calculateQuantity(row, prop);
                                     }
                                     
-                                    // If quantity is directly edited, just update the group total
-                                    if (prop === 'quantity' && rowData && !rowData.isGroupHeader) {
-                                      groupsToUpdate.add(rowData.groupIndex);
+                                    // If quantity is directly edited
+                                    if (prop === 'quantity') {
+                                      if (showOnlyGroupHeaders && rowData && rowData.isGroupHeader) {
+                                        // In summary mode, user can directly edit group header quantity
+                                        // No need to update group total, just save to cache
+                                      } else if (rowData && !rowData.isGroupHeader) {
+                                        // Normal mode: child row quantity changed, update group total
+                                        groupsToUpdate.add(rowData.groupIndex);
+                                      }
                                     }
                                   });
                                   
                                   // Update totals for all affected groups
                                   setTimeout(() => {
-                                    groupsToUpdate.forEach(groupIndex => {
-                                      updateGroupTotal(groupIndex);
-                                    });
+                                    if (!showOnlyGroupHeaders) {
+                                      // Only recalculate group totals when not in summary mode
+                                      groupsToUpdate.forEach(groupIndex => {
+                                        updateGroupTotal(groupIndex);
+                                      });
+                                    }
                                     
                                     // Save to cache after updates so material cache can read latest values
                                     if (localSelectedFloor) {
@@ -4347,6 +4529,17 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 const rowData = quantityData[row];
                                 
                                 if (rowData) {
+                                  // Handle quantity column readOnly based on toggle state
+                                  if (prop === 'quantity') {
+                                    if (showOnlyGroupHeaders) {
+                                      // Summary mode: only group headers visible, make them editable
+                                      cellProperties.readOnly = false;
+                                    } else {
+                                      // Normal mode: group headers auto-calculated (read-only), child rows editable
+                                      cellProperties.readOnly = rowData.isGroupHeader;
+                                    }
+                                  }
+                                  
                                   // Deduction row styling - apply light red background
                                   if (!rowData.isGroupHeader && rowData.isDeduction) {
                                     cellProperties.className = 'htMiddle deduction-row';
@@ -4380,46 +4573,38 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   
                                   // Group header row styling
                                   if (rowData.isGroupHeader) {
-                                    cellProperties.readOnly = true;
-                                    cellProperties.className = 'htMiddle';
-                                    
-                                    // Make mixture editable only for group header
-                                    if (prop === 'mixture') {
-                                      cellProperties.readOnly = false;
-                                    }
-                                    
-                                    if (prop === 'srNo' || prop === 'component') {
-                                      cellProperties.className += ' group-header';
-                                      cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-                                        td.style.backgroundColor = '#4a5568';
-                                        td.style.color = '#ffffff';
-                                        td.style.fontWeight = '600';
-                                        td.style.padding = '10px 8px';
-                                        td.style.fontSize = '13px';
-                                        td.innerHTML = value || '';
-                                        return td;
-                                      };
-                                    }
-                                  } else {
-                                    // Make component and quantity editable for child rows
-                                    if (prop === 'component' || prop === 'quantity') {
-                                      cellProperties.readOnly = false;
-                                    }
-                                  }
-                                  
-                                  // Make mixture column read-only for detail rows
-                                  if (!rowData.isGroupHeader && prop === 'mixture') {
-                                    cellProperties.readOnly = true;
-                                    cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-                                      td.style.backgroundColor = '#f9f9f9';
-                                      td.style.color = '#999';
-                                      td.style.textAlign = 'center';
-                                      td.innerHTML = '';
-                                      return td;
-                                    };
-                                  }
-                                  
-                                  // Apply light gray background to unit, mixture, and quantity columns in group header row
+                    cellProperties.className = 'htMiddle';
+                    
+                    // Set readOnly based on column and toggle state
+                    if (prop === 'mixture') {
+                      // Mixture is always editable for group headers
+                      cellProperties.readOnly = false;
+                    } else if (prop === 'quantity') {
+                      // Quantity column readOnly already set above based on toggle state
+                      // Don't override it here
+                    } else {
+                      // All other columns are read-only for group headers
+                      cellProperties.readOnly = true;
+                    }
+                    
+                    if (prop === 'srNo' || prop === 'component') {
+                      cellProperties.className += ' group-header';
+                      cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                        td.style.backgroundColor = '#4a5568';
+                        td.style.color = '#ffffff';
+                        td.style.fontWeight = '600';
+                        td.style.padding = '10px 8px';
+                        td.style.fontSize = '13px';
+                        td.innerHTML = value || '';
+                        return td;
+                      };
+                    }
+                  } else {
+                    // Make component and quantity editable for child rows
+                    if (prop === 'component' || prop === 'quantity') {
+                      cellProperties.readOnly = false;
+                    }
+                  }
                                   if (rowData.isGroupHeader && (prop === 'unit' || prop === 'mixture' || prop === 'quantity')) {
                                     cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
                                       td.style.backgroundColor = '#f7fafc';
@@ -4471,6 +4656,17 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                         <Card.Body>
                           {activeTab !== 'material' ? null : (
                           <div style={{ padding: '1rem 0' }}>
+                            {/* Toggle for showing only group headers */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                              <Form.Check 
+                                type="switch"
+                                id="toggle-group-headers-material"
+                                label="Show Summary Only"
+                                checked={showOnlyGroupHeadersMaterial}
+                                onChange={(e) => setShowOnlyGroupHeadersMaterial(e.target.checked)}
+                                style={{ marginBottom: 0 }}
+                              />
+                            </div>
                             {(() => {
                               // Don't render during loading
                               if (loadingData) {
@@ -4502,9 +4698,19 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                 );
                               }
                               
+                              // Calculate hidden rows based on toggle
+                              const hiddenRowsIndicesMaterial = [];
+                              if (showOnlyGroupHeadersMaterial) {
+                                materialData.forEach((row, index) => {
+                                  if (!row.isGroupHeader && !row.isGrandTotal) {
+                                    hiddenRowsIndicesMaterial.push(index);
+                                  }
+                                });
+                              }
+                              
                               return (
                               <HotTable
-                                key={`material-${localSelectedFloor}-${materialData.length}`}
+                                key={`material-${localSelectedFloor}-${showOnlyGroupHeadersMaterial ? 'summary' : 'detail'}`}
                                 ref={materialTableRef}
                                 data={materialData}
                                 columns={getMaterialColumns}
@@ -4564,7 +4770,30 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                               height={isExpandedView ? "calc(100vh - 200px)" : "600px"}
                               licenseKey="non-commercial-and-evaluation"
                               stretchH="all"
-                              contextMenu={true}
+                              hiddenRows={{
+                                rows: hiddenRowsIndicesMaterial,
+                                indicators: false
+                              }}
+                              contextMenu={{
+                                items: {
+                                  'row_above': {},
+                                  'row_below': {},
+                                  'remove_row': {
+                                    disabled: function() {
+                                      const selection = this.getSelected();
+                                      if (!selection || !materialData || !Array.isArray(materialData)) return false;
+                                      const row = selection[0][0];
+                                      if (row >= materialData.length) return false;
+                                      const rowData = materialData[row];
+                                      return rowData?.isGroupHeader;
+                                    }
+                                  },
+                                  'undo': {},
+                                  'redo': {},
+                                  'make_read_only': {},
+                                  'alignment': {}
+                                }
+                              }}
                               manualColumnResize={true}
                               fixedColumnsLeft={1}
                               fixedRowsTop={1}
@@ -4624,20 +4853,38 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                                   // Handle child row changes
                                   if (!rowData.isGroupHeader) {
                                     // If component changed, get material details
-                                    if (prop === 'component' && newValue && materialItems) {
-                                      const selectedMaterial = materialItems.find(item => item.material === newValue);
-                                      if (selectedMaterial) {
-                                        hotInstance.setDataAtRowProp(row, 'materialId', selectedMaterial._id || selectedMaterial.materialId || '');
-                                        hotInstance.setDataAtRowProp(row, 'materialRate', parseFloat(selectedMaterial.defaultRate) || 0);
-                                        hotInstance.setDataAtRowProp(row, 'wastage', parseFloat(selectedMaterial.wastage) || 0);
-                                        hotInstance.setDataAtRowProp(row, 'uom', selectedMaterial.unit || 'KG');
+                                    if (prop === 'component') {
+                                      if (newValue && materialItems) {
+                                        const selectedMaterial = materialItems.find(item => item.material === newValue);
+                                        if (selectedMaterial) {
+                                          hotInstance.setDataAtRowProp(row, 'materialId', selectedMaterial._id || selectedMaterial.materialId || '', 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'materialRate', parseFloat(selectedMaterial.defaultRate) || 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'wastage', parseFloat(selectedMaterial.wastage) || 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'uom', selectedMaterial.unit || 'KG', 'loadData');
+                                        }
+                                      } else {
+                                        // Component cleared - reset all related fields using batch update
+                                        hotInstance.batch(() => {
+                                          hotInstance.setDataAtRowProp(row, 'materialId', '', 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'materialRate', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'wastage', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'uom', '', 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'consumptionRate', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'materialQty', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'totalQty', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'materialAmount', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'labourAmount', 0, 'loadData');
+                                          hotInstance.setDataAtRowProp(row, 'totalAmount', 0, 'loadData');
+                                        });
                                       }
                                     }
                                     
                                     // Track which groups need updating
                                     if (['consumptionRate', 'materialQty', 'wastage', 'materialRate', 'labourRate', 'component'].includes(prop)) {
-                                      // Recalculate this row
-                                      recalculateChildRow(row);
+                                      // Only recalculate if component has value (not cleared)
+                                      if (prop !== 'component' || (prop === 'component' && newValue)) {
+                                        recalculateChildRow(row);
+                                      }
                                       
                                       // Find group header to update
                                       const allData = hotInstance.getSourceData();

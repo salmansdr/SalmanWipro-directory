@@ -5,7 +5,7 @@ import MoreDetails from './MoreDetails';
 const PROJECT_TABS_META = [
   { key: 'completed', label: 'Completed', icon: '🏆', showProgress: false },
   { key: 'running', label: 'Running', icon: '🏗️', showProgress: true },
-  { key: 'upcoming', label: 'Upcoming', icon: '🚧', showProgress: false },
+  { key: 'upcoming', label: 'Upcoming', icon: '🚧', showProgress: true },
 ];
 
 function ProjectSection({ title, projects, showProgress = true }) {
@@ -37,9 +37,26 @@ function ProjectSection({ title, projects, showProgress = true }) {
                   <h5 className="card-title">{proj.name}</h5>
                   <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
                   <div className="mb-2">{proj.status}</div>
-                  {proj.status === 'running' && (
+                  {showProgress && (proj.status === 'running' || proj.status === 'upcoming') && (
                     <div className="mb-2">
-                      <span className="fw-bold">Progress: {proj.progress}%</span>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="fw-bold" style={{ fontSize: '0.875rem' }}>Progress</span>
+                        <span className="fw-bold text-primary">{proj.completionStatus || 0}%</span>
+                      </div>
+                      <div className="progress" style={{ height: '8px' }}>
+                        <div
+                          className={`progress-bar ${
+                            (proj.completionStatus || 0) < 50 ? 'bg-info' :
+                            (proj.completionStatus || 0) < 80 ? 'bg-primary' :
+                            'bg-success'
+                          }`}
+                          role="progressbar"
+                          style={{ width: `${proj.completionStatus || 0}%` }}
+                          aria-valuenow={proj.completionStatus || 0}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                        ></div>
+                      </div>
                     </div>
                   )}
                   <button

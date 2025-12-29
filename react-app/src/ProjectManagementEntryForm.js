@@ -51,6 +51,7 @@ function ProjectManagement() {
   const [viewerContent, setViewerContent] = useState({ type: '', data: '', name: '' });
   const [loading, setLoading] = useState(false);
   const [availableStageNames, setAvailableStageNames] = useState([]);
+  const [projectStagesData, setProjectStagesData] = useState([]);
 
   // Populate form fields - fetch from API if ID is provided
   useEffect(() => {
@@ -112,7 +113,8 @@ function ProjectManagement() {
           if (typeof dbStage === 'string') {
             // Old format: just stage name
             return { 
-              name: dbStage, 
+              name: dbStage,
+              weightage: '',
               status: '',
               planStartDate: '',
               planEndDate: '',
@@ -123,7 +125,8 @@ function ProjectManagement() {
           } else {
             // New format: object with fields
             return { 
-              name: dbStage.name || '', 
+              name: dbStage.name || '',
+              weightage: dbStage.weightage || '',
               status: typeof dbStage.status === 'boolean' ? (dbStage.status ? 'Completed' : '') : (dbStage.status || ''),
               planStartDate: dbStage.planStartDate || '',
               planEndDate: dbStage.planEndDate || '',
@@ -185,8 +188,10 @@ function ProjectManagement() {
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0 && data[0].projectStages) {
-            const stagesList = data[0].projectStages.map(s => s.stageName);
+            const stagesData = data[0].projectStages;
+            const stagesList = stagesData.map(s => s.stageName);
             setAvailableStageNames(stagesList);
+            setProjectStagesData(stagesData); // Store complete stage data
           } 
         } 
       } catch (error) {
@@ -199,9 +204,9 @@ function ProjectManagement() {
 
   // Stages section state
   const [stages, setStages] = useState([
-    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
-    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
-    { name: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' }
+    { name: '', weightage: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
+    { name: '', weightage: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' },
+    { name: '', weightage: '', status: '', planStartDate: '', planEndDate: '', actualStartDate: '', actualEndDate: '', remarks: '' }
   ]);
 
   // Documentation section state
@@ -237,9 +242,64 @@ function ProjectManagement() {
     changes.forEach(([row, prop, oldValue, newValue]) => {
       if (newStages[row]) {
         newStages[row][prop] = newValue;
+        
+        // Auto-populate weightage when stage name is selected
+        if (prop === 'name' && newValue) {
+          const selectedStage = projectStagesData.find(s => s.stageName === newValue);
+          if (selectedStage && selectedStage.percentage) {
+            newStages[row]['weightage'] = selectedStage.percentage;
+          }
+        }
       }
     });
     setStages(newStages);
+  };
+  
+  // Auto-populate all stages with their weightage
+  const handlePopulateAllStages = () => {
+    if (!projectStagesData || projectStagesData.length === 0) {
+      setAlertMessage({
+        show: true,
+        type: 'warning',
+        message: 'No stage data available to populate'
+      });
+      return;
+    }
+    
+    // Get existing stages data to preserve other column values
+    const existingStagesMap = {};
+    stages.forEach(stage => {
+      if (stage.name) {
+        existingStagesMap[stage.name] = stage;
+      }
+    });
+    
+    const allStages = projectStagesData.map(stage => {
+      // Check if this stage already exists
+      const existingStage = existingStagesMap[stage.stageName];
+      
+      if (existingStage) {
+        // Preserve existing data, only update weightage
+        return {
+          ...existingStage,
+          weightage: stage.percentage || ''
+        };
+      } else {
+        // New stage, create with empty values for other columns
+        return {
+          name: stage.stageName,
+          weightage: stage.percentage || '',
+          status: '',
+          planStartDate: '',
+          planEndDate: '',
+          actualStartDate: '',
+          actualEndDate: '',
+          remarks: ''
+        };
+      }
+    });
+    
+    setStages(allStages);
   };
   const handleDocUpload = (idx, file) => {
     if (!file) return; // Ignore if no file selected (user cancelled)
@@ -337,6 +397,7 @@ function ProjectManagement() {
           .filter(s => s.name) // Only save stages with a name
           .map(s => ({
             name: s.name,
+            weightage: s.weightage || '',
             status: s.status,
             planStartDate: s.planStartDate || '',
             planEndDate: s.planEndDate || '',
@@ -463,16 +524,37 @@ function ProjectManagement() {
             <Card className="mb-4">
               <Card.Header as="h5" className="bg-info text-white">Project Stages</Card.Header>
               <Card.Body>
+                <div className="mb-3">
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    onClick={handlePopulateAllStages}
+                    disabled={!projectStagesData || projectStagesData.length === 0}
+                  >
+                    <i className="bi bi-clipboard-check me-2"></i>
+                    Auto-Populate All Stages
+                  </Button>
+                </div>
                 <div style={{ overflow: 'auto' }} className="handsontable-wrapper">
                   <HotTable
                     data={stages}
-                    colHeaders={['Stage Name', 'Status', 'Plan Start Date', 'Plan End Date', 'Actual Start Date', 'Actual End Date', 'Remarks', 'Action']}
+                    colHeaders={['Stage Name', 'Weitage %', 'Status', 'Plan Start Date', 'Plan End Date', 'Actual Start Date', 'Actual End Date', 'Remarks', 'Action']}
                     columns={[
                       {
                         data: 'name',
                         type: 'dropdown',
                         source: availableStageNames,
                         width: 200
+                      },
+                      {
+                        data: 'weightage',
+                        type: 'numeric',
+                        numericFormat: {
+                          pattern: '0.00'
+                        },
+                        width: 100,
+                        readOnly: true,
+                        className: 'htCenter htMiddle bg-light'
                       },
                       {
                         data: 'status',
@@ -483,28 +565,28 @@ function ProjectManagement() {
                       {
                         data: 'planStartDate',
                         type: 'date',
-                        dateFormat: 'YYYY-MM-DD',
+                        dateFormat: 'DD/MM/YYYY',
                         correctFormat: true,
                         width: 130
                       },
                       {
                         data: 'planEndDate',
                         type: 'date',
-                        dateFormat: 'YYYY-MM-DD',
+                        dateFormat: 'DD/MM/YYYY',
                         correctFormat: true,
                         width: 130
                       },
                       {
                         data: 'actualStartDate',
                         type: 'date',
-                        dateFormat: 'YYYY-MM-DD',
+                        dateFormat: 'DD/MM/YYYY',
                         correctFormat: true,
                         width: 130
                       },
                       {
                         data: 'actualEndDate',
                         type: 'date',
-                        dateFormat: 'YYYY-MM-DD',
+                        dateFormat: 'DD/MM/YYYY',
                         correctFormat: true,
                         width: 130
                       },
@@ -529,6 +611,7 @@ function ProjectManagement() {
                             const newStages = [...currentData];
                             newStages.splice(row + 1, 0, {
                               name: '',
+                              weightage: '',
                               status: '',
                               planStartDate: '',
                               planEndDate: '',
