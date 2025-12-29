@@ -29,7 +29,6 @@ const UserProfile = () => {
   });
 
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
@@ -127,7 +126,7 @@ const UserProfile = () => {
   const handlePasswordUpdate = async (e) => {
     e.preventDefault();
 
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
       showAlertMessage('Please fill in all password fields', 'danger');
       return;
     }
@@ -142,18 +141,12 @@ const UserProfile = () => {
       return;
     }
 
-    if (passwordForm.currentPassword === passwordForm.newPassword) {
-      showAlertMessage('New password must be different from current password', 'danger');
-      return;
-    }
-
     try {
       
       const payload = {
 
        
         userId : localStorage.getItem('userId'),
-        currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
         updatedBy: localStorage.getItem('username') || 'system'
       };
@@ -171,7 +164,6 @@ const UserProfile = () => {
 
       showAlertMessage('Password changed successfully!', 'success');
       setPasswordForm({
-        currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       });
@@ -329,24 +321,8 @@ const UserProfile = () => {
                         <Col md={12}>
                           <Alert variant="info">
                             <i className="fas fa-info-circle me-2"></i>
-                            Password must be at least 6 characters long and different from your current password.
+                            Password must be at least 6 characters long.
                           </Alert>
-                        </Col>
-                      </Row>
-
-                      <Row className="mb-3">
-                        <Col md={12}>
-                          <Form.Group>
-                            <Form.Label>Current Password <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                              type="password"
-                              name="currentPassword"
-                              value={passwordForm.currentPassword}
-                              onChange={handlePasswordChange}
-                              placeholder="Enter current password"
-                              required
-                            />
-                          </Form.Group>
                         </Col>
                       </Row>
 

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Card, Table, Button } from 'react-bootstrap';
+import { Container, Card, Table, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import { getPagePermissions } from './utils/menuSecurity';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectDetails() {
   const [projects, setProjects] = useState([]);
   const navigate = useNavigate();
+  const permissions = getPagePermissions('Project Management');
 
   const loadProjects = async () => {
     try {
@@ -39,11 +41,21 @@ function ProjectDetails() {
   useEffect(() => {
     loadProjects();
   }, []);
+  
   const handleEdit = (project) => {
+    if (!permissions.edit) {
+      alert('You do not have permission to edit projects');
+      return;
+    }
     navigate('/ProjectManagementEntryForm', { state: { project, edit: true } });
   };
 
   const handleDelete = async (projectId) => {
+    if (!permissions.delete) {
+      alert('You do not have permission to delete projects');
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to delete this project?')) {
       return;
     }
@@ -68,17 +80,40 @@ function ProjectDetails() {
   };
 
   const handleNewEntry = () => {
+    if (!permissions.edit) {
+      alert('You do not have permission to create new projects');
+      return;
+    }
     navigate('/ProjectManagementEntryForm');
   };
+
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <Container className="py-4">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container className="py-4">
       <Card className="shadow-sm">
         <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
           <h3 className="mb-0">Project Details</h3>
-          <Button variant="light" onClick={handleNewEntry}>
-           New Project
-          </Button>
+          {permissions.edit && (
+            <Button variant="light" onClick={handleNewEntry}>
+              New Project
+            </Button>
+          )}
         </Card.Header>
         <Card.Body>
           <Table striped bordered hover responsive className="align-middle" style={{ fontSize: '0.875rem' }}>
@@ -88,7 +123,9 @@ function ProjectDetails() {
                 <th>Location</th>
                 <th>Start Date</th>
                 <th>End Date</th>
-                <th className="text-center">Actions</th>
+                {(permissions.edit || permissions.delete) && (
+                  <th className="text-center">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -102,25 +139,31 @@ function ProjectDetails() {
                   <td>{project.location}</td>
                   <td>{project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB') : ''}</td>
                   <td>{project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB') : ''}</td>
-                  <td className="text-center">
-                    <Button 
-                      variant="outline-primary" 
-                      size="sm" 
-                      className="me-2"
-                      onClick={() => handleEdit(project)}
-                      title="Edit"
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </Button>
-                    <Button 
-                      variant="outline-danger" 
-                      size="sm"
-                      onClick={() => handleDelete(project._id)}
-                      title="Delete"
-                    >
-                      <i className="bi bi-trash"></i>
-                    </Button>
-                  </td>
+                  {(permissions.edit || permissions.delete) && (
+                    <td className="text-center">
+                      {permissions.edit && (
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          className="me-2"
+                          onClick={() => handleEdit(project)}
+                          title="Edit"
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                      )}
+                      {permissions.delete && (
+                        <Button 
+                          variant="outline-danger" 
+                          size="sm"
+                          onClick={() => handleDelete(project._id)}
+                          title="Delete"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

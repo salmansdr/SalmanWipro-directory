@@ -137,7 +137,7 @@ const RoleManagement = () => {
           const hasEdit = hasPermissionKey(rolePermissions, menu.label, 'edit', sub.label);
           const hasDelete = hasPermissionKey(rolePermissions, menu.label, 'delete', sub.label);
           matrix.push({
-            toggle: hasView && hasEdit && hasDelete,
+            toggle: hasView || hasEdit || hasDelete,
             menu: menu.label,
             page: sub.label,
             view: hasView,
@@ -153,7 +153,7 @@ const RoleManagement = () => {
         const hasEdit = hasPermissionKey(rolePermissions, menu.label, 'edit', menu.label);
         const hasDelete = hasPermissionKey(rolePermissions, menu.label, 'delete', menu.label);
         matrix.push({
-          toggle: hasView && hasEdit && hasDelete,
+          toggle: hasView || hasEdit || hasDelete,
           menu: menu.label,
           page: menu.label,
           view: hasView,
@@ -213,8 +213,9 @@ const RoleManagement = () => {
       else if (prop === 'view' || prop === 'edit' || prop === 'delete') {
         // Update toggle column based on all permissions
         const sourceRowData = hotInstance.getSourceDataAtRow(row);
-        const allChecked = sourceRowData.view && sourceRowData.edit && sourceRowData.delete;
-        hotInstance.setDataAtRowProp(row, 'toggle', allChecked, 'auto');
+        // Toggle should be checked if ANY permission is checked (not all)
+        const anyChecked = sourceRowData.view || sourceRowData.edit || sourceRowData.delete;
+        hotInstance.setDataAtRowProp(row, 'toggle', anyChecked, 'auto');
       }
     });
   };
@@ -276,7 +277,7 @@ const RoleManagement = () => {
           let response;
           if (isNewRole || !roleId) {
             // POST for new role
-            console.log('Creating new role with POST');
+           // console.log('Creating new role with POST');
             response = await fetch(`${apiBaseUrl}/api/RoleManagement`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -284,7 +285,7 @@ const RoleManagement = () => {
             });
           } else {
             // PUT for existing role
-            console.log('Updating existing role with PUT, ID:', roleId);
+            //console.log('Updating existing role with PUT, ID:', roleId);
             response = await fetch(`${apiBaseUrl}/api/RoleManagement/${roleId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },

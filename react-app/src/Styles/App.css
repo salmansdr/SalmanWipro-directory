@@ -45,3 +45,86 @@ footer {
 .ht_master .wtTable {
   table-layout: fixed !important;
 }
+/* AG Grid Professional Styling */
+.ag-theme-alpine {
+  --ag-border-color: #dde2eb;
+  --ag-header-background-color: #f1f3f5;
+  --ag-header-foreground-color: #212529;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #f5f7fa;
+  --ag-selected-row-background-color: #e7f3ff;
+}
+
+.ag-theme-alpine .ag-header {
+  background-color: #e9ecef;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  background-color: #e9ecef;
+  font-weight: 600;
+  border-right: 1px solid #dde2eb;
+  color: #212529;
+}
+
+.ag-theme-alpine .ag-header-cell-label {
+  color: #212529;
+  font-weight: 600;
+}
+
+.ag-theme-alpine .ag-cell {
+  border-right: 1px solid #dde2eb;
+  line-height: 40px;
+}
+
+.ag-theme-alpine .ag-row {
+  border-bottom: 1px solid #dde2eb;
+}
+
+/* Add dropdown indicator for select cells - using data-colid attribute */
+.ag-theme-alpine .ag-cell[data-colid="itemCode"]:not(.ag-cell-inline-editing),
+.ag-theme-alpine .ag-cell[data-colid="unit"]:not(.ag-cell-inline-editing) {
+  position: relative;
+  padding-right: 25px;
+}
+
+.ag-theme-alpine .ag-cell[data-colid="itemCode"]:not(.ag-cell-inline-editing)::after,
+.ag-theme-alpine .ag-cell[data-colid="unit"]:not(.ag-cell-inline-editing)::after {
+  content: '▼';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #6c757d;
+  pointer-events: none;
+}
+
+/* Better focus styling */
+.ag-theme-alpine .ag-cell-focus {
+  border: 2px solid #0d6efd !important;
+  outline: none;
+}
+
+/* Select dropdown styling */
+.ag-theme-alpine .ag-select-editor {
+  height: 100%;
+}
+
+.ag-theme-alpine .ag-popup {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #dde2eb;
+}
+
+.ag-theme-alpine .ag-select-list {
+  max-height: 200px;
+}
+
+.ag-theme-alpine .ag-select-list-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.ag-theme-alpine .ag-select-list-item:hover {
+  background-color: #e7f3ff;
+}

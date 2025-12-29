@@ -92,11 +92,14 @@ const pdfStyles = StyleSheet.create({
   },
   floorGroupHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#e9ecef',
     fontWeight: 'bold',
-    padding: 6,
-    fontSize: 9,
-    borderTop: '1 solid #cbd5e0',
+    padding: 8,
+    fontSize: 11,
+    borderTop: '2 solid #495057',
+    borderBottom: '1 solid #495057',
+    textAlign: 'center',
+    justifyContent: 'center',
   },
   floorSubtotal: {
     flexDirection: 'row',
@@ -161,9 +164,9 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
 
   const validFloorData = floorWiseData.filter(row => 
     row && (row.componentName || row.isGroupHeader || row.isSubtotal || row.isGrandTotal) &&
-    typeof row.materialCost === 'number' && 
+    (row.isGroupHeader || (typeof row.materialCost === 'number' && 
     typeof row.labourCost === 'number' && 
-    typeof row.totalCost === 'number'
+    typeof row.totalCost === 'number'))
   );
 
   // If after filtering we have no valid data, show error
@@ -1494,8 +1497,19 @@ function Reports() {
                   className="modern-dropdown"
                   value={selectedProjectId}
                   onChange={e => {
-                    setSelectedProjectId(e.target.value);
+                    const projectId = e.target.value;
+                    setSelectedProjectId(projectId);
                     setSelectedEstimationId(''); // Reset estimation when project changes
+                    
+                    // Auto-select first estimation if available
+                    if (projectId) {
+                      const selectedProject = projects.find(p => p._id === projectId);
+                      const estimations = selectedProject?.estimations || [];
+                      if (estimations.length > 0) {
+                        // Auto-select the first estimation
+                        setSelectedEstimationId(estimations[0]._id);
+                      }
+                    }
                   }}
                 >
                   <option value="">-- Select Project --</option>

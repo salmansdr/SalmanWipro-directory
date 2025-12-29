@@ -1907,6 +1907,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     if (floorsList && floorsList.length > 0) {
       setFloors(floorsList);
     }
+
   }, [floorsList]);
 
   // Load data when localSelectedFloor changes (from cache)
@@ -2631,6 +2632,13 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       return null; // Return null to prevent table rendering
     }
     
+    // Helper function to lookup materialId from materialItems
+    const getMaterialId = (materialName) => {
+      if (!materialItems || materialItems.length === 0) return '';
+      const foundMaterial = materialItems.find(item => item.material === materialName);
+      return foundMaterial ? (foundMaterial._id || foundMaterial.materialId || '') : '';
+    };
+    
     // Process each group row from floorQuantityData
     floorQuantityData.forEach((row, index) => {
       if (row.isGroupHeader) {
@@ -2676,7 +2684,8 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
                 const totalQty = (parseFloat(materialQty) * (1 + wastage / 100)).toFixed(2);
                 
                 const materialName = material.data.material || material.name;
-                const materialId = material.data._id || material.data.materialId || '';
+                // First try to get materialId from RCC config, then lookup from materialItems
+                const materialId = material.data._id || material.data.materialId || getMaterialId(materialName);
                 const defaultRate = parseFloat(material.data.defaultRate) || 0;
                 
                 const materialAmt = parseFloat(totalQty * defaultRate);
@@ -2708,6 +2717,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
             
             materialRows.push({
               component: row.component,
+              category: row.category || '',  // Include category from quantity data
               volume: parseFloat(volumeQty.toFixed(2)),
               unit: 'Cum',
               consumptionRate: '',
@@ -2735,6 +2745,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
           
           materialRows.push({
             component: row.component,
+            category: row.category || '',  // Include category from quantity data
             volume: parseFloat(volumeQty.toFixed(2)),
             unit: row.unit || 'Cum',
             consumptionRate: '',
@@ -2755,12 +2766,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     });
     
     return materialRows;
-  }, [rccConfigData]);
-
-  // Generate material data from current quantityData (for backward compatibility)
-  const generateMaterialData = useCallback(() => {
-    return generateMaterialDataForFloor(quantityData);
-  }, [quantityData, generateMaterialDataForFloor]);
+  }, [rccConfigData, materialItems]);
 
   // Generate and cache material data for all floors
   const generateAllFloorsMaterialData = useCallback(() => {
@@ -3008,8 +3014,11 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         
         setMaterialData(dataWithGrandTotal);
       } else {
-        // No cache or invalid cache - generate from quantityData
-        const materials = generateMaterialData();
+        // No cache or invalid cache - generate from floor's quantity data in cache
+        const floorCache = floorDataCache.current[localSelectedFloor];
+        const floorQuantityData = floorCache?.gridData || [];
+        
+        const materials = generateMaterialDataForFloor(floorQuantityData);
         if (materials && Array.isArray(materials) && materials.length > 0) {
           materialDataCache.current[localSelectedFloor] = materials;
           
@@ -3042,7 +3051,7 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
         }
       }
     }
-  }, [activeTab, localSelectedFloor, generateMaterialData, materialCacheVersion, materialItems]);
+  }, [activeTab, localSelectedFloor, generateMaterialDataForFloor, materialCacheVersion, materialItems]);
 
   // Save material data to cache when switching away from material tab
   useEffect(() => {

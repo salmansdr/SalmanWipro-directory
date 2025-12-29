@@ -227,9 +227,7 @@ function Login({ onLogin, isAuthenticated }) {
                     disabled={isAuthenticated}
                   />
                 </div>
-                <div className="col-12 text-end">
-                  <button type="button" className="btn btn-link p-0 text-primary small" style={{textDecoration: 'underline'}} tabIndex={0}>Forgot Password?</button>
-                </div>
+                
                 {error && (
                   <div className="col-12">
                     <div className="alert alert-danger py-2 mb-0">{error}</div>

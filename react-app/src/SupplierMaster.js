@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Row, Col, Table, InputGroup } from 'react-bootstrap';
+import { getPagePermissions } from './utils/menuSecurity';
 
 const SupplierMaster = () => {
+  const permissions = getPagePermissions('Supplier Master');
   const [suppliers, setSuppliers] = useState([]);
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,6 +83,11 @@ const SupplierMaster = () => {
   };
 
   const handleNewSupplier = () => {
+    if (!permissions.edit) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to create new suppliers' });
+      return;
+    }
+    
     setFormData({
       _id: '',
       supplierCode: '',
@@ -108,6 +115,11 @@ const SupplierMaster = () => {
   };
 
   const handleEdit = (supplier) => {
+    if (!permissions.edit) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to edit suppliers' });
+      return;
+    }
+    
     setFormData(supplier);
     setEditMode(true);
     setViewMode('form');
@@ -195,6 +207,11 @@ const SupplierMaster = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!permissions.delete) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to delete suppliers' });
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to delete this supplier?')) {
       return;
     }
@@ -220,6 +237,23 @@ const SupplierMaster = () => {
       setAlertMessage({ show: true, type: 'danger', message: `Error: ${error.message}` });
     }
   };
+
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <Container fluid className="mt-3">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid className="mt-3">
@@ -247,9 +281,11 @@ const SupplierMaster = () => {
                 View and manage all suppliers
               </p>
             </div>
-            <Button variant="light" onClick={handleNewSupplier}>
-              <i className="bi bi-plus-circle me-2"></i>New Supplier
-            </Button>
+            {permissions.edit && (
+              <Button variant="light" onClick={handleNewSupplier}>
+                <i className="bi bi-plus-circle me-2"></i>New Supplier
+              </Button>
+            )}
           </Card.Header>
           <Card.Body>
             {/* Search Bar */}
@@ -288,7 +324,9 @@ const SupplierMaster = () => {
                     <th style={{ width: '15%' }}>Email</th>
                     <th style={{ width: '18%' }}>Address</th>
                     <th style={{ width: '8%' }}>Status</th>
-                    <th style={{ width: '8%' }}>Actions</th>
+                    {(permissions.edit || permissions.delete) && (
+                      <th style={{ width: '8%' }}>Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -314,25 +352,31 @@ const SupplierMaster = () => {
                             <span className="badge bg-secondary">Inactive</span>
                           )}
                         </td>
-                        <td>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            className="me-2"
-                            onClick={() => handleEdit(supplier)}
-                            title="Edit"
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => handleDelete(supplier._id)}
-                            title="Delete"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </Button>
-                        </td>
+                        {(permissions.edit || permissions.delete) && (
+                          <td>
+                            {permissions.edit && (
+                              <Button 
+                                variant="outline-primary" 
+                                size="sm" 
+                                className="me-2"
+                                onClick={() => handleEdit(supplier)}
+                                title="Edit"
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </Button>
+                            )}
+                            {permissions.delete && (
+                              <Button 
+                                variant="outline-danger" 
+                                size="sm"
+                                onClick={() => handleDelete(supplier._id)}
+                                title="Delete"
+                              >
+                                <i className="bi bi-trash"></i>
+                              </Button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}

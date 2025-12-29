@@ -62,30 +62,94 @@ export const hasPermission = (menuItem, userRole) => {
   // Check API-based permissions from localStorage
   const userPermissions = localStorage.getItem('userPermissions');
   
-  if (userPermissions) {
-    try {
-      const permissions = JSON.parse(userPermissions);
-      
-      // Check if user has permission for this menu label
-      const hasMenuPermission = permissions.some(p => {
-        const menuMatch = p.menuItem === menuItem.label || p.page === menuItem.label;
-        if (menuMatch && p.permissions) {
-          const hasAnyPerm = p.permissions.view === true || 
-                 p.permissions.edit === true || 
-                 p.permissions.delete === true;
-          return hasAnyPerm;
-        }
-        return false;
-      });
-      
-      return hasMenuPermission;
-    } catch (error) {
-      console.error('Error parsing user permissions:', error);
-    }
+  if (!userPermissions) {
+    // No permissions stored, deny access
+    return false;
   }
+  
+  try {
+    const permissions = JSON.parse(userPermissions);
+    
+    // For menu items, check if user has permission by matching page name
+    const hasMenuPermission = permissions.some(p => {
+      // Match by page name (this is what comes from the API)
+      const pageMatch = p.page === menuItem.label;
+      if (pageMatch && p.permissions) {
+        const hasAnyPerm = p.permissions.view === true || 
+               p.permissions.edit === true || 
+               p.permissions.delete === true;
+        return hasAnyPerm;
+      }
+      return false;
+    });
+    
+    return hasMenuPermission;
+  } catch (error) {
+    console.error('Error parsing user permissions:', error);
+    return false;
+  }
+};
 
-  // If no API permissions, deny access to protected items
-  return false;
+/**
+ * Check if user has specific permission for a page
+ * @param {string} pageName - The display name of the page (e.g., "Project Management")
+ * @param {string} action - The action to check: 'view', 'edit', or 'delete'
+ * @returns {boolean} - True if user has permission, false otherwise
+ */
+export const checkPagePermission = (pageName, action = 'view') => {
+  const userPermissions = localStorage.getItem('userPermissions');
+  
+  if (!userPermissions) {
+    return false;
+  }
+  
+  try {
+    const permissions = JSON.parse(userPermissions);
+    
+    // Find permission entry for this page
+    const pagePermission = permissions.find(p => p.page === pageName);
+    
+    if (!pagePermission || !pagePermission.permissions) {
+      return false;
+    }
+    
+    // Check specific action (view, edit, delete)
+    return pagePermission.permissions[action] === true;
+  } catch (error) {
+    console.error('Error checking page permission:', error);
+    return false;
+  }
+};
+
+/**
+ * Get all permissions for a specific page
+ * @param {string} pageName - The display name of the page
+ * @returns {object} - Object with view, edit, delete boolean properties
+ */
+export const getPagePermissions = (pageName) => {
+  const userPermissions = localStorage.getItem('userPermissions');
+  
+  if (!userPermissions) {
+    return { view: false, edit: false, delete: false };
+  }
+  
+  try {
+    const permissions = JSON.parse(userPermissions);
+    const pagePermission = permissions.find(p => p.page === pageName);
+    
+    if (!pagePermission || !pagePermission.permissions) {
+      return { view: false, edit: false, delete: false };
+    }
+    
+    return {
+      view: pagePermission.permissions.view === true,
+      edit: pagePermission.permissions.edit === true,
+      delete: pagePermission.permissions.delete === true
+    };
+  } catch (error) {
+    console.error('Error getting page permissions:', error);
+    return { view: false, edit: false, delete: false };
+  }
 };
 
 /**
@@ -192,23 +256,11 @@ export const hasRolePermission = (roleName, permissionKey) => {
 
 /**
  * Check if submenu item is accessible
+ * This now properly delegates to hasPermission for consistency
  */
 export const hasSubmenuPermission = (parentId, submenuId, userRole) => {
-  // Check API-based permissions from localStorage first
-  const userPermissions = localStorage.getItem('userPermissions');
-  if (userPermissions) {
-    try {
-      const permissions = JSON.parse(userPermissions);
-      
-      // For submenu, we just need the submenu label - get it from menuConfig
-      // This is a simplified check - just return true if we have permissions
-      // The actual filtering will happen in hasPermission
-      return permissions.length > 0;
-    } catch (error) {
-      console.error('Error parsing user permissions:', error);
-    }
-  }
-  
+  // This function is kept for backward compatibility but is no longer used
+  // The filtering is now done by hasPermission directly
   const permissionKey = `${parentId}.${submenuId}`;
   return hasRolePermission(userRole, permissionKey);
 };
@@ -221,23 +273,29 @@ export const getFilteredMenuItems = async (isAuthenticated) => {
   const userRole = isAuthenticated ? getUserRole() : 'guest';
   
   const filtered = config.menuItems.filter(menuItem => {
-    // Check if user has permission for this menu item
-    if (!hasPermission(menuItem, userRole)) {
-      return false;
+    // If menu item is public, allow access
+    if (!menuItem.requireAuth) {
+      return true;
     }
 
-    // If it's a dropdown, filter submenu items using granular permissions
+    // If it's a dropdown, filter submenu items first
     if (menuItem.type === 'dropdown' && menuItem.submenu) {
       menuItem.filteredSubmenu = menuItem.submenu.filter(subItem => {
-        // Check granular permission for submenu
-        return hasSubmenuPermission(menuItem.id, subItem.id, userRole) || 
-               hasPermission(subItem, userRole);
+        // Submenu items inherit requireAuth from parent if not set
+        const itemRequiresAuth = subItem.requireAuth !== undefined ? subItem.requireAuth : menuItem.requireAuth;
+        
+        // Set requireAuth on the subItem for hasPermission to check
+        subItem.requireAuth = itemRequiresAuth;
+        
+        // Check if user has permission for this specific page
+        return hasPermission(subItem, userRole);
       });
-      // Only show dropdown if it has accessible submenu items
+      // Show dropdown only if it has accessible submenu items
       return menuItem.filteredSubmenu.length > 0;
     }
 
-    return true;
+    // For non-dropdown items, check permission normally
+    return hasPermission(menuItem, userRole);
   });
   
   return filtered;
@@ -334,6 +392,8 @@ const menuSecurity = {
   setUserRole,
   clearUserRole,
   hasPermission,
+  checkPagePermission,
+  getPagePermissions,
   getFilteredMenuItems,
   authenticateUser,
   getRoles,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Card, Button, Table, Spinner, Alert } from 'react-bootstrap';
+import { getPagePermissions } from './utils/menuSecurity';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectEstimation() {
@@ -8,6 +9,7 @@ function ProjectEstimation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const permissions = getPagePermissions('Project Estimation');
 
   // Load project estimation data from MongoDB API
   useEffect(() => {
@@ -71,6 +73,11 @@ function ProjectEstimation() {
   }, []);
 
   const handleNewEntry = async () => {
+    if (!permissions.edit) {
+      alert('You do not have permission to create new estimations');
+      return;
+    }
+    
     try {
       // Create a new project estimation via POST API
       const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
@@ -118,6 +125,11 @@ function ProjectEstimation() {
     });
   };
   const handleEditClick = (id) => {
+    if (!permissions.edit) {
+      alert('You do not have permission to edit estimations');
+      return;
+    }
+    
     navigate('/pricing-calculator', {
       state: {
         mode: 'edit',
@@ -128,6 +140,11 @@ function ProjectEstimation() {
 
   // Delete row handler
   const handleDelete = async (id, ref) => {
+    if (!permissions.delete) {
+      alert('You do not have permission to delete estimations');
+      return;
+    }
+    
     if (window.confirm(`Are you sure you want to delete estimation ${ref}?`)) {
       try {
         const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
@@ -149,6 +166,23 @@ function ProjectEstimation() {
       }
     }
   };
+
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <Container className="py-4">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
 
   // Loading state
   if (loading) {
@@ -185,9 +219,11 @@ function ProjectEstimation() {
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
           <h3 className="mb-0">Project Estimation</h3>
-          <Button variant="light" onClick={handleNewEntry}>
-            New Estimation
-          </Button>
+          {permissions.edit && (
+            <Button variant="light" onClick={handleNewEntry}>
+              New Estimation
+            </Button>
+          )}
         </Card.Header>
         <Card.Body>
           <Card className="mb-4">
@@ -204,7 +240,9 @@ function ProjectEstimation() {
                     <th>Modification Date</th>
                     <th>Created By</th>
                     <th>Modified By</th>
-                    <th>Action</th>
+                    {(permissions.edit || permissions.delete) && (
+                      <th>Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -220,27 +258,33 @@ function ProjectEstimation() {
                       <td>{row.modificationDate}</td>
                       <td>{row.createdByUserName}</td>
                       <td>{row.modifiedByUserName}</td>
-                      <td>
-                        <Button 
-                          variant="outline-primary" 
-                          size="sm" 
-                          className="me-2"
-                          onClick={() => handleEditClick(row._id)}
-                          disabled={row.lockEdit}
-                          title={row.lockEdit ? "Edit Locked" : "Edit"}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button 
-                          variant="outline-danger" 
-                          size="sm"
-                          onClick={() => handleDelete(row._id, row.ref)}
-                          disabled={row.lockDelete}
-                          title={row.lockDelete ? "Delete Locked" : "Delete"}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
+                      {(permissions.edit || permissions.delete) && (
+                        <td>
+                          {permissions.edit && (
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="me-2"
+                              onClick={() => handleEditClick(row._id)}
+                              disabled={row.lockEdit}
+                              title={row.lockEdit ? "Edit Locked" : "Edit"}
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </Button>
+                          )}
+                          {permissions.delete && (
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm"
+                              onClick={() => handleDelete(row._id, row.ref)}
+                              disabled={row.lockDelete}
+                              title={row.lockDelete ? "Delete Locked" : "Delete"}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -4,6 +4,7 @@ import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
 import { PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { getPagePermissions } from './utils/menuSecurity';
 
 registerAllModules();
 
@@ -545,6 +546,7 @@ const TransferVoucherPDF = ({ data }) => {
 };
 
 const MaterialReceived = () => {
+  const permissions = getPagePermissions('Material Movement');
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [grns, setGrns] = useState([]);
   const [filteredGrns, setFilteredGrns] = useState([]);
@@ -819,7 +821,8 @@ const MaterialReceived = () => {
       }
 
       // Load Projects
-      const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/running`);
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/running?companyId=${companyId}`);
       if (projectsResponse.ok) {
         const projectsData = await projectsResponse.json();
         setProjects(Array.isArray(projectsData) ? projectsData : []);
@@ -877,6 +880,7 @@ const MaterialReceived = () => {
       poId: po._id || '',
       supplierId: po.supplierId || '',
       supplierName: po.supplierName || '',
+      projectId: po.projectId || '',
       items: mappedItems
     }));
     setPoSearchTerm(''); // Clear search to show all POs
@@ -885,7 +889,8 @@ const MaterialReceived = () => {
 
   const loadGrns = async () => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/MaterialReceived`);
+      const companyId = localStorage.getItem('selectedCompanyId');
+      const response = await fetch(`${apiBaseUrl}/api/MaterialReceived?companyId=${companyId}`);
       if (response.ok) {
         const data = await response.json();
         setGrns(data);
@@ -1064,7 +1069,7 @@ const MaterialReceived = () => {
         isOpeningBalance: isOpeningBalance,
         floor: selectedFloor || formData.floor || '',
         event: selectedEvent || formData.event || '',
-        companyCode: companyId,
+        companyId: companyId,
         companyName: companyName,
         createdBy: editMode ? formData.createdBy : userId,
         modifiedBy: userId
@@ -1164,6 +1169,11 @@ const MaterialReceived = () => {
   };
 
   const handleNewGrn = () => {
+    if (!permissions.edit) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to create new material movements' });
+      return;
+    }
+    
     handleReset();
     setPoSearchTerm('');
     setShowMovementTypeModal(true);
@@ -1176,6 +1186,11 @@ const MaterialReceived = () => {
   };
 
   const handleViewGrn = (grn) => {
+    if (!permissions.view) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to view material movements' });
+      return;
+    }
+    
     // Merge charges and discounts arrays back into single charges array
     const mergedCharges = [];
     
@@ -1297,6 +1312,11 @@ const MaterialReceived = () => {
   };
 
   const handleDelete = async (_id) => {
+    if (!permissions.delete) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to delete material movements' });
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to delete this GRN?')) {
       return;
     }
@@ -1968,6 +1988,23 @@ const MaterialReceived = () => {
     }
   };
 
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <Container className="py-4">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
+
   return (
     <Container fluid className="mt-3">
       {alertMessage.show && (
@@ -1991,9 +2028,11 @@ const MaterialReceived = () => {
               </h4>
               
             </div>
-            <Button variant="light" onClick={handleNewGrn}>
-              <i className="bi bi-plus-circle me-2"></i>New
-            </Button>
+            {permissions.edit && (
+              <Button variant="light" onClick={handleNewGrn}>
+                <i className="bi bi-plus-circle me-2"></i>New
+              </Button>
+            )}
           </Card.Header>
           <Card.Body>
             {/* Search Bar */}
@@ -2081,7 +2120,9 @@ const MaterialReceived = () => {
                   <th style={{ width: '11%', verticalAlign: 'top' }}>Invoice Number</th>
                   <th style={{ width: '9%', verticalAlign: 'top' }}>Invoice Date</th>
                   
-                  <th style={{ width: '10%', verticalAlign: 'top' }}>Actions</th>
+                  {(permissions.edit || permissions.delete) && (
+                    <th style={{ width: '10%', verticalAlign: 'top' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -2107,14 +2148,18 @@ const MaterialReceived = () => {
                         )}
                       </td>
                       <td>
-                        <Button
-                          variant="link"
-                          className="p-0 text-decoration-none"
-                          onClick={() => handleViewGrn(grn)}
-                          style={{ fontSize: '0.875rem' }}
-                        >
-                          {grn.referenceNumber}
-                        </Button>
+                        {permissions.view ? (
+                          <Button
+                            variant="link"
+                            className="p-0 text-decoration-none"
+                            onClick={() => handleViewGrn(grn)}
+                            style={{ fontSize: '0.875rem' }}
+                          >
+                            {grn.referenceNumber}
+                          </Button>
+                        ) : (
+                          <span style={{ fontSize: '0.875rem' }}>{grn.referenceNumber}</span>
+                        )}
                       </td>
                       <td>{grn.referenceDate ? new Date(grn.referenceDate).toLocaleDateString('en-GB') : ''}</td>
                       <td>{grn.poNumber}</td>
@@ -2122,25 +2167,31 @@ const MaterialReceived = () => {
                       <td>{grn.invoiceNumber}</td>
                       <td>{grn.invoiceDate ? new Date(grn.invoiceDate).toLocaleDateString('en-GB') : ''}</td>
                       
-                      <td>
-                        <Button 
-                          variant="outline-primary" 
-                          size="sm" 
-                          className="me-2"
-                          onClick={() => handleViewGrn(grn)}
-                          title="Edit"
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button 
-                          variant="outline-danger" 
-                          size="sm"
-                          onClick={() => handleDelete(grn._id)}
-                          title="Delete"
-                        >
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
+                      {(permissions.edit || permissions.delete) && (
+                        <td>
+                          {permissions.edit && (
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="me-2"
+                              onClick={() => handleViewGrn(grn)}
+                              title="Edit"
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </Button>
+                          )}
+                          {permissions.delete && (
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm"
+                              onClick={() => handleDelete(grn._id)}
+                              title="Delete"
+                            >
+                              <i className="bi bi-trash"></i>
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                   })

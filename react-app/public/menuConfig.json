@@ -36,6 +36,11 @@
       "requireAuth": true,
       "submenu": [
         {
+          "label": "Store Requisition",
+          "path": "/store-requisition",
+          "icon": "fas fa-clipboard-check"
+        },
+        {
           "label": "Purchase Orders",
           "path": "/purchase-orders",
           "icon": "fas fa-file-invoice"
@@ -44,12 +49,8 @@
           "label": "Material Movement",
           "path": "/material-received",
           "icon": "fas fa-box-open"
-        },
-        {
-          "label": "Store Requisition",
-          "path": "/store-requisition",
-          "icon": "fas fa-clipboard-check"
         }
+        
       ]
     },
     {
@@ -67,6 +68,11 @@
           "label": "Stock Details",
           "path": "/stock-details",
           "icon": "fas fa-box-open"
+        },
+        {
+          "label": "Inventory Movement",
+          "path": "/inventory-movement",
+          "icon": "fas fa-exchange-alt"
         }
       ]
     },

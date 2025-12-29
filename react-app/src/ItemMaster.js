@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Form, Button, Row, Col, Alert, Table, Badge, InputGroup, Pagination } from 'react-bootstrap';
 import * as XLSX from 'xlsx-js-style';
+import { getPagePermissions } from './utils/menuSecurity';
 
 // Migration: Convert old formats to new component-grouped structure
 function migrateMaterialCalculation(materialCalc) {
@@ -119,6 +120,7 @@ function migrateMaterialCalculation(materialCalc) {
 
 
 const ItemMaster = () => {
+  const permissions = getPagePermissions('Item Master');
   // ...existing useState declarations...
 
 
@@ -763,6 +765,15 @@ const ItemMaster = () => {
   };
 
   const openModal = async (item = null) => {
+    if (item && !permissions.edit) {
+      showAlertMessage('You do not have permission to edit items', 'danger');
+      return;
+    }
+    if (!item && !permissions.edit) {
+      showAlertMessage('You do not have permission to add items', 'danger');
+      return;
+    }
+    
     if (item) {
       try {
         // Fetch the complete item details from API
@@ -1109,6 +1120,11 @@ const ItemMaster = () => {
   };
 
   const handleDelete = async (itemId) => {
+    if (!permissions.delete) {
+      showAlertMessage('You do not have permission to delete items', 'danger');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
         // Find the item to get its MongoDB _id if available
@@ -1324,6 +1340,23 @@ const ItemMaster = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <div className="container-fluid py-4">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4">
       {viewMode === 'list' ? (
@@ -1342,14 +1375,16 @@ const ItemMaster = () => {
                   <i className="fas fa-download me-2"></i>
                   Export
                 </Button>
-                <Button 
-                  variant="warning" 
-                  size="sm" 
-                  onClick={() => openModal()}
-                >
-                  <i className="fas fa-plus me-2"></i>
-                  Add Item
-                </Button>
+                {permissions.edit && (
+                  <Button 
+                    variant="warning" 
+                    size="sm" 
+                    onClick={() => openModal()}
+                  >
+                    <i className="fas fa-plus me-2"></i>
+                    Add Item
+                  </Button>
+                )}
               </div>
             </Card.Header>
 
@@ -1463,7 +1498,9 @@ const ItemMaster = () => {
                       <th>Lot Controlled</th>
                      
                       <th>Status</th>
-                      <th>Actions</th>
+                      {(permissions.edit || permissions.delete) && (
+                        <th>Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1508,26 +1545,32 @@ const ItemMaster = () => {
                           <td>
                             {item.isActive ? 'Active' : 'Inactive'}
                           </td>
-                          <td>
-                            <div className="d-flex gap-2">
-                              <Button 
-                                variant="outline-primary" 
-                                size="sm" 
-                                onClick={() => openModal(item)}
-                                title="Edit Item"
-                              >
-                                <i className="fas fa-edit"></i>
-                              </Button>
-                              <Button 
-                                variant="outline-danger" 
-                                size="sm" 
-                                onClick={() => handleDelete(item.id)}
-                                title="Delete Item"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </Button>
-                            </div>
-                          </td>
+                          {(permissions.edit || permissions.delete) && (
+                            <td>
+                              <div className="d-flex gap-2">
+                                {permissions.edit && (
+                                  <Button 
+                                    variant="outline-primary" 
+                                    size="sm" 
+                                    onClick={() => openModal(item)}
+                                    title="Edit Item"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                  </Button>
+                                )}
+                                {permissions.delete && (
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm" 
+                                    onClick={() => handleDelete(item.id)}
+                                    title="Delete Item"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}

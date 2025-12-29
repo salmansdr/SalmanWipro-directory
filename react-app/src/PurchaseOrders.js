@@ -6,6 +6,7 @@ import { registerAllModules } from 'handsontable/registry';
 import Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
 import { PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { getPagePermissions } from './utils/menuSecurity';
 
 registerAllModules();
 
@@ -305,6 +306,7 @@ const PurchaseOrderPDF = ({ poData, currency }) => {
 };
 
 const PurchaseOrders = () => {
+  const permissions = getPagePermissions('Purchase Orders');
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -318,6 +320,7 @@ const PurchaseOrders = () => {
   const [materialItems, setMaterialItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [requisitions, setRequisitions] = useState([]);
   const [materialRequirements, setMaterialRequirements] = useState([]);
   const [componentRequirements, setComponentRequirements] = useState([]);
   const [currency, setCurrency] = useState('');
@@ -350,6 +353,8 @@ const PurchaseOrders = () => {
     supplierMobileNumber: '',
     projectId: '',
     projectName: '',
+    requisitionId: '',
+    requisitionNumber: '',
     deliveryDate: '',
     deliveryLocation: '',
     modeOfPayment: '',
@@ -424,6 +429,13 @@ const PurchaseOrders = () => {
           ? projectsData.filter(project => project.status !== 'Completed') 
           : [];
         setProjects(activeProjects);
+      }
+
+      // Load Approved Requisitions
+      const requisitionsResponse = await fetch(`${apiBaseUrl}/api/Requisition/approved?companyId=${companyId}`);
+      if (requisitionsResponse.ok) {
+        const requisitionsData = await requisitionsResponse.json();
+        setRequisitions(Array.isArray(requisitionsData) ? requisitionsData : []);
       }
 
       // Load Users for approver dropdown
@@ -553,6 +565,45 @@ const PurchaseOrders = () => {
     }
   };
 
+  const handleRequisitionChange = (e) => {
+    const requisitionNumber = e.target.value;
+    
+    if (!requisitionNumber) {
+      // Clear requisition selection
+      setFormData(prev => ({
+        ...prev,
+        requisitionNumber: '',
+        requisitionId: '',
+        items: []
+      }));
+      return;
+    }
+    
+    const selectedRequisition = requisitions.find(req => req.requisitionNumber === requisitionNumber);
+    
+    if (selectedRequisition) {
+      // Map requisition items to PO items format
+      const mappedItems = selectedRequisition.items.map(item => ({
+        itemCode: item.itemName || item.workScope || item.itemCode,
+        itemId: item.itemCode, // Store original ID
+        workScope: item.workScope,
+        description: item.description || '',
+        unit: item.unit,
+        boqQty: item.requisitionQty, // Map requisitionQty to boqQty
+        purchaseQty: item.requisitionQty,
+        rate: item.rate || '',
+        amount: item.amount || ''
+      }));
+      
+      setFormData(prev => ({
+        ...prev,
+        requisitionNumber: requisitionNumber,
+        requisitionId: selectedRequisition._id || '',
+        items: mappedItems
+      }));
+    }
+  };
+
   
 
   
@@ -561,6 +612,19 @@ const PurchaseOrders = () => {
 
   // Common function to get dropdown items based on purchase type, item type, and project selection
   const getDropdownItems = () => {
+    // If requisition is selected, show only items from that requisition
+    if (formData.requisitionNumber) {
+      const selectedRequisition = requisitions.find(req => req.requisitionNumber === formData.requisitionNumber);
+      if (selectedRequisition && selectedRequisition.items) {
+        if (formData.itemType === 'Service') {
+          return selectedRequisition.items.map(item => item.workScope || '');
+        } else {
+          return selectedRequisition.items.map(item => item.itemName || '');
+        }
+      }
+      return [];
+    }
+    
     // For general purchase type, show all materials
     if (formData.purchaseType === 'general') {
       if (formData.itemType === 'Service') {
@@ -990,6 +1054,8 @@ const PurchaseOrders = () => {
       supplierMobileNumber: '',
       projectId: '',
       projectName: '',
+      requisitionId: '',
+      requisitionNumber: '',
       deliveryDate: '',
       deliveryLocation: '',
       modeOfPayment: '',
@@ -1024,7 +1090,10 @@ const PurchaseOrders = () => {
   };
 
   const handleViewPO = async (po) => {
-   
+    if (!permissions.view) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to view purchase orders' });
+      return;
+    }
     
     // If PO has a project, fetch material/component requirements first
     if (po.projectId) {
@@ -1103,6 +1172,11 @@ const PurchaseOrders = () => {
   };
 
   const handleEditPO = async (po) => {
+    if (!permissions.edit) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to edit purchase orders' });
+      return;
+    }
+    
     // If PO has a project, fetch material/component requirements first
     if (po.projectId) {
       await fetchMaterialRequirements(po.projectId);
@@ -1179,6 +1253,11 @@ const PurchaseOrders = () => {
   };
 
   const handleDelete = async (_id) => {
+    if (!permissions.delete) {
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to delete purchase orders' });
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to delete this Purchase Order?')) {
       return;
     }
@@ -1217,6 +1296,23 @@ const PurchaseOrders = () => {
     return <Badge bg={statusColors[status] || 'secondary'}>{status}</Badge>;
   };
 
+  // Check view permission
+  if (!permissions.view) {
+    return (
+      <Container className="py-4">
+        <Alert variant="danger">
+          <Alert.Heading>
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Access Denied
+          </Alert.Heading>
+          <p className="mb-0">
+            You do not have permission to view this page. Please contact your administrator if you believe this is an error.
+          </p>
+        </Alert>
+      </Container>
+    );
+  }
+
   return (
     <Container fluid className="mt-3">
       {/* Success/Error Alert */}
@@ -1243,9 +1339,11 @@ const PurchaseOrders = () => {
                 View and manage all purchase orders
               </p>
             </div>
-            <Button variant="light" onClick={handleNewPO}>
-              <i className="bi bi-plus-circle me-2"></i>New Purchase Order
-            </Button>
+            {permissions.edit && (
+              <Button variant="light" onClick={handleNewPO}>
+                <i className="bi bi-plus-circle me-2"></i>New Purchase Order
+              </Button>
+            )}
           </Card.Header>
           <Card.Body>
             {/* Search Bar */}
@@ -1280,7 +1378,9 @@ const PurchaseOrders = () => {
 
                   <th style={{ width: '10%' }}>Created By</th>
                   <th style={{ width: '10%' }}>Modified By</th>
-                  <th style={{ width: '10%' }}>Actions</th>
+                  {(permissions.edit || permissions.delete) && (
+                    <th style={{ width: '10%' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -1294,14 +1394,18 @@ const PurchaseOrders = () => {
                   filteredOrders.map((po) => (
                     <tr key={po._id}>
                       <td>
-                        <Button
-                          variant="link"
-                          className="p-0 text-decoration-none"
-                          onClick={() => handleViewPO(po)}
-                          style={{ fontSize: '0.690rem' }}
-                        >
-                          {po.poNumber}
-                        </Button>
+                        {permissions.view ? (
+                          <Button
+                            variant="link"
+                            className="p-0 text-decoration-none"
+                            onClick={() => handleViewPO(po)}
+                            style={{ fontSize: '0.690rem' }}
+                          >
+                            {po.poNumber}
+                          </Button>
+                        ) : (
+                          <span style={{ fontSize: '0.690rem' }}>{po.poNumber}</span>
+                        )}
                       </td>
                       <td>{po.poDate ? new Date(po.poDate).toLocaleDateString('en-GB') : ''}</td>
                       <td>{po.supplierName}</td>
@@ -1312,14 +1416,52 @@ const PurchaseOrders = () => {
                       <td>{getStatusBadge(po.status)}</td>
                       <td>{po.createdByUserName || '-'}</td>
                       <td>{po.modifiedByUserName || '-'}</td>
-                      <td>
-                        {/* Approved: Hide all action buttons */}
-                        {po.status !== 'Approved' && (
-                          <>
-                            {/* Draft or Rejected: Show buttons only if user is creator or modifier */}
-                            {(po.status === 'Draft' || po.status === 'Rejected') && 
-                             (po.createdBy === userId || po.modifiedBy === userId) && (
-                              <>
+                      {(permissions.edit || permissions.delete) && (
+                        <td>
+                          {/* Approved: Hide all action buttons */}
+                          {po.status !== 'Approved' && (
+                            <>
+                              {/* Draft or Rejected: Show buttons only if user is creator or modifier AND has permissions */}
+                              {(po.status === 'Draft' || po.status === 'Rejected') && 
+                               (po.createdBy === userId || po.modifiedBy === userId) && (
+                                <>
+                                  {permissions.edit && (
+                                    <Button 
+                                      variant="outline-primary" 
+                                      size="sm" 
+                                      className="me-2"
+                                      onClick={() => handleEditPO(po)}
+                                      title="Edit"
+                                    >
+                                      <i className="bi bi-pencil"></i>
+                                    </Button>
+                                  )}
+                                  {permissions.edit && po.status === 'Rejected' && (
+                                    <Button 
+                                      variant="outline-warning" 
+                                      size="sm" 
+                                      className="me-2"
+                                      onClick={() => handleConvertToDraft(po._id)}
+                                      title="Convert to Draft"
+                                    >
+                                      <i className="bi bi-arrow-counterclockwise"></i>
+                                    </Button>
+                                  )}
+                                  {permissions.delete && (
+                                    <Button 
+                                      variant="outline-danger" 
+                                      size="sm"
+                                      onClick={() => handleDelete(po._id)}
+                                      title="Delete"
+                                    >
+                                      <i className="bi bi-trash"></i>
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              
+                              {/* ApprovalRequest: Show only Edit button if user is the approver AND has edit permission */}
+                              {permissions.edit && po.status === 'ApprovalRequest' && po.approverUserId === userId && (
                                 <Button 
                                   variant="outline-primary" 
                                   size="sm" 
@@ -1329,50 +1471,18 @@ const PurchaseOrders = () => {
                                 >
                                   <i className="bi bi-pencil"></i>
                                 </Button>
-                                {po.status === 'Rejected' && (
-                                  <Button 
-                                    variant="outline-warning" 
-                                    size="sm" 
-                                    className="me-2"
-                                    onClick={() => handleConvertToDraft(po._id)}
-                                    title="Convert to Draft"
-                                  >
-                                    <i className="bi bi-arrow-counterclockwise"></i>
-                                  </Button>
-                                )}
-                                <Button 
-                                  variant="outline-danger" 
-                                  size="sm"
-                                  onClick={() => handleDelete(po._id)}
-                                  title="Delete"
-                                >
-                                  <i className="bi bi-trash"></i>
-                                </Button>
-                              </>
-                            )}
-                            
-                            {/* ApprovalRequest: Show only Edit button if user is the approver */}
-                            {po.status === 'ApprovalRequest' && po.approverUserId === userId && (
-                              <Button 
-                                variant="outline-primary" 
-                                size="sm" 
-                                className="me-2"
-                                onClick={() => handleEditPO(po)}
-                                title="Edit"
-                              >
-                                <i className="bi bi-pencil"></i>
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        
-                        {/* Show dash if no actions available */}
-                        {(po.status === 'Approved' || 
-                          ((po.status === 'Draft' || po.status === 'Rejected') && po.createdBy !== userId && po.modifiedBy !== userId) ||
-                          (po.status === 'ApprovalRequest' && po.approverUserId !== userId)) && (
-                          <span className="text-muted">-</span>
-                        )}
-                      </td>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Show dash if no actions available */}
+                          {(po.status === 'Approved' || 
+                            ((po.status === 'Draft' || po.status === 'Rejected') && po.createdBy !== userId && po.modifiedBy !== userId) ||
+                            (po.status === 'ApprovalRequest' && po.approverUserId !== userId)) && (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -1578,9 +1688,55 @@ const PurchaseOrders = () => {
                     </Form.Group>
                   </Col>
                 )}
-              </Row>
-              <Row>
-                <Col md={formData.purchaseType === 'project'  ? 6 : 12}>
+                <Col md={formData.purchaseType === 'project' ? 3 : 5}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Requisition Number (Optional)</Form.Label>
+                    <Form.Select
+                      name="requisitionNumber"
+                      value={formData.requisitionNumber}
+                      onChange={handleRequisitionChange}
+                      disabled={isViewMode}
+                    >
+                      <option value="">Select requisition (optional)</option>
+                      {(() => {
+                        // Filter requisitions based on current selections
+                        const filteredRequisitions = requisitions.filter(req => {
+                          // Match purchase type
+                          if (req.requisitionType !== formData.purchaseType) return false;
+                          // Match item type
+                          if (req.itemType !== formData.itemType) return false;
+                          // For project type, match project (by ID or name)
+                          if (formData.purchaseType === 'project') {
+                            return req.projectId === formData.projectId || req.projectName === formData.projectName;
+                          }
+                          return true;
+                        });
+                        
+                        // If current requisition is selected but not in filtered list, add it
+                        if (formData.requisitionNumber) {
+                          const currentReqExists = filteredRequisitions.some(req => 
+                            req.requisitionNumber === formData.requisitionNumber
+                          );
+                          
+                          if (!currentReqExists) {
+                            // Add the current requisition to dropdown even if it doesn't match filters
+                            filteredRequisitions.unshift({
+                              _id: formData.requisitionId || 'current',
+                              requisitionNumber: formData.requisitionNumber
+                            });
+                          }
+                        }
+                        
+                        return filteredRequisitions.map((req) => (
+                          <option key={req._id} value={req.requisitionNumber}>
+                            {req.requisitionNumber}
+                          </option>
+                        ));
+                      })()}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={formData.purchaseType === 'project'  ? 6 : 7}>
                   <Form.Group className="mb-3">
                     <Form.Label>Delivery Location <span className="text-danger">*</span></Form.Label>
                     <Form.Control
@@ -1647,8 +1803,8 @@ const PurchaseOrders = () => {
                   }
                 ]}
                 colHeaders={isViewMode 
-                  ? [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
-                  : [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                  ? [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', formData.requisitionNumber ? 'Requisition Qty' : 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
+                  : [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', formData.requisitionNumber ? 'Requisition Qty' : 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
                 }
                 columns={[
                   {
