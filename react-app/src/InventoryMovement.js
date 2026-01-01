@@ -51,7 +51,7 @@ const InventoryMovement = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setReportData(data.tabularReport || []);
+        setReportData(data.materialtabularReport || []);
         setAlertMessage({ show: false, type: '', message: '' });
       } else {
         setReportData([]);
@@ -114,7 +114,12 @@ const InventoryMovement = () => {
         defaultOption: 'contains',
         suppressAndOrCondition: true
       },
-      cellStyle: { fontWeight: '500', display: 'flex', alignItems: 'center' }
+      cellStyle: params => {
+        if (params.node.rowPinned) {
+          return { fontWeight: 'bold', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center' };
+        }
+        return { fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center' };
+      }
     },
     {
       headerName: 'Item',
@@ -130,7 +135,12 @@ const InventoryMovement = () => {
         defaultOption: 'contains',
         suppressAndOrCondition: true
       },
-      cellStyle: { fontWeight: '500', display: 'flex', alignItems: 'center' }
+      cellStyle: params => {
+        if (params.node.rowPinned) {
+          return { fontWeight: 'bold', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center' };
+        }
+        return { fontSize: '11px', fontWeight: '500', display: 'flex', alignItems: 'center' };
+      }
     },
     {
       headerName: 'Unit',
@@ -138,12 +148,18 @@ const InventoryMovement = () => {
       width: 60,
       pinned: 'left',
       filter: false,
-      cellStyle: { textAlign: 'center', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      cellStyle: params => {
+        if (params.node.rowPinned) {
+          return { fontWeight: 'bold', backgroundColor: '#f0f0f0', textAlign: 'center', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+        }
+        return { fontSize: '11px', textAlign: 'center', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+      },
       headerClass: 'ag-right-aligned-header',
       cellClass: params => 'ag-right-bordered-cell'
     },
     {
       headerName: 'Estimated',
+      headerClass: 'ag-header-group-cell-label-center',
       children: [
         {
           headerName: 'Qty',
@@ -152,7 +168,24 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center' }
+          colSpan: params => {
+            if (params.node.rowPinned) {
+              return 3;
+            }
+            return 1;
+          },
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontSize: '11px', fontWeight: 'bold', backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderRight: '2px solid #ccc' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          },
+          valueGetter: params => {
+            if (params.node.rowPinned) {
+              return params.data.estimateAmount;
+            }
+            return params.data.estimatedQty;
+          }
         },
         {
           headerName: 'Rate',
@@ -161,7 +194,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         },
         {
           headerName: `Amount (${currency})`,
@@ -170,12 +208,18 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: currencyFormatter,
-          cellStyle: { backgroundColor: '#e3f2fd', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#d0e7f7', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e3f2fd', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         }
       ]
     },
     {
       headerName: 'Requisitioned',
+      headerClass: 'ag-header-group-cell-label-center',
       children: [
         {
           headerName: 'Qty',
@@ -184,7 +228,24 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center' }
+          colSpan: params => {
+            if (params.node.rowPinned) {
+              return 3;
+            }
+            return 1;
+          },
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontSize: '11px', fontWeight: 'bold', backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderRight: '2px solid #ccc' };
+            }
+            return { fontSize: '11px', backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          },
+          valueGetter: params => {
+            if (params.node.rowPinned) {
+              return params.data.requisitionAmount;
+            }
+            return params.data.requisitionQty;
+          }
         },
         {
           headerName: 'Rate',
@@ -193,7 +254,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#f3e5f5', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         },
         {
           headerName: `Amount (${currency})`,
@@ -202,12 +268,18 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: currencyFormatter,
-          cellStyle: { backgroundColor: '#f3e5f5', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#f7e5a8', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#fff3cd', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         }
       ]
     },
     {
       headerName: 'Purchased',
+      headerClass: 'ag-header-group-cell-label-center',
       children: [
         {
           headerName: 'Qty',
@@ -216,7 +288,24 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center' }
+          colSpan: params => {
+            if (params.node.rowPinned) {
+              return 3;
+            }
+            return 1;
+          },
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontSize: '11px', fontWeight: 'bold', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderRight: '2px solid #ccc' };
+            }
+            return { fontSize: '11px', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          },
+          valueGetter: params => {
+            if (params.node.rowPinned) {
+              return params.data.purchaseAmount;
+            }
+            return params.data.purchasedQty;
+          }
         },
         {
           headerName: 'Rate',
@@ -225,7 +314,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         },
         {
           headerName: `Amount (${currency})`,
@@ -234,12 +328,18 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: currencyFormatter,
-          cellStyle: { backgroundColor: '#fff3e0', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#b3ddc1', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#d4edda', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         }
       ]
     },
     {
       headerName: 'Received',
+      headerClass: 'ag-header-group-cell-label-center',
       children: [
         {
           headerName: 'Qty',
@@ -248,7 +348,24 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center' }
+          colSpan: params => {
+            if (params.node.rowPinned) {
+              return 3;
+            }
+            return 1;
+          },
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontSize: '11px', fontWeight: 'bold', backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderRight: '2px solid #ccc' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          },
+          valueGetter: params => {
+            if (params.node.rowPinned) {
+              return params.data.receivedAmount;
+            }
+            return params.data.receivedQty;
+          }
         },
         {
           headerName: 'Rate',
@@ -257,7 +374,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         },
         {
           headerName: `Amount (${currency})`,
@@ -266,12 +388,18 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: currencyFormatter,
-          cellStyle: { backgroundColor: '#e8f5e9', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#c9b8e6', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#e2d9f3', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         }
       ]
     },
     {
       headerName: 'Issued',
+      headerClass: 'ag-header-group-cell-label-center',
       children: [
         {
           headerName: 'Qty',
@@ -280,7 +408,24 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center' }
+          colSpan: params => {
+            if (params.node.rowPinned) {
+              return 3;
+            }
+            return 1;
+          },
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontSize: '11px', fontWeight: 'bold', backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+            }
+            return { fontSize: '11px', backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          },
+          valueGetter: params => {
+            if (params.node.rowPinned) {
+              return params.data.issueAmount;
+            }
+            return params.data.issuedQty;
+          }
         },
         {
           headerName: 'Rate',
@@ -289,7 +434,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: numberFormatter,
-          cellStyle: { backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#fce4ec', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         },
         {
           headerName: `Amount (${currency})`,
@@ -298,7 +448,12 @@ const InventoryMovement = () => {
           type: 'numericColumn',
           filter: false,
           valueFormatter: currencyFormatter,
-          cellStyle: { backgroundColor: '#fce4ec', borderRight: '2px solid #ccc', display: 'flex', alignItems: 'center' }
+          cellStyle: params => {
+            if (params.node.rowPinned) {
+              return { fontWeight: 'bold', backgroundColor: '#f1b0b6', display: 'flex', alignItems: 'center' };
+            }
+            return { fontSize: '11px', backgroundColor: '#f8d7da', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' };
+          }
         }
       ]
     }
@@ -310,7 +465,7 @@ const InventoryMovement = () => {
     filter: false,
     resizable: true,
     suppressMenu: false,
-    cellStyle: { fontSize: '12px', display: 'flex', alignItems: 'center' }
+    cellStyle: { fontSize: '11px', display: 'flex', alignItems: 'center' }
   }), []);
 
   // Auto size columns on first data load
@@ -656,6 +811,16 @@ const InventoryMovement = () => {
                 domLayout='normal'
                 enableCellTextSelection={true}
                 ensureDomOrder={true}
+                pinnedBottomRowData={[
+                  {
+                    category: 'Total',
+                    estimateAmount: reportData.reduce((sum, row) => sum + (row.estimateAmount || 0), 0),
+                    requisitionAmount: reportData.reduce((sum, row) => sum + (row.requisitionAmount || 0), 0),
+                    purchaseAmount: reportData.reduce((sum, row) => sum + (row.purchaseAmount || 0), 0),
+                    receivedAmount: reportData.reduce((sum, row) => sum + (row.receivedAmount || 0), 0),
+                    issueAmount: reportData.reduce((sum, row) => sum + (row.issueAmount || 0), 0)
+                  }
+                ]}
               />
             </div>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal, Pagination, Dropdown, DropdownButton } from 'react-bootstrap';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
@@ -68,29 +68,38 @@ const pdfStyles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#f0f0f0',
     borderBottom: '1 solid #000',
-    padding: 5,
+    padding: 4,
     fontWeight: 'bold',
-    fontSize: 9,
+    fontSize: 8,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottom: '1 solid #cccccc',
-    padding: 5,
-    fontSize: 9,
+    padding: 4,
+    fontSize: 7.5,
   },
   tableRowTotal: {
     flexDirection: 'row',
     borderTop: '2 solid #000',
-    padding: 5,
+    padding: 4,
     fontWeight: 'bold',
-    fontSize: 9,
+    fontSize: 8,
   },
   col1: { width: '5%' },
-  col2: { width: '35%' },
+  col2: { width: '25%' },
   col3: { width: '15%' },
-  col4: { width: '15%' },
-  col5: { width: '15%', textAlign: 'right' },
-  col6: { width: '15%', textAlign: 'right' },
+  col4: { width: '12%' },
+  col5: { width: '13%', textAlign: 'right' },
+  col6: { width: '13%', textAlign: 'right' },
+  col7: { width: '12%', textAlign: 'center' },
+  // Office copy column widths (with requisition number)
+  col2Office: { width: '20%' },
+  col3Office: { width: '12%' },
+  col4Office: { width: '10%' },
+  col5Office: { width: '11%', textAlign: 'right' },
+  col6Office: { width: '11%', textAlign: 'right' },
+  col7Office: { width: '10%', textAlign: 'center' },
+  col8Office: { width: '12%', textAlign: 'center' },
   footer: {
     marginTop: 20,
     flexDirection: 'row',
@@ -139,7 +148,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 // PDF Document Component
-const PurchaseOrderPDF = ({ poData, currency }) => {
+const PurchaseOrderPDF = ({ poData, currency, copyType = 'supplier' }) => {
   if (!poData) {
     return (
       <Document>
@@ -192,10 +201,38 @@ const PurchaseOrderPDF = ({ poData, currency }) => {
     return `${currency || 'INR'} ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const total = (poData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  // Group items by itemCode and deliveryDate, then sum quantities and amounts
+  // For office copy, also group by requisition number
+  const groupedItems = (poData.items || []).reduce((acc, item) => {
+    // Create unique key combining itemCode, deliveryDate, and requisitionNumber for office copy
+    const key = copyType === 'office' 
+      ? `${item.itemCode || item.itemName || ''}_${item.deliveryDate || ''}_${item.requisitionNumber || ''}`
+      : `${item.itemCode || item.itemName || ''}_${item.deliveryDate || ''}`;
+    
+    if (!acc[key]) {
+      acc[key] = {
+        itemCode: item.itemCode,
+        itemName: item.itemName || item.itemCode || '',
+        description: item.description || '',
+        unit: item.unit || '',
+        purchaseQty: 0,
+        rate: item.rate || 0,
+        amount: 0,
+        workScope: item.workScope || '',
+        deliveryDate: item.deliveryDate || '',
+        requisitionNumber: item.requisitionNumber || ''
+      };
+    }
+    acc[key].purchaseQty += parseFloat(item.purchaseQty) || 0;
+    acc[key].amount += parseFloat(item.amount) || 0;
+    return acc;
+  }, {});
+  
+  const mergedItems = Object.values(groupedItems);
+  const total = mergedItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
   return (
-    <Document>
+    <Document key={copyType}>
       <Page size="A4" style={pdfStyles.page}>
         {/* Header */}
         <View style={pdfStyles.header}>
@@ -247,29 +284,65 @@ const PurchaseOrderPDF = ({ poData, currency }) => {
         {/* Items Table */}
         <View style={pdfStyles.table}>
           <Text style={pdfStyles.sectionTitle}>Details of Products</Text>
-          <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.col1}>S/L</Text>
-            <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? 'Work Scope' : 'Item Name'}</Text>
-            <Text style={pdfStyles.col3}>Description</Text>
-            <Text style={pdfStyles.col4}>Quantity Unit</Text>
-            <Text style={pdfStyles.col5}>Rate ({currency || 'INR'})</Text>
-            <Text style={pdfStyles.col6}>Amount ({currency || 'INR'})</Text>
-          </View>
-          {(poData.items || []).map((item, index) => (
-            <View key={index} style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.col1}>{index + 1}</Text>
-              <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? (item.workScope || '') : (item.itemName || '')}</Text>
-              <Text style={pdfStyles.col3}>{item.description || ''}</Text>
-              <Text style={pdfStyles.col4}>{item.purchaseQty || 0} {item.unit || ''}</Text>
-              <Text style={pdfStyles.col5}>{Number(item.rate || 0).toFixed(2)}</Text>
-              <Text style={pdfStyles.col6}>{Number(item.amount || 0).toFixed(2)}</Text>
-            </View>
-          ))}
-          <View style={pdfStyles.tableRowTotal}>
-            <Text style={{ width: '60%' }}></Text>
-            <Text style={{ width: '20%', textAlign: 'right' }}>Grand Total</Text>
-            <Text style={{ width: '20%', textAlign: 'right' }}>{formatCurrency(total)}</Text>
-          </View>
+          {copyType === 'office' ? (
+            <>
+              <View style={pdfStyles.tableHeader}>
+                <Text style={pdfStyles.col1}>S/L</Text>
+                <Text style={pdfStyles.col2Office}>{poData.itemType === 'Service' ? 'Work Scope' : 'Item Name'}</Text>
+                <Text style={pdfStyles.col3Office}>Description</Text>
+                <Text style={pdfStyles.col4Office}>Quantity Unit</Text>
+                <Text style={pdfStyles.col5Office}>Rate ({currency || 'INR'})</Text>
+                <Text style={pdfStyles.col6Office}>Amount ({currency || 'INR'})</Text>
+                <Text style={pdfStyles.col7Office}>Delivery Date</Text>
+                <Text style={pdfStyles.col8Office}>Req. No</Text>
+              </View>
+              {mergedItems.map((item, index) => (
+                <View key={index} style={pdfStyles.tableRow}>
+                  <Text style={pdfStyles.col1}>{index + 1}</Text>
+                  <Text style={pdfStyles.col2Office}>{poData.itemType === 'Service' ? (item.workScope || '') : (item.itemName || '')}</Text>
+                  <Text style={pdfStyles.col3Office}>{item.description || ''}</Text>
+                  <Text style={pdfStyles.col4Office}>{item.purchaseQty || 0} {item.unit || ''}</Text>
+                  <Text style={pdfStyles.col5Office}>{Number(item.rate || 0).toFixed(2)}</Text>
+                  <Text style={pdfStyles.col6Office}>{Number(item.amount || 0).toFixed(2)}</Text>
+                  <Text style={pdfStyles.col7Office}>{item.deliveryDate || ''}</Text>
+                  <Text style={pdfStyles.col8Office}>{item.requisitionNumber || '-'}</Text>
+                </View>
+              ))}
+              <View style={pdfStyles.tableRowTotal}>
+                <Text style={{ width: '63%', textAlign: 'right', fontWeight: 'bold' }}>Grand Total</Text>
+                <Text style={{ width: '13%', textAlign: 'right', fontWeight: 'bold' }}>{formatCurrency(total)}</Text>
+                <Text style={{ width: '24%' }}></Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={pdfStyles.tableHeader}>
+                <Text style={pdfStyles.col1}>S/L</Text>
+                <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? 'Work Scope' : 'Item Name'}</Text>
+                <Text style={pdfStyles.col3}>Description</Text>
+                <Text style={pdfStyles.col4}>Quantity Unit</Text>
+                <Text style={pdfStyles.col5}>Rate ({currency || 'INR'})</Text>
+                <Text style={pdfStyles.col6}>Amount ({currency || 'INR'})</Text>
+                <Text style={pdfStyles.col7}>Delivery Date</Text>
+              </View>
+              {mergedItems.map((item, index) => (
+                <View key={index} style={pdfStyles.tableRow}>
+                  <Text style={pdfStyles.col1}>{index + 1}</Text>
+                  <Text style={pdfStyles.col2}>{poData.itemType === 'Service' ? (item.workScope || '') : (item.itemName || '')}</Text>
+                  <Text style={pdfStyles.col3}>{item.description || ''}</Text>
+                  <Text style={pdfStyles.col4}>{item.purchaseQty || 0} {item.unit || ''}</Text>
+                  <Text style={pdfStyles.col5}>{Number(item.rate || 0).toFixed(2)}</Text>
+                  <Text style={pdfStyles.col6}>{Number(item.amount || 0).toFixed(2)}</Text>
+                  <Text style={pdfStyles.col7}>{item.deliveryDate || ''}</Text>
+                </View>
+              ))}
+              <View style={pdfStyles.tableRowTotal}>
+                <Text style={{ width: '70%', textAlign: 'right', fontWeight: 'bold' }}>Grand Total</Text>
+                <Text style={{ width: '13%', textAlign: 'right', fontWeight: 'bold' }}>{formatCurrency(total)}</Text>
+                <Text style={{ width: '12%' }}></Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Remarks Section */}
@@ -312,6 +385,8 @@ const PurchaseOrders = () => {
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editMode, setEditMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [isViewMode, setIsViewMode] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const hotTableRef = useRef(null);
@@ -329,10 +404,14 @@ const PurchaseOrders = () => {
   const [userId] = useState(localStorage.getItem('userId') || '');
   const [companyId] = useState(localStorage.getItem('selectedCompanyId') || '');
   const [showPDFModal, setShowPDFModal] = useState(false);
+  const [currentPdfCopyType, setCurrentPdfCopyType] = useState('supplier');
   const [users, setUsers] = useState([]);
   const [units, setUnits] = useState([]);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(true);
   const [showApproverDetails, setShowApproverDetails] = useState(true);
+  const [showRequisitionDropdown, setShowRequisitionDropdown] = useState(false);
+  const requisitionDropdownRef = useRef(null);
+  const [originalRequisitionNumbers, setOriginalRequisitionNumbers] = useState([]);
   const [approverDetails, setApproverDetails] = useState({
     approverId: '',
     approverName: '',
@@ -353,8 +432,9 @@ const PurchaseOrders = () => {
     supplierMobileNumber: '',
     projectId: '',
     projectName: '',
-    requisitionId: '',
-    requisitionNumber: '',
+    requisitions: [],  // Array of objects: { requisitionId, requisitionNumber, requisitionDate, createdBy }
+    requisitionIds: [],  // Keep for backward compatibility and UI conditional rendering
+    requisitionNumbers: [],  // Keep for backward compatibility and UI conditional rendering
     deliveryDate: '',
     deliveryLocation: '',
     modeOfPayment: '',
@@ -401,6 +481,8 @@ const PurchaseOrders = () => {
       );
       setFilteredOrders(filtered);
     }
+    // Reset to first page when search changes
+    setCurrentPage(1);
   }, [searchTerm, purchaseOrders]);
 
   const loadDropdownData = async () => {
@@ -493,6 +575,17 @@ const PurchaseOrders = () => {
         supplierContactPerson: selectedSupplier?.contactPerson || '',
         supplierMobileNumber: selectedSupplier?.mobileNumber || ''
       }));
+    } else if (name === 'deliveryDate') {
+      // Special handling for delivery date - update empty delivery dates in grid items
+      const convertedDate = value ? value.split('-').reverse().join('/') : '';
+      setFormData(prev => ({
+        ...prev,
+        deliveryDate: value,
+        items: prev.items.map(item => ({
+          ...item,
+          deliveryDate: (!item.deliveryDate || item.deliveryDate.trim() === '') ? convertedDate : item.deliveryDate
+        }))
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -565,44 +658,108 @@ const PurchaseOrders = () => {
     }
   };
 
-  const handleRequisitionChange = (e) => {
-    const requisitionNumber = e.target.value;
-    
-    if (!requisitionNumber) {
-      // Clear requisition selection
-      setFormData(prev => ({
-        ...prev,
-        requisitionNumber: '',
-        requisitionId: '',
-        items: []
-      }));
-      return;
-    }
-    
+  const handleRequisitionToggle = (requisitionNumber) => {
     const selectedRequisition = requisitions.find(req => req.requisitionNumber === requisitionNumber);
-    
-    if (selectedRequisition) {
-      // Map requisition items to PO items format
-      const mappedItems = selectedRequisition.items.map(item => ({
-        itemCode: item.itemName || item.workScope || item.itemCode,
-        itemId: item.itemCode, // Store original ID
-        workScope: item.workScope,
-        description: item.description || '',
-        unit: item.unit,
-        boqQty: item.requisitionQty, // Map requisitionQty to boqQty
-        purchaseQty: item.requisitionQty,
-        rate: item.rate || '',
-        amount: item.amount || ''
-      }));
+    if (!selectedRequisition) return;
+
+    setFormData(prev => {
+      const isCurrentlySelected = prev.requisitionNumbers.includes(requisitionNumber);
       
-      setFormData(prev => ({
+      // Check if requisition is locked and was not originally part of this PO
+      const wasOriginallySelected = originalRequisitionNumbers.includes(requisitionNumber);
+      if (selectedRequisition.isLocked && !isCurrentlySelected && !wasOriginallySelected) {
+        alert('This requisition is locked and cannot be selected.');
+        return prev;
+      }
+      
+      let newRequisitions, newRequisitionNumbers, newRequisitionIds, newItems;
+
+      if (isCurrentlySelected) {
+        // Remove this requisition
+        newRequisitions = prev.requisitions.filter(req => req.requisitionNumber !== requisitionNumber);
+        newRequisitionNumbers = prev.requisitionNumbers.filter(num => num !== requisitionNumber);
+        newRequisitionIds = prev.requisitionIds.filter(id => id !== selectedRequisition._id);
+        // Remove items from this requisition
+        newItems = prev.items.filter(item => item.requisitionNumber !== requisitionNumber);
+      } else {
+        // Add this requisition with complete details
+        const requisitionObj = {
+          requisitionId: selectedRequisition._id,
+          requisitionNumber: selectedRequisition.requisitionNumber,
+          requisitionDate: selectedRequisition.requisitionDate,
+          createdBy: selectedRequisition.createdByName
+        };
+        newRequisitions = [...prev.requisitions, requisitionObj];
+        newRequisitionNumbers = [...prev.requisitionNumbers, requisitionNumber];
+        newRequisitionIds = [...prev.requisitionIds, selectedRequisition._id];
+        
+        // Check if there are existing items with data but without requisition numbers
+        const hasManualItems = prev.items.some(item => 
+          item.itemCode && item.itemCode.trim() !== '' && 
+          (!item.requisitionNumber || item.requisitionNumber.trim() === '')
+        );
+        
+        // If there are manual items without requisition, clear the grid and load only requisition items
+        if (hasManualItems) {
+          // Map new requisition items to PO items format
+          const mappedItems = selectedRequisition.items.map(item => ({
+            itemCode: item.itemName || item.workScope || item.itemCode,
+            itemId: item.itemCode,
+            workScope: item.workScope,
+            description: item.description || '',
+            unit: item.unit,
+            boqQty: item.requisitionQty,
+            balanceQty: item.balanceQty || 0,
+            purchaseQty: '',
+            rate: item.rate || '',
+            amount: '',
+            requisitionNumber: requisitionNumber,
+            requisitionId: selectedRequisition._id || '',
+            deliveryDate: prev.deliveryDate ? prev.deliveryDate.split('-').reverse().join('/') : ''
+          }));
+          newItems = mappedItems;
+        } else {
+          // No manual items, just add requisition items to existing items
+          const mappedItems = selectedRequisition.items.map(item => ({
+            itemCode: item.itemName || item.workScope || item.itemCode,
+            itemId: item.itemCode,
+            workScope: item.workScope,
+            description: item.description || '',
+            unit: item.unit,
+            boqQty: item.requisitionQty,
+            balanceQty: item.balanceQty || 0,
+            purchaseQty: '',
+            rate: item.rate || '',
+            amount: '',
+            requisitionNumber: requisitionNumber,
+            requisitionId: selectedRequisition._id || '',
+            deliveryDate: prev.deliveryDate ? prev.deliveryDate.split('-').reverse().join('/') : ''
+          }));
+          newItems = [...prev.items, ...mappedItems];
+        }
+      }
+
+      return {
         ...prev,
-        requisitionNumber: requisitionNumber,
-        requisitionId: selectedRequisition._id || '',
-        items: mappedItems
-      }));
-    }
+        requisitions: newRequisitions,
+        requisitionNumbers: newRequisitionNumbers,
+        requisitionIds: newRequisitionIds,
+        items: newItems
+      };
+    });
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (requisitionDropdownRef.current && !requisitionDropdownRef.current.contains(event.target)) {
+        setShowRequisitionDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   
 
@@ -612,17 +769,20 @@ const PurchaseOrders = () => {
 
   // Common function to get dropdown items based on purchase type, item type, and project selection
   const getDropdownItems = () => {
-    // If requisition is selected, show only items from that requisition
-    if (formData.requisitionNumber) {
-      const selectedRequisition = requisitions.find(req => req.requisitionNumber === formData.requisitionNumber);
-      if (selectedRequisition && selectedRequisition.items) {
-        if (formData.itemType === 'Service') {
-          return selectedRequisition.items.map(item => item.workScope || '');
-        } else {
-          return selectedRequisition.items.map(item => item.itemName || '');
+    // If requisitions are selected, show only items from those requisitions
+    if (formData.requisitionNumbers.length > 0) {
+      const allItems = [];
+      formData.requisitionNumbers.forEach(reqNum => {
+        const selectedRequisition = requisitions.find(req => req.requisitionNumber === reqNum);
+        if (selectedRequisition && selectedRequisition.items) {
+          if (formData.itemType === 'Service') {
+            allItems.push(...selectedRequisition.items.map(item => item.workScope || ''));
+          } else {
+            allItems.push(...selectedRequisition.items.map(item => item.itemName || ''));
+          }
         }
-      }
-      return [];
+      });
+      return [...new Set(allItems)]; // Remove duplicates
     }
     
     // For general purchase type, show all materials
@@ -666,13 +826,20 @@ const PurchaseOrders = () => {
           projectId: '',
           projectName: '',
           deliveryLocation: '',
-          items: []
+          items: [],
+          requisitions: [],
+          requisitionIds: [],
+          requisitionNumbers: []
         };
       }
-      // If switching to project, keep existing data
+      // If switching to project, clear items and requisitions
       return {
         ...prev,
-        purchaseType: purchaseType
+        purchaseType: purchaseType,
+        items: [],
+        requisitions: [],
+        requisitionIds: [],
+        requisitionNumbers: []
       };
     });
   };
@@ -682,7 +849,10 @@ const PurchaseOrders = () => {
     setFormData(prev => ({
       ...prev,
       itemType: itemType,
-      items: []
+      items: [],
+      requisitions: [],
+      requisitionNumbers: [],
+      requisitionIds: []
     }));
   };
 
@@ -741,6 +911,15 @@ const PurchaseOrders = () => {
         return;
       }
       
+      // Check if purchaseQty exceeds balanceQty for requisition items
+      if (item.requisitionNumber && item.requisitionNumber.trim() !== '') {
+        const balanceQty = parseFloat(item.balanceQty);
+        if (!isNaN(balanceQty) && purchaseQty > balanceQty) {
+          setAlertMessage({ show: true, type: 'danger', message: `Row ${i + 1}: Purchase Qty (${purchaseQty}) cannot exceed Balance Qty (${balanceQty}) for requisition ${item.requisitionNumber}!` });
+          return;
+        }
+      }
+      
       // Check if rate is valid
       const rate = parseFloat(item.rate);
       if (isNaN(rate) || rate <= 0) {
@@ -753,6 +932,14 @@ const PurchaseOrders = () => {
       if (isNaN(amount) || amount <= 0) {
         setAlertMessage({ show: true, type: 'danger', message: `Row ${i + 1}: Amount is invalid!` });
         return;
+      }
+      
+      // Validate requisition data integrity
+      if (item.requisitionNumber && item.requisitionNumber.trim() !== '') {
+        if (!item.requisitionId || item.requisitionId.trim() === '') {
+          setAlertMessage({ show: true, type: 'danger', message: `Row ${i + 1}: Requisition ID is missing for requisition ${item.requisitionNumber}!` });
+          return;
+        }
       }
     }
     
@@ -792,6 +979,8 @@ const PurchaseOrders = () => {
         itemType: formData.itemType || 'Material', // Explicitly include itemType
         approverUserId: approverUserId,
         approverComments: approverCommentsArray,
+        requisitionIds: undefined,      // Remove old structure
+        requisitionNumbers: undefined,  // Remove old structure
         supplierName: undefined,    // Remove supplierName
         supplierEmail: undefined,   // Remove supplierEmail
         supplierContactPerson: undefined,   // Remove supplierContactPerson
@@ -812,9 +1001,13 @@ const PurchaseOrders = () => {
               description: item.description,
               unit: item.unit,
               boqQty: item.boqQty,
+              balanceQty: item.balanceQty || 0,
               purchaseQty: item.purchaseQty,
               rate: item.rate,
-              amount: item.amount
+              amount: item.amount,
+              requisitionNumber: item.requisitionNumber || '',
+              requisitionId: item.requisitionId || '',
+              deliveryDate: item.deliveryDate || ''
             };
           }
           
@@ -836,17 +1029,19 @@ const PurchaseOrders = () => {
             description: item.description,
             unit: item.unit,
             boqQty: item.boqQty,
+            balanceQty: item.balanceQty || 0,
             purchaseQty: item.purchaseQty,
             rate: item.rate,
-            amount: item.amount
+            amount: item.amount,
+            requisitionNumber: item.requisitionNumber || '',
+            requisitionId: item.requisitionId || '',
+            deliveryDate: item.deliveryDate || ''
           };
         }) || [],
         companyId: companyId,
         createdBy: editMode ? formData.createdBy : userId,
         modifiedBy: userId
       };
-      
-      console.log('Submit Data:', submitData);
       
       const response = await fetch(url, {
         method: method,
@@ -1054,8 +1249,9 @@ const PurchaseOrders = () => {
       supplierMobileNumber: '',
       projectId: '',
       projectName: '',
-      requisitionId: '',
-      requisitionNumber: '',
+      requisitions: [],
+      requisitionIds: [],
+      requisitionNumbers: [],
       deliveryDate: '',
       deliveryLocation: '',
       modeOfPayment: '',
@@ -1071,6 +1267,7 @@ const PurchaseOrders = () => {
   const handleNewPO = async () => {
     handleReset();
     setIsViewMode(false);
+    setOriginalRequisitionNumbers([]);
     
     // Fetch Terms & Condition from API
     try {
@@ -1100,10 +1297,29 @@ const PurchaseOrders = () => {
       await fetchMaterialRequirements(po.projectId);
     }
     
+    // Extract requisition arrays from requisitions object or use old structure
+    let requisitions = po.requisitions || [];
+    let requisitionIds = [];
+    let requisitionNumbers = [];
+    
+    if (requisitions.length > 0) {
+      // New structure: extract from requisitions array
+      requisitionIds = requisitions.map(req => req.requisitionId);
+      requisitionNumbers = requisitions.map(req => req.requisitionNumber);
+    } else {
+      // Old structure: use separate arrays for backward compatibility
+      requisitionIds = Array.isArray(po.requisitionIds) ? po.requisitionIds : (po.requisitionId ? [po.requisitionId] : []);
+      requisitionNumbers = Array.isArray(po.requisitionNumbers) ? po.requisitionNumbers : (po.requisitionNumber ? [po.requisitionNumber] : []);
+    }
+    
     // Transform items: if itemCode is an ObjectId, convert to material name
     const transformedPO = {
       ...po,
       itemType: po.itemType || 'Material',
+      // Set both new and old structure
+      requisitions: requisitions,
+      requisitionIds: requisitionIds,
+      requisitionNumbers: requisitionNumbers,
       items: po.items?.map(item => {
         // For Service type, use workScope field
         if (po.itemType === 'Service' && item.workScope) {
@@ -1161,6 +1377,7 @@ const PurchaseOrders = () => {
     }
     
     setFormData(transformedPO);
+    setOriginalRequisitionNumbers(requisitionNumbers);
     setEditMode(false);
     setIsViewMode(true);
     
@@ -1182,10 +1399,29 @@ const PurchaseOrders = () => {
       await fetchMaterialRequirements(po.projectId);
     }
    
+    // Extract requisition arrays from requisitions object or use old structure
+    let requisitions = po.requisitions || [];
+    let requisitionIds = [];
+    let requisitionNumbers = [];
+    
+    if (requisitions.length > 0) {
+      // New structure: extract from requisitions array
+      requisitionIds = requisitions.map(req => req.requisitionId);
+      requisitionNumbers = requisitions.map(req => req.requisitionNumber);
+    } else {
+      // Old structure: use separate arrays for backward compatibility
+      requisitionIds = Array.isArray(po.requisitionIds) ? po.requisitionIds : (po.requisitionId ? [po.requisitionId] : []);
+      requisitionNumbers = Array.isArray(po.requisitionNumbers) ? po.requisitionNumbers : (po.requisitionNumber ? [po.requisitionNumber] : []);
+    }
+   
     // Transform items: if itemCode is an ObjectId, convert to material name
     const transformedPO = {
       ...po,
       itemType: po.itemType || 'Material',
+      // Set both new and old structure
+      requisitions: requisitions,
+      requisitionIds: requisitionIds,
+      requisitionNumbers: requisitionNumbers,
       items: po.items?.map(item => {
         // For Service type, use workScope field
         if (po.itemType === 'Service' && item.workScope) {
@@ -1243,6 +1479,7 @@ const PurchaseOrders = () => {
     }
     
     setFormData(transformedPO);
+    setOriginalRequisitionNumbers(requisitionNumbers);
     setEditMode(true);
     // Set view mode to true for ApprovalRequest status (read-only except approver section)
     setIsViewMode(po.status === 'ApprovalRequest');
@@ -1345,7 +1582,7 @@ const PurchaseOrders = () => {
               </Button>
             )}
           </Card.Header>
-          <Card.Body>
+          <Card.Body style={{ paddingBottom: '2rem' }}>
             {/* Search Bar */}
             <Row className="mb-3">
               <Col md={6}>
@@ -1364,34 +1601,43 @@ const PurchaseOrders = () => {
             </Row>
 
             {/* Purchase Orders Table */}
-            <Table striped bordered hover responsive style={{ fontSize: '0.775rem' }}>
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: '15%' }}>PO Number</th>
-                  <th style={{ width: '8%' }}>PO Date</th>
-                  <th style={{ width: '12%' }}>Supplier Name</th>
-                  <th style={{ width: '12%' }}>Project Name</th>
-                  <th style={{ width: '8%' }}>Delivery Date</th>
-                  <th style={{ width: '10%' }}>Mode of Payment</th>
-                  <th style={{ width: '10%' }}>Item Type</th>
-                  <th style={{ width: '5%' }}>Status</th>
+            {(() => {
+              const indexOfLastItem = currentPage * itemsPerPage;
+              const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+              const currentItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+              const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+              const paginate = (pageNumber) => setCurrentPage(pageNumber);
+              
+              return (
+                <>
+                  <Table striped bordered hover responsive style={{ fontSize: '0.775rem' }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '15%' }}>PO Number</th>
+                        <th style={{ width: '8%' }}>PO Date</th>
+                        <th style={{ width: '12%' }}>Supplier Name</th>
+                        <th style={{ width: '12%' }}>Project Name</th>
+                        <th style={{ width: '8%' }}>Delivery Date</th>
+                        <th style={{ width: '10%' }}>Mode of Payment</th>
+                        <th style={{ width: '10%' }}>Item Type</th>
+                        <th style={{ width: '5%' }}>Status</th>
 
-                  <th style={{ width: '10%' }}>Created By</th>
-                  <th style={{ width: '10%' }}>Modified By</th>
-                  {(permissions.edit || permissions.delete) && (
-                    <th style={{ width: '10%' }}>Actions</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="text-center text-muted py-4">
-                      {searchTerm ? 'No purchase orders found matching your search.' : 'No purchase orders available. Click "New Purchase Order" to create one.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((po) => (
+                        <th style={{ width: '10%' }}>Created By</th>
+                        <th style={{ width: '10%' }}>Modified By</th>
+                        {(permissions.edit || permissions.delete) && (
+                          <th style={{ width: '10%' }}>Actions</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan="12" className="text-center text-muted py-4">
+                            {searchTerm ? 'No purchase orders found matching your search.' : 'No purchase orders available. Click "New Purchase Order" to create one.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        currentItems.map((po) => (
                     <tr key={po._id}>
                       <td>
                         {permissions.view ? (
@@ -1417,7 +1663,7 @@ const PurchaseOrders = () => {
                       <td>{po.createdByUserName || '-'}</td>
                       <td>{po.modifiedByUserName || '-'}</td>
                       {(permissions.edit || permissions.delete) && (
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           {/* Approved: Hide all action buttons */}
                           {po.status !== 'Approved' && (
                             <>
@@ -1429,32 +1675,35 @@ const PurchaseOrders = () => {
                                     <Button 
                                       variant="outline-primary" 
                                       size="sm" 
-                                      className="me-2"
+                                      className="me-1"
+                                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
                                       onClick={() => handleEditPO(po)}
                                       title="Edit"
                                     >
-                                      <i className="bi bi-pencil"></i>
+                                      <i className="bi bi-pencil" style={{ fontSize: '1rem' }}></i>
                                     </Button>
                                   )}
                                   {permissions.edit && po.status === 'Rejected' && (
                                     <Button 
                                       variant="outline-warning" 
                                       size="sm" 
-                                      className="me-2"
+                                      className="me-1"
+                                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
                                       onClick={() => handleConvertToDraft(po._id)}
                                       title="Convert to Draft"
                                     >
-                                      <i className="bi bi-arrow-counterclockwise"></i>
+                                      <i className="bi bi-arrow-counterclockwise" style={{ fontSize: '1rem' }}></i>
                                     </Button>
                                   )}
                                   {permissions.delete && (
                                     <Button 
                                       variant="outline-danger" 
                                       size="sm"
+                                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
                                       onClick={() => handleDelete(po._id)}
                                       title="Delete"
                                     >
-                                      <i className="bi bi-trash"></i>
+                                      <i className="bi bi-trash" style={{ fontSize: '1rem' }}></i>
                                     </Button>
                                   )}
                                 </>
@@ -1465,11 +1714,12 @@ const PurchaseOrders = () => {
                                 <Button 
                                   variant="outline-primary" 
                                   size="sm" 
-                                  className="me-2"
+                                  className="me-1"
+                                  style={{ padding: '4px 8px', fontSize: '0.875rem' }}
                                   onClick={() => handleEditPO(po)}
                                   title="Edit"
                                 >
-                                  <i className="bi bi-pencil"></i>
+                                  <i className="bi bi-pencil" style={{ fontSize: '1rem' }}></i>
                                 </Button>
                               )}
                             </>
@@ -1483,11 +1733,64 @@ const PurchaseOrders = () => {
                           )}
                         </td>
                       )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
+                        </tr>
+                      ))
+                    )}
+                    </tbody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="d-flex justify-content-center mt-4">
+                      <Pagination>
+                        <Pagination.First 
+                          onClick={() => paginate(1)} 
+                          disabled={currentPage === 1} 
+                        />
+                        <Pagination.Prev 
+                          onClick={() => paginate(currentPage - 1)} 
+                          disabled={currentPage === 1} 
+                        />
+                        
+                        {[...Array(totalPages)].map((_, index) => {
+                          const page = index + 1;
+                          if (
+                            page === 1 || 
+                            page === totalPages || 
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          ) {
+                            return (
+                              <Pagination.Item
+                                key={page}
+                                active={page === currentPage}
+                                onClick={() => paginate(page)}
+                              >
+                                {page}
+                              </Pagination.Item>
+                            );
+                          } else if (
+                            page === currentPage - 2 || 
+                            page === currentPage + 2
+                          ) {
+                            return <Pagination.Ellipsis key={page} />;
+                          }
+                          return null;
+                        })}
+                        
+                        <Pagination.Next 
+                          onClick={() => paginate(currentPage + 1)} 
+                          disabled={currentPage === totalPages} 
+                        />
+                        <Pagination.Last 
+                          onClick={() => paginate(totalPages)} 
+                          disabled={currentPage === totalPages} 
+                        />
+                      </Pagination>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </Card.Body>
         </Card>
       ) : (
@@ -1511,9 +1814,18 @@ const PurchaseOrders = () => {
                   <i className="bi bi-arrow-left me-2"></i>Back to List
                 </Button>
                 {formData._id && (
-                  <Button variant="info" className="me-2" onClick={() => setShowPDFModal(true)}>
-                    <i className="bi bi-file-pdf me-2"></i>View PDF
-                  </Button>
+                  <DropdownButton
+                    variant="danger"
+                    title={<><i className="bi bi-file-pdf me-2"></i>PDF</>}
+                    className="me-2 d-inline-block"
+                  >
+                    <Dropdown.Item onClick={() => { setCurrentPdfCopyType('supplier'); setShowPDFModal(true); }}>
+                      Supplier Copy
+                    </Dropdown.Item>
+                    <Dropdown.Item onClick={() => { setCurrentPdfCopyType('office'); setShowPDFModal(true); }}>
+                      Office Copy
+                    </Dropdown.Item>
+                  </DropdownButton>
                 )}
                 {!isViewMode && (
                   <>
@@ -1690,50 +2002,142 @@ const PurchaseOrders = () => {
                 )}
                 <Col md={formData.purchaseType === 'project' ? 3 : 5}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Requisition Number (Optional)</Form.Label>
-                    <Form.Select
-                      name="requisitionNumber"
-                      value={formData.requisitionNumber}
-                      onChange={handleRequisitionChange}
-                      disabled={isViewMode}
-                    >
-                      <option value="">Select requisition (optional)</option>
-                      {(() => {
-                        // Filter requisitions based on current selections
-                        const filteredRequisitions = requisitions.filter(req => {
-                          // Match purchase type
-                          if (req.requisitionType !== formData.purchaseType) return false;
-                          // Match item type
-                          if (req.itemType !== formData.itemType) return false;
-                          // For project type, match project (by ID or name)
-                          if (formData.purchaseType === 'project') {
-                            return req.projectId === formData.projectId || req.projectName === formData.projectName;
-                          }
-                          return true;
-                        });
-                        
-                        // If current requisition is selected but not in filtered list, add it
-                        if (formData.requisitionNumber) {
-                          const currentReqExists = filteredRequisitions.some(req => 
-                            req.requisitionNumber === formData.requisitionNumber
-                          );
-                          
-                          if (!currentReqExists) {
-                            // Add the current requisition to dropdown even if it doesn't match filters
-                            filteredRequisitions.unshift({
-                              _id: formData.requisitionId || 'current',
-                              requisitionNumber: formData.requisitionNumber
+                    <Form.Label>Requisition Number(s) (Optional)</Form.Label>
+                    <div ref={requisitionDropdownRef} style={{ position: 'relative' }}>
+                      <InputGroup
+                        onClick={() => !isViewMode && setShowRequisitionDropdown(!showRequisitionDropdown)}
+                        style={{ cursor: isViewMode ? 'not-allowed' : 'pointer' }}
+                      >
+                        <Form.Control
+                          type="text"
+                          value={formData.requisitionNumbers.length > 0 
+                            ? `${formData.requisitionNumbers.length} selected` 
+                            : 'Select requisition(s)'}
+                          readOnly
+                          style={{ 
+                            cursor: isViewMode ? 'not-allowed' : 'pointer',
+                            backgroundColor: 'white'
+                          }}
+                          disabled={isViewMode}
+                        />
+                        <InputGroup.Text style={{ cursor: isViewMode ? 'not-allowed' : 'pointer' }}>
+                          <i className={`bi bi-chevron-${showRequisitionDropdown ? 'up' : 'down'}`}></i>
+                        </InputGroup.Text>
+                      </InputGroup>
+                      
+                      {showRequisitionDropdown && !isViewMode && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            maxHeight: '350px',
+                            overflowY: 'auto',
+                            backgroundColor: 'white',
+                            border: '1px solid #ced4da',
+                            borderRadius: '0.25rem',
+                            zIndex: 1050,
+                            boxShadow: '0 0.125rem 0.25rem rgba(0,0,0,0.075)'
+                          }}
+                        >
+                          {(() => {
+                            const filteredRequisitions = requisitions.filter(req => {
+                              if (req.requisitionType !== formData.purchaseType) return false;
+                              if (req.itemType !== formData.itemType) return false;
+                              if (formData.purchaseType === 'project') {
+                                return req.projectId === formData.projectId || req.projectName === formData.projectName;
+                              }
+                              return true;
                             });
-                          }
-                        }
-                        
-                        return filteredRequisitions.map((req) => (
-                          <option key={req._id} value={req.requisitionNumber}>
-                            {req.requisitionNumber}
-                          </option>
-                        ));
-                      })()}
-                    </Form.Select>
+
+                            if (filteredRequisitions.length === 0) {
+                              return (
+                                <div style={{ padding: '0.5rem', color: '#6c757d', textAlign: 'center' }}>
+                                  No requisitions available
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <>
+                                {/* Header Row */}
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr 0.8fr 0.8fr 0.6fr',
+                                    gap: '0.5rem',
+                                    padding: '0.5rem 0.75rem',
+                                    backgroundColor: '#e9ecef',
+                                    borderBottom: '2px solid #dee2e6',
+                                    fontWeight: '600',
+                                    fontSize: '0.85rem',
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 1
+                                  }}
+                                >
+                                  <div></div>
+                                  <div>Requisition Number</div>
+                                  <div>Date</div>
+                                  <div>Created By</div>
+                                  <div>Lock Status</div>
+                                </div>
+                                
+                                {/* Data Rows */}
+                                {filteredRequisitions.map((req) => {
+                                  const wasOriginallySelected = originalRequisitionNumbers.includes(req.requisitionNumber);
+                                  const isDisabled = req.isLocked && !wasOriginallySelected;
+                                  
+                                  return (
+                                  <div
+                                    key={req._id}
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'auto 1fr 0.8fr 0.8fr 0.6fr',
+                                      gap: '0.5rem',
+                                      padding: '0.5rem 0.75rem',
+                                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                      borderBottom: '1px solid #f0f0f0',
+                                      alignItems: 'center',
+                                      opacity: isDisabled ? 0.5 : 1,
+                                      backgroundColor: isDisabled ? '#f5f5f5' : 'white'
+                                    }}
+                                    onMouseEnter={(e) => !isDisabled && (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                                    onMouseLeave={(e) => !isDisabled && (e.currentTarget.style.backgroundColor = 'white')}
+                                    onClick={() => !isDisabled && handleRequisitionToggle(req.requisitionNumber)}
+                                  >
+                                    <Form.Check
+                                      type="checkbox"
+                                      checked={formData.requisitionNumbers.includes(req.requisitionNumber)}
+                                      onChange={() => {}}
+                                      style={{ pointerEvents: 'none' }}
+                                    />
+                                    <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                                      {req.requisitionNumber}
+                                    </span>
+                                    <span style={{ fontSize: '0.85rem', color: '#6c757d' }}>
+                                      {req.requisitionDate || '-'}
+                                    </span>
+                                    <span style={{ fontSize: '0.85rem', color: '#6c757d' }}>
+                                      {req.createdByName || '-'}
+                                    </span>
+                                    <span style={{ 
+                                      fontSize: '0.85rem', 
+                                      color: (req.isLocked && !wasOriginallySelected) ? '#dc3545' : '#198754',
+                                      fontWeight: '500'
+                                    }}>
+                                      {(req.isLocked && !wasOriginallySelected) ? 'Locked' : 'Open'}
+                                    </span>
+                                  </div>
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </Form.Group>
                 </Col>
                 <Col md={formData.purchaseType === 'project'  ? 6 : 7}>
@@ -1761,35 +2165,20 @@ const PurchaseOrders = () => {
                 key={`${formData.projectId}-${formData.itemType}`}
                 ref={hotTableRef}
                 data={[
-                  ...((formData.items && formData.items.length > 0) ? formData.items : [
-                    {
-                      itemCode: '',
-                      description: '',
-                      unit: '',
-                      boqQty: 0,
-                      purchaseQty: 0,
-                      rate: '',
-                      amount: ''
-                    },
-                    {
-                      itemCode: '',
-                      description: '',
-                      unit: '',
-                      boqQty: 0,
-                      purchaseQty: 0,
-                      rate: '',
-                      amount: ''
-                    },
-                    {
-                      itemCode: '',
-                      description: '',
-                      unit: '',
-                      boqQty: 0,
-                      purchaseQty: 0,
-                      rate: '',
-                      amount: ''
+                  ...(() => {
+                    if (formData.items && formData.items.length > 0) {
+                      return formData.items;
+                    } else {
+                      // Only add default empty rows if there are NO items at all
+                      const convertedDate = formData.deliveryDate ? 
+                        formData.deliveryDate.split('-').reverse().join('/') : '';
+                      return [
+                        { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '', deliveryDate: convertedDate },
+                        { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '', deliveryDate: convertedDate },
+                        { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '', deliveryDate: convertedDate }
+                      ];
                     }
-                  ]),
+                  })(),
                   {
                     itemCode: 'Total:',
                     description: '',
@@ -1803,8 +2192,31 @@ const PurchaseOrders = () => {
                   }
                 ]}
                 colHeaders={isViewMode 
-                  ? [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', formData.requisitionNumber ? 'Requisition Qty' : 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`]
-                  : [formData.itemType === 'Service' ? 'Work Scope' : 'Material', 'Description', 'Unit', formData.requisitionNumber ? 'Requisition Qty' : 'BOQ Qty', 'Purchase Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']
+                  ? [
+                      formData.itemType === 'Service' ? 'Work Scope' : 'Material', 
+                      'Description', 
+                      'Unit', 
+                      formData.requisitionNumbers.length > 0 ? 'Requisition Qty' : 'BOQ Qty',
+                      ...(formData.requisitionNumbers.length > 0 ? ['Balance Qty'] : []),
+                      'Purchase Qty', 
+                      `Rate (${currency})`, 
+                      `Amount (${currency})`,
+                      'Delivery Date',
+                      ...(formData.requisitionNumbers.length > 0 ? ['Requisition Number'] : [])
+                    ]
+                  : [
+                      formData.itemType === 'Service' ? 'Work Scope' : 'Material', 
+                      'Description', 
+                      'Unit', 
+                      formData.requisitionNumbers.length > 0 ? 'Requisition Qty' : 'BOQ Qty',
+                      ...(formData.requisitionNumbers.length > 0 ? ['Balance Qty'] : []),
+                      'Purchase Qty', 
+                      `Rate (${currency})`, 
+                      `Amount (${currency})`,
+                      'Delivery Date',
+                      ...(formData.requisitionNumbers.length > 0 ? ['Requisition Number'] : []),
+                      'Action'
+                    ]
                 }
                 columns={[
                   {
@@ -1813,7 +2225,8 @@ const PurchaseOrders = () => {
                     source: getDropdownItems(),
                     strict: true,
                     allowInvalid: false,
-                    width: 200
+                    width: 200,
+                    readOnly: formData.requisitionNumbers.length > 0
                   },
                   {
                     data: 'description',
@@ -1824,7 +2237,8 @@ const PurchaseOrders = () => {
                     data: 'unit',
                     type: 'dropdown',
                     source: units,
-                    width: 80
+                    width: 80,
+                    readOnly: formData.requisitionNumbers.length > 0
                   },
                   {
                     data: 'boqQty',
@@ -1836,6 +2250,16 @@ const PurchaseOrders = () => {
                     readOnly: true,
                     className: 'htCenter htMiddle bg-light'
                   },
+                  ...(formData.requisitionNumbers.length > 0 ? [{
+                    data: 'balanceQty',
+                    type: 'numeric',
+                    numericFormat: {
+                      pattern: '0,0.00'
+                    },
+                    width: 100,
+                    readOnly: true,
+                    className: 'htCenter htMiddle bg-light'
+                  }] : []),
                   {
                     data: 'purchaseQty',
                     type: 'numeric',
@@ -1850,7 +2274,7 @@ const PurchaseOrders = () => {
                     numericFormat: {
                       pattern: '0,0.00'
                     },
-                    width: 100
+                    width: 80
                   },
                   {
                     data: 'amount',
@@ -1858,7 +2282,7 @@ const PurchaseOrders = () => {
                     numericFormat: {
                       pattern: '0,0.00'
                     },
-                    width: 120,
+                    width: 90,
                     readOnly: true,
                     renderer: function(instance, td, row, col, prop, value, cellProperties) {
                       const rowData = instance.getSourceDataAtRow(row);
@@ -1883,16 +2307,31 @@ const PurchaseOrders = () => {
                       return td;
                     }
                   },
+                  {
+                    data: 'deliveryDate',
+                    type: 'date',
+                    dateFormat: 'DD/MM/YYYY',
+                    correctFormat: true,
+                    width: 120,
+                    className: 'htCenter htMiddle'
+                  },
+                  ...(formData.requisitionNumbers.length > 0 ? [{
+                    data: 'requisitionNumber',
+                    type: 'text',
+                    width: 150,
+                    readOnly: true,
+                    className: 'htCenter htMiddle bg-light'
+                  }] : []),
                   ...(!isViewMode ? [{
                     data: 'action',
-                    width: 100,
+                    width: 130,
                     readOnly: true,
                     renderer: (instance, td, row, col, prop, value, cellProperties) => {
                       td.innerHTML = '';
                       td.style.textAlign = 'center';
                       
-                      // Calculate actual data row count (including default blank row)
-                      const actualRowCount = formData.items.length > 0 ? formData.items.length : 1;
+                      // Calculate actual data row count
+                      const actualRowCount = (formData.items && formData.items.length > 0) ? formData.items.length : 3;
                       
                       // Don't show buttons for total row
                       if (row >= actualRowCount) {
@@ -1911,10 +2350,14 @@ const PurchaseOrders = () => {
                           description: item.description || '',
                           unit: item.unit || '',
                           boqQty: item.boqQty || 0,
+                          balanceQty: item.balanceQty || 0,
                           purchaseQty: item.purchaseQty || 0,
                           rate: item.rate || '',
                           amount: item.amount || '',
-                          itemId: item.itemId || ''
+                          itemId: item.itemId || '',
+                          requisitionNumber: item.requisitionNumber || '',
+                          requisitionId: item.requisitionId || '',
+                          deliveryDate: item.deliveryDate || ''
                         }));
                         
                         // Insert new blank row after current row
@@ -1923,38 +2366,79 @@ const PurchaseOrders = () => {
                           description: '',
                           unit: '',
                           boqQty: 0,
+                          balanceQty: 0,
                           purchaseQty: 0,
                           rate: '',
-                          amount: ''
+                          amount: '',
+                          requisitionNumber: '',
+                          requisitionId: '',
+                          deliveryDate: formData.deliveryDate ? formData.deliveryDate.split('-').reverse().join('/') : ''
                         });
                         setFormData(prev => ({ ...prev, items: newItems }));
                       };
                       td.appendChild(addBtn);
                       
-                      // Delete row button - only show if there are actual items or more than 1 row
-                      if (formData.items.length > 0) {
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.className = 'btn btn-danger btn-sm';
-                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-                        deleteBtn.onclick = () => {
-                          // Get current data from the grid
-                          const currentData = instance.getSourceData();
-                          const newItems = currentData.filter((item, index) => 
-                            index !== row && !item.isTotalRow
-                          ).map(item => ({
-                            itemCode: item.itemCode || '',
-                            description: item.description || '',
-                            unit: item.unit || '',
-                            boqQty: item.boqQty || 0,
-                            purchaseQty: item.purchaseQty || 0,
-                            rate: item.rate || '',
-                            amount: item.amount || '',
-                            itemId: item.itemId || ''
-                          }));
-                          setFormData(prev => ({ ...prev, items: newItems }));
-                        };
-                        td.appendChild(deleteBtn);
-                      }
+                      // Delete row button - always show
+                      const deleteBtn = document.createElement('button');
+                      deleteBtn.className = 'btn btn-danger btn-sm';
+                      deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                      deleteBtn.onclick = () => {
+                        // Get current data from the grid
+                        const currentData = instance.getSourceData();
+                        const deletedRow = currentData[row];
+                        const deletedRequisitionNumber = deletedRow?.requisitionNumber;
+                        
+                        const newItems = currentData.filter((item, index) => 
+                          index !== row && !item.isTotalRow
+                        ).map(item => ({
+                          itemCode: item.itemCode || '',
+                          description: item.description || '',
+                          unit: item.unit || '',
+                          boqQty: item.boqQty || 0,
+                          balanceQty: item.balanceQty || 0,
+                          purchaseQty: item.purchaseQty || 0,
+                          rate: item.rate || '',
+                          amount: item.amount || '',
+                          itemId: item.itemId || '',
+                          requisitionNumber: item.requisitionNumber || '',
+                          requisitionId: item.requisitionId || '',
+                          deliveryDate: item.deliveryDate || ''
+                        }));
+                        
+                        // Check if deleted requisition number exists in remaining items
+                        if (deletedRequisitionNumber) {
+                          const isRequisitionStillUsed = newItems.some(item => 
+                            item.requisitionNumber === deletedRequisitionNumber
+                          );
+                          
+                          // If requisition is no longer used, remove it from selections
+                          if (!isRequisitionStillUsed) {
+                            setFormData(prev => {
+                              const deletedRequisition = requisitions.find(req => 
+                                req.requisitionNumber === deletedRequisitionNumber
+                              );
+                              
+                              return {
+                                ...prev,
+                                items: newItems,
+                                requisitions: prev.requisitions.filter(req => 
+                                  req.requisitionNumber !== deletedRequisitionNumber
+                                ),
+                                requisitionNumbers: prev.requisitionNumbers.filter(num => 
+                                  num !== deletedRequisitionNumber
+                                ),
+                                requisitionIds: prev.requisitionIds.filter(id => 
+                                  id !== deletedRequisition?._id
+                                )
+                              };
+                            });
+                            return;
+                          }
+                        }
+                        
+                        setFormData(prev => ({ ...prev, items: newItems }));
+                      };
+                      td.appendChild(deleteBtn);
                       
                       return td;
                     }
@@ -1966,18 +2450,26 @@ const PurchaseOrders = () => {
                 stretchH="all"
                 fixedRowsTop={1}
                 mergeCells={[
-                  { row: (formData.items.length > 0 ? formData.items.length : 1), col: 0, rowspan: 1, colspan: isViewMode ? 5 : 6 }
+                  { 
+                    row: (formData.items && formData.items.length > 0 ? formData.items.length : 3), 
+                    col: 0, 
+                    rowspan: 1, 
+                    colspan: (() => {
+                      // Material, Description, Unit, BOQ/Req Qty, Purchase Qty, Rate = 6 columns
+                      // + Balance Qty (if requisitions selected) = +1
+                      const baseColspan = 6;
+                      const hasBalanceQty = formData.requisitionNumbers.length > 0 ? 1 : 0;
+                      return baseColspan + hasBalanceQty;
+                    })()
+                  }
                 ]}
                 cells={(row, col) => {
                   const cellProperties = {};
-                  const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    unit: '',
-                    boqQty: 0,
-                    purchaseQty: 0,
-                    rate: '',
-                    amount: ''
-                  }];
+                  const itemsToDisplay = (formData.items && formData.items.length > 0) ? formData.items : [
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' },
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' },
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' }
+                  ];
                   const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
                   
                   // Make all cells readonly in view mode
@@ -1988,10 +2480,14 @@ const PurchaseOrders = () => {
                   if (dataRow && dataRow.isTotalRow) {
                     cellProperties.readOnly = true;
                     cellProperties.type = 'text';  // Override dropdown type for total row
+                    // Calculate amount column index dynamically
+                    // Without balanceQty: col 6, With balanceQty: col 7
+                    const amountColIndex = formData.requisitionNumbers.length > 0 ? 7 : 6;
+                    
                     if (col === 0) {
                       // Merged cell - no special class needed, will be handled by renderer
                       cellProperties.className = 'htRight htMiddle bg-light fw-bold';
-                    } else if (col === 6) {
+                    } else if (col === amountColIndex) {
                       // Amount column - right align
                       cellProperties.className = 'htRight htMiddle bg-light fw-bold';
                     } else {
@@ -2002,27 +2498,28 @@ const PurchaseOrders = () => {
                   return cellProperties;
                 }}
                 afterRenderer={(td, row, col, prop, value, cellProperties) => {
-                  const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    description: '',
-                    unit: '',
-                    boqQty: 0,
-                    purchaseQty: 0,
-                    rate: '',
-                    amount: ''
-                  }];
+                  const itemsToDisplay = (formData.items && formData.items.length > 0) ? formData.items : [
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' },
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' },
+                    { itemCode: '', description: '', unit: '', boqQty: 0, purchaseQty: 0, rate: '', amount: '' }
+                  ];
                   const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
+                  
                   if (dataRow && dataRow.isTotalRow) {
                     // Style total row with stronger visual separation
                     td.style.borderTop = '2px solid #0d6efd';
                     td.style.fontWeight = 'bold';
                     td.style.backgroundColor = '#f8f9fa';
                     
+                    // Calculate amount column index dynamically
+                    // Without balanceQty: col 6, With balanceQty: col 7
+                    const amountColIndex = formData.requisitionNumbers.length > 0 ? 7 : 6;
+                    
                     if (col === 0) {
                       // First column in merged cell - show "Total:"
                       td.style.textAlign = 'right';
                       td.style.paddingRight = '15px';
-                    } else if (col === 6) {
+                    } else if (col === amountColIndex) {
                       // Amount column - ensure right alignment and format
                       td.style.textAlign = 'right';
                       td.style.color = '#0d6efd';
@@ -2403,12 +2900,12 @@ const PurchaseOrders = () => {
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>
             <i className="bi bi-file-pdf me-2"></i>
-            Purchase Order PDF - {formData.poNumber}
+            Purchase Order PDF - {formData.poNumber} ({currentPdfCopyType === 'office' ? 'Office Copy' : 'Supplier Copy'})
           </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ height: '80vh', padding: 0 }}>
-          <PDFViewer width="100%" height="100%">
-            <PurchaseOrderPDF poData={formData} currency={currency} />
+          <PDFViewer width="100%" height="100%" key={currentPdfCopyType}>
+            <PurchaseOrderPDF poData={formData} currency={currency} copyType={currentPdfCopyType} />
           </PDFViewer>
         </Modal.Body>
       </Modal>
