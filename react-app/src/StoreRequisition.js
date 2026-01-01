@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal, Pagination, Spinner } from 'react-bootstrap';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
@@ -280,6 +280,8 @@ const StoreRequisition = () => {
   const [editMode, setEditMode] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const hotTableRef = useRef(null);
   
   // Dropdown data
@@ -297,6 +299,7 @@ const StoreRequisition = () => {
   const [units, setUnits] = useState([]);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(true);
   const [showApproverDetails, setShowApproverDetails] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [approverDetails, setApproverDetails] = useState({
     approverId: '',
     approverName: '',
@@ -355,6 +358,8 @@ const StoreRequisition = () => {
       );
       setFilteredOrders(filtered);
     }
+    // Reset to first page when search changes
+    setCurrentPage(1);
   }, [searchTerm, purchaseOrders]);
 
   const loadDropdownData = async () => {
@@ -466,6 +471,7 @@ const StoreRequisition = () => {
   };
 
   const fetchMaterialRequirements = async (projectId) => {
+    setLoadingMaterials(true);
     try {
       const response = await fetch(`${apiBaseUrl}/api/ProjectEstimation/report-by-project/${projectId}`);
       if (response.ok) {
@@ -494,6 +500,8 @@ const StoreRequisition = () => {
       setMaterialRequirements([]);
       setComponentRequirements([]);
       setAlertMessage({ show: true, type: 'warning', message: 'Failed to load material requirements' });
+    } finally {
+      setLoadingMaterials(false);
     }
   };
 
@@ -1215,32 +1223,41 @@ const StoreRequisition = () => {
             </Row>
 
             {/* Requisitions Table */}
-            <Table striped bordered hover responsive style={{ fontSize: '0.775rem' }}>
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: '15%' }}>Requisition Number</th>
-                  <th style={{ width: '10%' }}>Requisition Date</th>
-                  <th style={{ width: '12%' }}>Requisition Type</th>
-                  <th style={{ width: '15%' }}>Project Name</th>
-                  <th style={{ width: '10%' }}>Required By Date</th>
-                  <th style={{ width: '10%' }}>Item Type</th>
-                  <th style={{ width: '8%' }}>Status</th>
-                  <th style={{ width: '10%' }}>Created By</th>
-                  <th style={{ width: '10%' }}>Modified By</th>
-                  {(permissions.edit || permissions.delete) && (
-                    <th style={{ width: '10%' }}>Actions</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="text-center text-muted py-4">
-                      {searchTerm ? 'No requisitions found matching your search.' : 'No requisitions available. Click "New Requisition" to create one.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((po) => (
+            {(() => {
+              const indexOfLastItem = currentPage * itemsPerPage;
+              const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+              const currentItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+              const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+              const paginate = (pageNumber) => setCurrentPage(pageNumber);
+              
+              return (
+                <>
+                  <Table striped bordered hover responsive style={{ fontSize: '0.775rem' }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '15%' }}>Requisition Number</th>
+                        <th style={{ width: '10%' }}>Requisition Date</th>
+                        <th style={{ width: '12%' }}>Requisition Type</th>
+                        <th style={{ width: '15%' }}>Project Name</th>
+                        <th style={{ width: '10%' }}>Required By Date</th>
+                        <th style={{ width: '10%' }}>Item Type</th>
+                        <th style={{ width: '8%' }}>Status</th>
+                        <th style={{ width: '10%' }}>Created By</th>
+                        <th style={{ width: '10%' }}>Modified By</th>
+                        {(permissions.edit || permissions.delete) && (
+                          <th style={{ width: '10%' }}>Actions</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan="10" className="text-center text-muted py-4">
+                            {searchTerm ? 'No requisitions found matching your search.' : 'No requisitions available. Click "New Requisition" to create one.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        currentItems.map((po) => (
                     <tr key={po._id}>
                       <td>
                         {permissions.view ? (
@@ -1333,9 +1350,62 @@ const StoreRequisition = () => {
                       )}
                     </tr>
                   ))
-                )}
-              </tbody>
-            </Table>
+                      )}
+                    </tbody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="d-flex justify-content-center mt-4">
+                      <Pagination>
+                        <Pagination.First 
+                          onClick={() => paginate(1)} 
+                          disabled={currentPage === 1} 
+                        />
+                        <Pagination.Prev 
+                          onClick={() => paginate(currentPage - 1)} 
+                          disabled={currentPage === 1} 
+                        />
+                        
+                        {[...Array(totalPages)].map((_, index) => {
+                          const page = index + 1;
+                          if (
+                            page === 1 || 
+                            page === totalPages || 
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          ) {
+                            return (
+                              <Pagination.Item
+                                key={page}
+                                active={page === currentPage}
+                                onClick={() => paginate(page)}
+                              >
+                                {page}
+                              </Pagination.Item>
+                            );
+                          } else if (
+                            page === currentPage - 2 || 
+                            page === currentPage + 2
+                          ) {
+                            return <Pagination.Ellipsis key={page} />;
+                          }
+                          return null;
+                        })}
+                        
+                        <Pagination.Next 
+                          onClick={() => paginate(currentPage + 1)} 
+                          disabled={currentPage === totalPages} 
+                        />
+                        <Pagination.Last 
+                          onClick={() => paginate(totalPages)} 
+                          disabled={currentPage === totalPages} 
+                        />
+                      </Pagination>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </Card.Body>
         </Card>
       ) : (
@@ -1501,8 +1571,35 @@ const StoreRequisition = () => {
             </div>
 
             {/* Items Section */}
-            <div className="mb-4">
+            <div className="mb-4" style={{ position: 'relative' }}>
               <h5 className="border-bottom pb-2 mb-3">Material Details</h5>
+              
+              {/* Loading Overlay */}
+              {loadingMaterials && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px'
+                }}>
+                  <div className="text-center">
+                    <Spinner animation="border" role="status" variant="primary">
+                      <span className="visually-hidden">Loading...</span>
+                    </Spinner>
+                    <div className="mt-2" style={{ color: '#0d6efd', fontWeight: 500 }}>
+                      Loading materials...
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <HotTable
                 key={`${formData.projectId}-${formData.itemType}`}
                 ref={hotTableRef}
