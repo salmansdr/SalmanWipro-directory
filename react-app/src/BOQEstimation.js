@@ -977,13 +977,14 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     const targetIndex = allCompNames.indexOf(selectedComponent);
     
     // Find where to insert in quantityData
-    let insertPosition = 0;
     const currentData = [...quantityData];
+    let insertPosition = currentData.length; // Default to end
+    let foundInsertPosition = false;
     
     // Get current group headers
     const existingGroupHeaders = currentData.filter(row => row.isGroupHeader);
     
-    // Find insertion point
+    // Find insertion point based on AreaCalculation order
     for (let i = 0; i < existingGroupHeaders.length; i++) {
       const headerName = existingGroupHeaders[i].component;
       const headerIndexInAll = allCompNames.indexOf(headerName);
@@ -991,14 +992,12 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       if (headerIndexInAll > targetIndex) {
         // Insert before this group
         insertPosition = currentData.indexOf(existingGroupHeaders[i]);
+        foundInsertPosition = true;
         break;
       }
     }
     
-    // If insertPosition is still 0, insert at the end
-    if (insertPosition === 0 && existingGroupHeaders.length > 0) {
-      insertPosition = currentData.length;
-    }
+    // If no position found, insertPosition already defaults to end (currentData.length)
     
     // Create new group header and detail row
     const newGroupIndex = existingGroupHeaders.length;

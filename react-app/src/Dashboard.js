@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axiosClient from './api/axiosClient';
 import { Container, Row, Col, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
@@ -12,25 +13,19 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   
-  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  //const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const currency = localStorage.getItem('companyCurrency') || 'Rs';
 
   // Load dashboard data for all projects
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/ProjectEstimation/inventory-dashboard`);
-      
-      if (response.ok) {
-        const result = await response.json();
-        // Handle both direct array and {data: []} response formats
-        const data = result.data || result;
-        setProjectsData(Array.isArray(data) ? data : []);
-        setAlertMessage({ show: false, type: '', message: '' });
-      } else {
-        setProjectsData([]);
-        setAlertMessage({ show: true, type: 'danger', message: 'Failed to load dashboard data' });
-      }
+      const resp = await axiosClient.get('/api/ProjectEstimation/inventory-dashboard');
+      // axios returns the parsed response in resp.data
+      const result = resp.data;
+      const data = result?.data || result;
+      setProjectsData(Array.isArray(data) ? data : []);
+      setAlertMessage({ show: false, type: '', message: '' });
     } catch (error) {
       console.error('Error loading dashboard:', error);
       setProjectsData([]);
@@ -38,7 +33,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadDashboardData();
@@ -262,6 +257,11 @@ const Dashboard = () => {
                       <h4 className="mb-0 text-primary">
                         <i className="bi bi-building me-2"></i>
                         {projectData.projectName || 'Unnamed Project'}
+                        <span className="ms-3 text-muted" style={{ fontSize: '0.9rem' }}>
+                          {projectData.projectType ? `${projectData.projectType} • ` : ''}
+                          {projectData.floors !== undefined && projectData.floors !== null ? `${formatNumber(projectData.floors)} floor${Number(projectData.floors) !== 1 ? 's' : ''} • ` : ''}
+                          {`Land: ${projectData.landArea} • Area: ${formatNumber(projectData.constructionArea || 0)} sq ft`}
+                        </span>
                       </h4>
                     </Card.Body>
                   </Card>

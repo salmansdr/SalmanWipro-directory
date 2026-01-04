@@ -7,6 +7,7 @@ import Handsontable from 'handsontable';
 import 'handsontable/dist/handsontable.full.min.css';
 import { PDFViewer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { getPagePermissions } from './utils/menuSecurity';
+import axiosClient from './api/axiosClient';
 
 registerAllModules();
 
@@ -488,59 +489,65 @@ const PurchaseOrders = () => {
   const loadDropdownData = async () => {
     try {
       // Load Material Items
-      const itemsResponse = await fetch(`${apiBaseUrl}/api/materialitems`);
-      if (itemsResponse.ok) {
-        const itemsData = await itemsResponse.json();
+      try {
+        const itemsResp = await axiosClient.get('/api/materialitems');
+        const itemsData = itemsResp.data;
         setMaterialItems(Array.isArray(itemsData) ? itemsData : []);
+      } catch (err) {
+        setMaterialItems([]);
       }
 
       // Load Suppliers
-      const suppliersResponse = await fetch(`${apiBaseUrl}/api/Supplier`);
-      if (suppliersResponse.ok) {
-        const suppliersData = await suppliersResponse.json();
+      try {
+        const suppliersResp = await axiosClient.get('/api/Supplier');
+        const suppliersData = suppliersResp.data;
         setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+      } catch (err) {
+        setSuppliers([]);
       }
 
       // Load Projects
       const companyId = localStorage.getItem('selectedCompanyId') || '1';
-      const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`);
-      if (projectsResponse.ok) {
-        const projectsData = await projectsResponse.json();
-        // Filter out completed projects
-        const activeProjects = Array.isArray(projectsData) 
-          ? projectsData.filter(project => project.status !== 'Completed') 
+      try {
+        const projectsResp = await axiosClient.get(`/api/Projects/basic?companyId=${companyId}`);
+        const projectsData = projectsResp.data;
+        const activeProjects = Array.isArray(projectsData)
+          ? projectsData.filter(project => project.status !== 'Completed')
           : [];
         setProjects(activeProjects);
+      } catch (err) {
+        setProjects([]);
       }
 
       // Load Approved Requisitions
-      const requisitionsResponse = await fetch(`${apiBaseUrl}/api/Requisition/approved?companyId=${companyId}`);
-      if (requisitionsResponse.ok) {
-        const requisitionsData = await requisitionsResponse.json();
+      try {
+        const requisitionsResp = await axiosClient.get(`/api/Requisition/approved?companyId=${companyId}`);
+        const requisitionsData = requisitionsResp.data;
         setRequisitions(Array.isArray(requisitionsData) ? requisitionsData : []);
+      } catch (err) {
+        setRequisitions([]);
       }
 
       // Load Users for approver dropdown
-      const usersResponse = await fetch(`${apiBaseUrl}/api/Usermaster`);
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
+      try {
+        const usersResp = await axiosClient.get('/api/Usermaster');
+        const usersData = usersResp.data;
         setUsers(Array.isArray(usersData) ? usersData : []);
+      } catch (err) {
+        setUsers([]);
       }
 
       // Load Units
-      const unitsResponse = await fetch(`${apiBaseUrl}/api/MaterialItems/units`);
-      if (unitsResponse.ok) {
-        const unitsData = await unitsResponse.json();
-        // Handle different response formats and extract unit strings
+      try {
+        const unitsResp = await axiosClient.get('/api/MaterialItems/units');
+        const unitsData = unitsResp.data;
         let unitsArray = Array.isArray(unitsData) ? unitsData : (unitsData.units || []);
-        // If units are objects with 'unit' property, extract the unit strings
         if (unitsArray.length > 0 && typeof unitsArray[0] === 'object' && unitsArray[0].unit) {
           unitsArray = unitsArray.map(item => item.unit);
         }
         setUnits(unitsArray);
-      } else {
-        // Fallback to default units
-        //setUnits(['bag', 'cft', 'kg', 'pcs', 'litre', 'box', 'ft', 'sqft', 'meter', 'sq meter', 'running meter', 'nos', 'set', 'roll', 'sheet', 'cum']);
+      } catch (err) {
+        // leave units as default empty
       }
     } catch (error) {
       console.error('Error loading dropdown data:', error);
@@ -549,15 +556,18 @@ const PurchaseOrders = () => {
 
   const loadPurchaseOrders = async () => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/PurchaseOrder?companyId=${companyId}`);
-      //const response = await fetch(`${apiBaseUrl}/api/PurchaseOrder`);
-      if (response.ok) {
-        const data = await response.json();
-        setPurchaseOrders(data);
-        setFilteredOrders(data);
-      }
+      const resp = await axiosClient.get(`/api/PurchaseOrder?companyId=${companyId}`);
+      const data = resp.data;
+      setPurchaseOrders(data);
+      setFilteredOrders(data);
     } catch (error) {
       console.error('Error loading purchase orders:', error);
+      const errMsg = error.code === 'ECONNABORTED' 
+        ? 'Request timed out. The server is taking too long to respond.'
+        : error?.response?.data || error.message || 'Failed to load purchase orders';
+      setAlertMessage({ show: true, type: 'danger', message: errMsg });
+      setPurchaseOrders([]);
+      setFilteredOrders([]);
     }
   };
 
@@ -628,26 +638,18 @@ const PurchaseOrders = () => {
 
   const fetchMaterialRequirements = async (projectId) => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/ProjectEstimation/report-by-project/${projectId}`);
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Handle Material Requirements
-        if (data.materialRequirements && Array.isArray(data.materialRequirements) && data.materialRequirements.length > 0) {
-          setMaterialRequirements(data.materialRequirements);
-        } else {
-          setMaterialRequirements([]);
-        }
-        
-        // Handle Component Requirements (for Service)
-        if (data.componentRequirements && Array.isArray(data.componentRequirements) && data.componentRequirements.length > 0) {
-          setComponentRequirements(data.componentRequirements);
-        } else {
-          setComponentRequirements([]);
-        }
+      const resp = await axiosClient.get(`/api/ProjectEstimation/report-by-project/${projectId}`);
+      const data = resp.data;
+
+      if (data && data.materialRequirements && Array.isArray(data.materialRequirements) && data.materialRequirements.length > 0) {
+        setMaterialRequirements(data.materialRequirements);
       } else {
-        // API call failed or no data
         setMaterialRequirements([]);
+      }
+
+      if (data && data.componentRequirements && Array.isArray(data.componentRequirements) && data.componentRequirements.length > 0) {
+        setComponentRequirements(data.componentRequirements);
+      } else {
         setComponentRequirements([]);
       }
     } catch (error) {
@@ -1043,79 +1045,60 @@ const PurchaseOrders = () => {
         modifiedBy: userId
       };
       
-      const response = await fetch(url, {
+      const resp = await axiosClient({
         method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
+        url: url.replace(apiBaseUrl, ''),
+        data: submitData
       });
 
-      if (response.ok) {
-        try {
-          const savedData = await response.json();
-          
-          // Only update _id, poNumber, status and approver info, keep existing formData (especially items)
-          if (savedData) {
-            setFormData(prev => ({
-              ...prev,
-              _id: savedData._id || prev._id,
-              poNumber: savedData.poNumber || prev.poNumber,
-              status: status,
-              approverUserId: approverUserId,
-              approverComments: approverCommentsArray
-            }));
-            
-            // Clear approver comments input after submit
-            if (status === 'Submitted') {
-              setApproverDetails(prev => ({
-                ...prev,
-                approverComments: ''
-              }));
-            }
-            
-            // Switch to edit mode after successful create
-            if (!editMode) {
-              setEditMode(true);
-            }
-          }
-          
-          // Show success alert
-          const statusMessage = status === 'Draft' ? 'saved' : 'submitted';
-          setAlertMessage({ 
-            show: true, 
-            type: 'success', 
-            message: editMode 
-              ? `Purchase Order ${statusMessage} successfully!` 
-              : `Purchase Order ${statusMessage} successfully!${savedData?.poNumber ? ' PO Number: ' + savedData.poNumber : ''}` 
-          });
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          // Show success alert even if parsing fails
-          const statusMessage = status === 'Draft' ? 'saved' : 'submitted';
-          setAlertMessage({ 
-            show: true, 
-            type: 'success', 
-            message: editMode 
-              ? `Purchase Order ${statusMessage} successfully!` 
-              : `Purchase Order ${statusMessage} successfully!` 
-          });
+      const savedData = resp.data;
+      
+      // Only update _id, poNumber, status and approver info, keep existing formData (especially items)
+      if (savedData) {
+        setFormData(prev => ({
+          ...prev,
+          _id: savedData._id || prev._id,
+          poNumber: savedData.poNumber || prev.poNumber,
+          status: status,
+          approverUserId: approverUserId,
+          approverComments: approverCommentsArray
+        }));
+        
+        // Clear approver comments input after submit
+        if (status === 'Submitted') {
+          setApproverDetails(prev => ({
+            ...prev,
+            approverComments: ''
+          }));
         }
         
-        // Auto-hide success alert after 3 seconds
-        setTimeout(() => {
-          setAlertMessage({ show: false, type: '', message: '' });
-        }, 3000);
-        
-        // Reload purchase orders list
-        loadPurchaseOrders();
-      } else {
-        const errorData = await response.text();
-        setAlertMessage({ show: true, type: 'danger', message: `Failed to save: ${errorData}` });
+        // Switch to edit mode after successful create
+        if (!editMode) {
+          setEditMode(true);
+        }
       }
+      
+      // Show success alert
+      const statusMessage = status === 'Draft' ? 'saved' : 'submitted';
+      setAlertMessage({ 
+        show: true, 
+        type: 'success', 
+        message: editMode 
+          ? `Purchase Order ${statusMessage} successfully!` 
+          : `Purchase Order ${statusMessage} successfully!${savedData?.poNumber ? ' PO Number: ' + savedData.poNumber : ''}` 
+      });
+      
+      // Auto-hide success alert after 3 seconds
+      setTimeout(() => {
+        setAlertMessage({ show: false, type: '', message: '' });
+      }, 3000);
+      
+      // Reload purchase orders list
+      loadPurchaseOrders();
     } catch (error) {
-      console.error('Error submitting purchase order:', error);
-      setAlertMessage({ show: true, type: 'danger', message: 'Error saving purchase order: ' + error.message });
+      // axios error handling
+      const errMsg = error?.response?.data || error.message || 'Failed to save';
+      setAlertMessage({ show: true, type: 'danger', message: `Failed to save: ${errMsg}` });
     }
   };
 
@@ -1145,54 +1128,42 @@ const PurchaseOrders = () => {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/PurchaseOrder/UpdateApprovalStatus`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          _id: formData._id,
-          status: status,
-          comments: approverDetails.approverComments || '',
-          commentedBy: userFullName
-        }),
+      await axiosClient.post('/api/PurchaseOrder/UpdateApprovalStatus', {
+        _id: formData._id,
+        status: status,
+        comments: approverDetails.approverComments || '',
+        commentedBy: userFullName
       });
 
-      if (response.ok) {
-        setAlertMessage({ 
-          show: true, 
-          type: 'success', 
-          message: `Purchase Order ${status === 'Approved' ? 'approved' : 'rejected'} successfully!` 
-        });
+      setAlertMessage({ 
+        show: true, 
+        type: 'success', 
+        message: `Purchase Order ${status === 'Approved' ? 'approved' : 'rejected'} successfully!` 
+      });
 
-        // Update formData status
-        setFormData(prev => ({
-          ...prev,
-          status: status
-        }));
+      setFormData(prev => ({
+        ...prev,
+        status: status
+      }));
 
-        // Clear approver comments
-        setApproverDetails(prev => ({
-          ...prev,
-          approverComments: ''
-        }));
+      setApproverDetails(prev => ({
+        ...prev,
+        approverComments: ''
+      }));
 
-        // Auto-hide success alert after 3 seconds
-        setTimeout(() => {
-          setAlertMessage({ show: false, type: '', message: '' });
-          // Redirect to list view
-          setViewMode('list');
-        }, 3000);
+      // Auto-hide success alert after 3 seconds
+      setTimeout(() => {
+        setAlertMessage({ show: false, type: '', message: '' });
+        // Redirect to list view
+        setViewMode('list');
+      }, 3000);
 
-        // Reload purchase orders list
-        loadPurchaseOrders();
-      } else {
-        const errorData = await response.text();
-        setAlertMessage({ show: true, type: 'danger', message: `Failed to update status: ${errorData}` });
-      }
+      // Reload purchase orders list
+      loadPurchaseOrders();
     } catch (error) {
       console.error('Error updating approval status:', error);
-      setAlertMessage({ show: true, type: 'danger', message: 'Error updating approval status: ' + error.message });
+      const errMsg = error?.response?.data || error.message || 'Failed to update approval status';
+      setAlertMessage({ show: true, type: 'danger', message: errMsg });
     }
   };
 

@@ -111,21 +111,18 @@ function Home() {
       ? `${apiUrl}/api/Projects/all-data?companyId=${companyId}`
       : `${apiUrl}/api/Projects/all-data`;
     
-    //console.log('Fetching projects from:', endpoint);
+    
     
     fetch(endpoint)
       .then(res => res.json())
       .then(data => {
-        //console.log('Raw API data:', data);
+       
         let processedData;
         
         // Check if API returns a flat array of projects
         if (Array.isArray(data)) {
           // Log first project to check structure
-          if (data.length > 0) {
-            console.log('Sample project data:', data[0]);
-            console.log('Sample project projectdocuments:', data[0].projectdocuments);
-          }
+         
           
           // Group projects by status
           processedData = {
@@ -133,14 +130,11 @@ function Home() {
             running: data.filter(project => project.status === 'running'),
             upcoming: data.filter(project => project.status === 'upcoming')
           };
-          console.log('Grouped data:', processedData);
+          
         } else {
           // API returns object with completed, running, upcoming arrays
           processedData = data;
-          if (data.completed && data.completed.length > 0) {
-            console.log('Sample completed project:', data.completed[0]);
-            console.log('Sample completed project projectdocuments:', data.completed[0].projectdocuments);
-          }
+          
         }
         
         setProjectsData(processedData);
@@ -192,7 +186,7 @@ function Home() {
   const projectsWithNav = tabProjects.map((proj) => ({
     ...proj,
     onKnowMore: () => {
-      console.log('More Details clicked for project:', proj);
+      
       setSelectedProject(proj._id || proj.id);
       setShowDetails(true);
     }
@@ -208,8 +202,7 @@ function Home() {
   }
 
   function handleSearch(location, status) {
-    console.log('Searching with:', { location, status });
-    console.log('All projects:', allProjects);
+    
     
     // If both filters are empty, show all projects
     if (!location && !status) {
@@ -222,15 +215,15 @@ function Home() {
     
     if (location) {
       filtered = filtered.filter(p => p.location === location);
-      console.log('After location filter:', filtered);
+      
     }
     
     if (status) {
       filtered = filtered.filter(p => p.status && p.status.toLowerCase() === status.toLowerCase());
-      console.log('After status filter:', filtered);
+     
     }
     
-    console.log('Final filtered projects:', filtered);
+   
     setFilteredProjects(filtered);
     
     // Set appropriate tab
@@ -263,14 +256,13 @@ function Home() {
     
     // First, check if record already exists
     const searchUrl = `${apiBaseUrl}/api/Home/search?projectName=${encodeURIComponent(enqProject)}&email=${encodeURIComponent(enqEmail)}`;
-    console.log('Checking existing enquiry:', searchUrl);
     
     fetch(searchUrl)
       .then(response => {
-        console.log('Search response status:', response.status);
+        
         // If 404, treat as no record found and proceed with POST
         if (response.status === 404) {
-          console.log('No existing record found (404), proceeding with POST');
+         
           return null;
         }
         // If other error status
@@ -280,7 +272,7 @@ function Home() {
         return response.json();
       })
       .then(existingData => {
-        console.log('Search result:', existingData);
+        
         
         if (existingData) {
           // Record already exists
@@ -315,8 +307,6 @@ function Home() {
             enquiryData: enquiryData
           };
           
-          console.log('Sending to backend API:', `${apiBaseUrl}/api/Home`);
-          console.log('Request Payload:', JSON.stringify(requestPayload, null, 2));
           
           fetch(`${apiBaseUrl}/api/Home`, {
             method: 'POST',

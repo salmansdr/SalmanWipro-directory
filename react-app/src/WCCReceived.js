@@ -489,7 +489,7 @@ const WCCReceived = () => {
     }
   };
 
-  const handlePOSelect = (po) => {
+  const handlePOSelect = async (po) => {
     const mappedItems = po.items.map(item => ({
       componentName: item.componentName || '',
       activity: item.description || '',
@@ -515,6 +515,23 @@ const WCCReceived = () => {
     }));
     setPoSearchTerm(''); // Clear search to show all POs
     setShowPODropdown(false);
+    
+    // Load floors for the project
+    if (po.projectId) {
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${po.projectId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const floorList = (data.records && data.records[0] && data.records[0].floors) || [];
+          setFloors(floorList);
+        } else {
+          setFloors([]);
+        }
+      } catch (error) {
+        console.error('Error loading floors:', error);
+        setFloors([]);
+      }
+    }
   };
 
   const loadGrns = async () => {
