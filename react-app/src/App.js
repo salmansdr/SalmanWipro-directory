@@ -6,7 +6,7 @@ import EnquiryDetails from './EnquiryDetails';
 import PurchaseOrders from './PurchaseOrders';
 import MaterialReceived from './MaterialReceived';
 import WCCReceived from './WCCReceived';
-import StoreRequisition from './StoreRequisition';
+import Requisition from './Requisition';
 import StockDetails from './StockDetails';
 import InventoryMovement from './InventoryMovement';
 import Dashboard from './Dashboard';
@@ -390,7 +390,7 @@ function App() {
               {isAuthenticated && <Route path="/purchase-orders" element={<PurchaseOrders />} />}
               {isAuthenticated && <Route path="/material-received" element={<MaterialReceived />} />}
               {isAuthenticated && <Route path="/wcc-received" element={<WCCReceived />} />}
-              {isAuthenticated && <Route path="/store-requisition" element={<StoreRequisition />} />}
+              {isAuthenticated && <Route path="/requisition" element={<Requisition />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
               {isAuthenticated && <Route path="/stock-details" element={<StockDetails />} />}
               {isAuthenticated && <Route path="/inventory-movement" element={<InventoryMovement />} />}

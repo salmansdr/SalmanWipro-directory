@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Form, Alert, Spinner } from 'react-bootstrap';
-import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend } from 'chart.js';
-import { Pie, Bar, Line } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Pie, Bar } from 'react-chartjs-2';
 
 // Register ChartJS components
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const Dashboard = () => {
   const [projectsData, setProjectsData] = useState([]);
@@ -69,12 +69,12 @@ const Dashboard = () => {
   const getCostBreakdownData = (summary) => {
     if (!summary) return null;
 
-    const { totalmaterialEstimatedAmount, totalLabourAmount, totalOtherExpense } = summary;
+    const { totalmaterialEstimatedAmount, totalEstimatedLabourAmount, totalEstimatedOtherExpense } = summary;
 
     return {
       labels: ['Material Cost', 'Labour Cost', 'Other Expenses'],
       datasets: [{
-        data: [totalmaterialEstimatedAmount || 0, totalLabourAmount || 0, totalOtherExpense || 0],
+        data: [totalmaterialEstimatedAmount || 0, totalEstimatedLabourAmount || 0, totalEstimatedOtherExpense || 0],
         backgroundColor: ['#4472C4', '#ED7D31', '#A5A5A5'],
         borderColor: ['#fff', '#fff', '#fff'],
         borderWidth: 2
@@ -111,31 +111,7 @@ const Dashboard = () => {
     };
   };
 
-  const getProgressTrendData = (summary) => {
-    if (!summary) return null;
-
-    const { 
-      totalmaterialEstimatedAmount, 
-      totalmaterialPurchasedAmount, 
-      totalmaterialReceivedAmount 
-    } = summary;
-
-    const estimatedValue = totalmaterialEstimatedAmount || 1;
-    const purchasedPercent = ((totalmaterialPurchasedAmount || 0) / estimatedValue) * 100;
-    const receivedPercent = ((totalmaterialReceivedAmount || 0) / estimatedValue) * 100;
-
-    return {
-      labels: ['Purchased', 'Received'],
-      datasets: [{
-        label: 'Progress (%)',
-        data: [purchasedPercent, receivedPercent],
-        backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(54, 162, 235, 0.6)'],
-        borderColor: ['rgb(75, 192, 192)', 'rgb(54, 162, 235)'],
-        borderWidth: 2,
-        tension: 0.4
-      }]
-    };
-  };
+  
 
   const chartOptions = {
     responsive: true,
@@ -165,6 +141,31 @@ const Dashboard = () => {
     }
   };
 
+  // Floor-wise Estimated vs Actual comparison
+  const getFloorWiseComparisonData = (floorWiseSummary) => {
+    if (!floorWiseSummary || !Array.isArray(floorWiseSummary.floors)) return null;
+    const floors = floorWiseSummary.floors;
+    const labels = floors.map(f => f.floorName || 'Unknown');
+    const estimated = floors.map(f => (f.totalmaterialEstimatedAmount || 0) + (f.totalEstimatedLabourAmount || 0));
+    const actual = floors.map(f => (f.totalmaterialPurchasedAmount || 0) + (f.totalActualLabourAmount || 0));
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Estimated Cost',
+          data: estimated,
+          backgroundColor: 'rgba(68,114,196,0.85)'
+        },
+        {
+          label: 'Actual Expense',
+          data: actual,
+          backgroundColor: 'rgba(255,107,107,0.85)'
+        }
+      ]
+    };
+  };
+
   const barChartOptions = {
     ...chartOptions,
     scales: {
@@ -179,25 +180,15 @@ const Dashboard = () => {
     }
   };
 
-  const lineChartOptions = {
-    ...chartOptions,
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: {
-          callback: function(value) {
-            return value + '%';
-          }
-        }
-      }
-    },
+  const floorBarOptions = {
+    ...barChartOptions,
     plugins: {
-      ...chartOptions.plugins,
+      ...barChartOptions.plugins,
       tooltip: {
         callbacks: {
           label: function(context) {
-            return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+            const val = context.parsed && (context.parsed.y !== undefined ? context.parsed.y : context.parsed);
+            return (context.dataset.label || '') + ': ' + currency + ' ' + formatCurrency(val);
           }
         }
       }
@@ -275,19 +266,17 @@ const Dashboard = () => {
                     </Card.Body>
                   </Card>
 
-                  {/* Key Metrics Cards */}
+                  {/* Estimated Metrics - First Row */}
                   <Row className="mb-4">
                     <Col lg={3} md={6} className="mb-3">
                       <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #4472C4' }}>
                         <Card.Body>
                           <div className="d-flex justify-content-between align-items-center">
                             <div>
-                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Total Project Cost</p>
-                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalProjectCost)}</h4>
+                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Estimated Project Cost(Material+Labour)</p>
+                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialEstimatedAmount+projectData.summary?.totalEstimatedLabourAmount)}</h4>
                             </div>
-                            <div className="bg-primary bg-opacity-10 p-3 rounded-circle">
-                              <i className="bi bi-currency-dollar text-primary" style={{ fontSize: '1.5rem' }}></i>
-                            </div>
+                           
                           </div>
                         </Card.Body>
                       </Card>
@@ -301,9 +290,53 @@ const Dashboard = () => {
                               <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Material Estimated</p>
                               <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialEstimatedAmount)}</h4>
                             </div>
-                            <div className="bg-warning bg-opacity-10 p-3 rounded-circle">
-                              <i className="bi bi-box-seam text-warning" style={{ fontSize: '1.5rem' }}></i>
+                            
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    <Col lg={3} md={6} className="mb-3">
+                      <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #FFC000' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Labour Estimated</p>
+                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalEstimatedLabourAmount)}</h4>
                             </div>
+                            
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    <Col lg={3} md={6} className="mb-3">
+                      <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #A5A5A5' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Other Expenses</p>
+                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalEstimatedOtherExpense)}</h4>
+                            </div>
+                           
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  </Row>
+
+
+                  {/* Actual/Transaction Metrics - Second Row */}
+                  <Row className="mb-4">
+                    <Col lg={3} md={6} className="mb-3">
+                      <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #FF6B6B' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Actual Expense (Till Now)</p>
+                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency((projectData.summary?.totalmaterialPurchasedAmount+projectData.summary?.totalActualLabourAmount || 0) )}</h4>
+                            </div>
+                           
                           </div>
                         </Card.Body>
                       </Card>
@@ -317,93 +350,34 @@ const Dashboard = () => {
                               <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Material Purchased</p>
                               <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialPurchasedAmount)}</h4>
                             </div>
-                            <div className="bg-success bg-opacity-10 p-3 rounded-circle">
-                              <i className="bi bi-cart-check text-success" style={{ fontSize: '1.5rem' }}></i>
-                            </div>
+                            
                           </div>
                         </Card.Body>
                       </Card>
                     </Col>
 
                     <Col lg={3} md={6} className="mb-3">
-                      <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #5B9BD5' }}>
-                        <Card.Body>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Material Received</p>
-                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialReceivedAmount)}</h4>
-                            </div>
-                            <div className="bg-info bg-opacity-10 p-3 rounded-circle">
-                              <i className="bi bi-truck text-info" style={{ fontSize: '1.5rem' }}></i>
-                            </div>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  {/* Secondary Metrics */}
-                  <Row className="mb-4">
-                    <Col lg={3} md={6} className="mb-3">
-                      <Card className="border-0 shadow-sm h-100">
+                      <Card className="border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #FFC000' }}>
                         <Card.Body>
                           <div className="d-flex justify-content-between align-items-center">
                             <div>
                               <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Labour Cost</p>
-                              <h5 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalLabourAmount)}</h5>
+                              <h4 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalActualLabourAmount)}</h4>
                             </div>
-                            <i className="bi bi-people text-secondary" style={{ fontSize: '1.5rem' }}></i>
+                           
                           </div>
                         </Card.Body>
                       </Card>
                     </Col>
 
                     <Col lg={3} md={6} className="mb-3">
-                      <Card className="border-0 shadow-sm h-100">
-                        <Card.Body>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Other Expenses</p>
-                              <h5 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalOtherExpense)}</h5>
-                            </div>
-                            <i className="bi bi-wallet2 text-secondary" style={{ fontSize: '1.5rem' }}></i>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-
-                    <Col lg={3} md={6} className="mb-3">
-                      <Card className="border-0 shadow-sm h-100">
-                        <Card.Body>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Material Requisitioned</p>
-                              <h5 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialRequisitionAmount)}</h5>
-                            </div>
-                            <i className="bi bi-file-earmark-text text-secondary" style={{ fontSize: '1.5rem' }}></i>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-
-                    <Col lg={3} md={6} className="mb-3">
-                      <Card className="border-0 shadow-sm h-100">
-                        <Card.Body>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              <p className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>Material Issued</p>
-                              <h5 className="mb-0 fw-bold">{currency} {formatCurrency(projectData.summary?.totalmaterialIssuedAmount)}</h5>
-                            </div>
-                            <i className="bi bi-arrow-up-circle text-secondary" style={{ fontSize: '1.5rem' }}></i>
-                          </div>
-                        </Card.Body>
-                      </Card>
+                      {/* Empty column for alignment */}
                     </Col>
                   </Row>
 
                   {/* Charts Row */}
                   <Row className="mb-4">
-                    <Col lg={4} md={6} className="mb-4">
+                    <Col lg={6} md={6} className="mb-4">
                       <Card className="shadow-sm h-100">
                         <Card.Header className="bg-light">
                           <h6 className="mb-0 fw-bold">Cost Breakdown</h6>
@@ -418,7 +392,7 @@ const Dashboard = () => {
                       </Card>
                     </Col>
 
-                    <Col lg={4} md={6} className="mb-4">
+                    <Col lg={6} md={6} className="mb-4">
                       <Card className="shadow-sm h-100">
                         <Card.Header className="bg-light">
                           <h6 className="mb-0 fw-bold">Material Flow Analysis</h6>
@@ -432,16 +406,19 @@ const Dashboard = () => {
                         </Card.Body>
                       </Card>
                     </Col>
+                  </Row>
 
-                    <Col lg={4} md={12} className="mb-4">
+                  {/* Floor-wise Estimated vs Actual Chart - placed after Material Flow Analysis row */}
+                  <Row className="mb-4">
+                    <Col lg={12} className="mb-4">
                       <Card className="shadow-sm h-100">
                         <Card.Header className="bg-light">
-                          <h6 className="mb-0 fw-bold">Progress Overview</h6>
+                          <h6 className="mb-0 fw-bold">Floor-wise: Estimated Cost vs Actual Expense</h6>
                         </Card.Header>
                         <Card.Body>
-                          <div style={{ height: '300px' }}>
-                            {getProgressTrendData(projectData.summary) && (
-                              <Line data={getProgressTrendData(projectData.summary)} options={lineChartOptions} />
+                          <div style={{ height: '350px' }}>
+                            {getFloorWiseComparisonData(projectData.floorWiseSummary) && (
+                              <Bar data={getFloorWiseComparisonData(projectData.floorWiseSummary)} options={floorBarOptions} />
                             )}
                           </div>
                         </Card.Body>

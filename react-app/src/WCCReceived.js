@@ -199,7 +199,7 @@ const ReceiptNotePDF = ({ data }) => {
         </View>
 
         <View style={pdfStyles.title}>
-          <Text>GOODS RECEIPT NOTE (GRN)</Text>
+          <Text>SERVICE RECEIPT NOTE</Text>
         </View>
 
         <View style={pdfStyles.section}>
@@ -232,7 +232,7 @@ const ReceiptNotePDF = ({ data }) => {
         <View style={pdfStyles.table}>
           <View style={pdfStyles.tableHeader}>
             <Text style={pdfStyles.col1}>S/N</Text>
-            <Text style={pdfStyles.col2}>Item Name</Text>
+            <Text style={pdfStyles.col2}>Activity</Text>
             <Text style={pdfStyles.col3}>Unit</Text>
             <Text style={pdfStyles.col4}>Ordered Qty</Text>
             <Text style={pdfStyles.col5}>Received Qty</Text>
@@ -241,7 +241,7 @@ const ReceiptNotePDF = ({ data }) => {
           {(data.items || []).map((item, index) => (
             <View key={index} style={pdfStyles.tableRow}>
               <Text style={pdfStyles.col1}>{index + 1}</Text>
-              <Text style={pdfStyles.col2}>{item.itemName || ''}</Text>
+              <Text style={pdfStyles.col2}>{item.activity || item.description || ''}</Text>
               <Text style={pdfStyles.col3}>{item.unit || ''}</Text>
               <Text style={pdfStyles.col4}>{Number(item.orderedQty || 0).toFixed(2)}</Text>
               <Text style={pdfStyles.col5}>{Number(item.receivedQty || 0).toFixed(2)}</Text>
@@ -250,7 +250,7 @@ const ReceiptNotePDF = ({ data }) => {
           ))}
           <View style={pdfStyles.tableRowTotal}>
             <Text style={{ width: '65%' }}></Text>
-            <Text style={{ width: '15%', textAlign: 'right' }}>Material Total</Text>
+            <Text style={{ width: '15%', textAlign: 'right' }}>Service Total</Text>
             <Text style={{ width: '20%', textAlign: 'right' }}>{formatCurrency(materialTotal, currency)}</Text>
           </View>
         </View>
@@ -309,15 +309,14 @@ const WCCReceived = () => {
   const [showPODropdown, setShowPODropdown] = useState(false);
   const [poSearchTerm, setPoSearchTerm] = useState('');
   const [suppliers, setSuppliers] = useState([]);
-  const [locations, setLocations] = useState([]);
   const [projects, setProjects] = useState([]);
   const [floors, setFloors] = useState([]);
   const currency = localStorage.getItem('companyCurrency') || 'INR';
   const [selectedFloor, setSelectedFloor] = useState('');
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState('');
   const [poItems, setPoItems] = useState([]); // Store original PO items for dropdown
-  const [openingBalanceItems, setOpeningBalanceItems] = useState([]);
+  const [savedItems, setSavedItems] = useState([]); // Store saved items to restore when returning to same project
+  const [savedProjectId, setSavedProjectId] = useState(''); // Store saved project ID
+  const [savedFloor, setSavedFloor] = useState(''); // Store saved floor
   const [showAddRowsModal, setShowAddRowsModal] = useState(false);
   const [rowsToAdd, setRowsToAdd] = useState(1);
   const hotTableRef = useRef(null);
@@ -336,22 +335,10 @@ const WCCReceived = () => {
     invoiceDate: '',
     workOrderType: 'Labour', // Default to Labour
     receivedBy: '',
-    vehicleNumber: '',
-    driverName: '',
-    driverContact: '',
-    // Only keep these location fields
-    sourceLocationId: '',
-    sourceLocationName: '',
-    destinationLocationId: '',
-    destinationLocationName: '',
-    transportReference: '',
-    // Other fields
+    // Project fields
     projectId: '',
     projectName: '',
     floor: '',
-    event: '',
-    mainPurpose: '',
-    originalGrnPo: '',
     remarks: '',
     companyName: '',
     createdBy: '',
@@ -465,13 +452,6 @@ const WCCReceived = () => {
         setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
       }
 
-      // Load Locations
-      const locationsResponse = await fetch(`${apiBaseUrl}/api/LocationMaster`);
-      if (locationsResponse.ok) {
-        const locationsData = await locationsResponse.json();
-        setLocations(Array.isArray(locationsData) ? locationsData : []);
-      }
-
       // Load Projects
       const companyId = localStorage.getItem('selectedCompanyId');
       const projectsResponse = await fetch(`${apiBaseUrl}/api/Projects/running?companyId=${companyId}`);
@@ -494,10 +474,10 @@ const WCCReceived = () => {
         const data = await response.json();
         // API returns an object with 'orders' array
         const ordersArray = data.orders || [];
-        // Filter only approved POs
-        const approvedPOs = ordersArray.filter(po => po.status === 'Approved');
-        setPurchaseOrders(approvedPOs);
-        setFilteredPOs(approvedPOs);
+        // Filter only approved POs with itemType='Service'
+        const approvedServicePOs = ordersArray.filter(po => po.status === 'Approved' && po.itemType === 'Service');
+        setPurchaseOrders(approvedServicePOs);
+        setFilteredPOs(approvedServicePOs);
       } else {
         setPurchaseOrders([]);
         setFilteredPOs([]);
@@ -511,12 +491,10 @@ const WCCReceived = () => {
 
   const handlePOSelect = (po) => {
     const mappedItems = po.items.map(item => ({
-      itemCode: item.itemName || item.itemCode || '',
-      itemId: item.itemCode || '',
-      itemName: item.itemName || '',
+      componentName: item.componentName || '',
+      activity: item.description || '',
+      description: item.description || '',
       unit: item.unit || '',
-      lotNo: '',
-      lotControlled: item.lotControlled || false,
       orderedQty: item.purchaseQty || 0,
       totalReceivedQty: item.totalReceivedQty || 0,
       balanceQty: item.balanceQty || 0,
@@ -545,8 +523,13 @@ const WCCReceived = () => {
       const response = await fetch(`${apiBaseUrl}/api/ServiceReceived?companyId=${companyId}`);
       if (response.ok) {
         const data = await response.json();
-        setGrns(data);
-        setFilteredGrns(data);
+        // Map srNumber to referenceNumber for display
+        const mappedData = data.map(item => ({
+          ...item,
+          referenceNumber: item.srNumber || item.referenceNumber || ''
+        }));
+        setGrns(mappedData);
+        setFilteredGrns(mappedData);
       }
     } catch (error) {
       console.error('Error loading GRNs:', error);
@@ -604,6 +587,8 @@ const WCCReceived = () => {
         }
         
         // Check if received quantity exceeds pending quantity (only for PO-based receipts, not opening balance)
+        // Commented out to allow progress entry beyond BOQ/PO quantity
+        /* 
         if (receivedQty > balanceQty) {
           setAlertMessage({ 
             show: true, 
@@ -612,43 +597,26 @@ const WCCReceived = () => {
           });
           return;
         }
+        */
       }
       
-      // Clean items - remove itemCode, itemName from each item
-      const cleanedItems = formData.items.map(({ itemCode, itemName, ...rest }) => rest);
+      // Prepare items for submission
+      const cleanedItems = formData.items.map(item => ({
+        componentName: item.componentName,
+        activity: item.activity,
+        description: item.description,
+        unit: item.unit,
+        orderedQty: item.orderedQty,
+        totalReceivedQty: item.totalReceivedQty,
+        balanceQty: item.balanceQty,
+        receivedQty: item.receivedQty,
+        rate: item.rate,
+        amount: item.amount
+      }));
       
-      // Calculate material total
-      const materialTotal = (formData.items || []).reduce((sum, item) => 
-        sum + (parseFloat(item.amount) || 0), 0);
-      
-      // Split charges and discounts
-      let chargesArray = [];
-      let discountsArray = [];
-      
-      if (formData.charges && formData.charges.length > 0) {
-        formData.charges.forEach(charge => {
-          if (charge.chargeType && charge.chargeType !== '') {
-            if (charge.chargeType === 'Discount/Rebate (-)' || (parseFloat(charge.amount) || 0) < 0) {
-              // Discount - store as positive value in discounts array
-              discountsArray.push({
-                chargeType: charge.chargeType,
-                description: charge.description || '',
-                amount: Math.abs(parseFloat(charge.amount) || 0)
-              });
-            } else {
-              // Regular charge
-              chargesArray.push({
-                chargeType: charge.chargeType,
-                description: charge.description || '',
-                amount: parseFloat(charge.amount) || 0
-              });
-            }
-          }
-        });
-      }
-      
-      // Prepare data - exclude fields populated by backend
+      // Prepare data - exclude fields populated by backend and fields not needed
       const { 
+        referenceNumber,
         supplierName, 
         supplierEmail,
         createdByUserName,
@@ -656,17 +624,16 @@ const WCCReceived = () => {
         modifiedByUserName,
         modifiedByEmail,
         charges,
+        materialTotal,
+        discounts,
         ...formDataWithoutExcluded 
       } = formData;
       
       const dataToSend = {
         ...formDataWithoutExcluded,
+        srNumber: referenceNumber, // Map referenceNumber to srNumber for backend
         items: cleanedItems,
-        materialTotal: materialTotal,
-        charges: chargesArray,
-        discounts: discountsArray,
         floor: selectedFloor || formData.floor || '',
-        event: selectedEvent || formData.event || '',
         companyId: companyId,
         companyName: companyName,
         createdBy: editMode ? formData.createdBy : userId,
@@ -691,10 +658,11 @@ const WCCReceived = () => {
         const responseData = await response.json();
         
         // Update formData with the auto-generated reference number from response
-        if (!editMode && responseData.referenceNumber) {
+        // Map srNumber to referenceNumber
+        if (!editMode && (responseData.srNumber || responseData.referenceNumber)) {
           setFormData(prev => ({
             ...prev,
-            referenceNumber: responseData.referenceNumber
+            referenceNumber: responseData.srNumber || responseData.referenceNumber
           }));
         }
         
@@ -703,6 +671,7 @@ const WCCReceived = () => {
           type: 'success', 
           message: editMode ? 'GRN updated successfully!' : 'GRN created successfully!' 
         });
+        
         handleReset();
         setTimeout(() => {
           setAlertMessage({ show: false, type: '', message: '' });
@@ -717,11 +686,18 @@ const WCCReceived = () => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = (clearSavedData = false) => {
     setPoItems([]);
     setPurchaseOrders([]);
     setFilteredPOs([]);
-    setOpeningBalanceItems([]);
+    
+    // Only clear saved items when explicitly requested (e.g., new entry)
+    if (clearSavedData) {
+      setSavedItems([]);
+      setSavedProjectId('');
+      setSavedFloor('');
+    }
+    
     setFormData({
       _id: '',
       movementType: 'Receipt',
@@ -736,22 +712,10 @@ const WCCReceived = () => {
       invoiceDate: '',
       workOrderType: 'Labour',
       receivedBy: '',
-      vehicleNumber: '',
-      driverName: '',
-      driverContact: '',
-      // Only keep these location fields
-      sourceLocationId: '',
-      sourceLocationName: '',
-      destinationLocationId: '',
-      destinationLocationName: '',
-      transportReference: '',
-      // Other fields
+      // Project fields
       projectId: '',
       projectName: '',
       floor: '',
-      event: '',
-      mainPurpose: '',
-      originalGrnPo: '',
       remarks: '',
       companyName: '',
       createdBy: '',
@@ -759,7 +723,6 @@ const WCCReceived = () => {
       items: []
     });
     setSelectedFloor('');
-    setSelectedEvent('');
     setEditMode(false);
   };
 
@@ -769,7 +732,7 @@ const WCCReceived = () => {
       return;
     }
     
-    handleReset();
+    handleReset(true); // Clear saved data for new entry
     setPoSearchTerm('');
     setFormData(prev => ({ ...prev, movementType: 'Receipt' }));
     setViewMode('form');
@@ -781,42 +744,76 @@ const WCCReceived = () => {
       return;
     }
     
-    // Merge charges and discounts arrays back into single charges array
-    const mergedCharges = [];
+    // Map srNumber to referenceNumber for form display
+    const mappedGrn = {
+      ...grn,
+      referenceNumber: grn.srNumber || grn.referenceNumber || ''
+    };
     
-    // Add regular charges
-    if (grn.charges && grn.charges.length > 0) {
-      grn.charges.forEach(charge => {
-        mergedCharges.push({
-          chargeType: charge.chargeType,
-          description: charge.description || '',
-          amount: parseFloat(charge.amount) || 0
+    setFormData(mappedGrn);
+    setSelectedFloor(grn.floor || ''); // Set the selected floor value
+    
+    // Store the original data for restoration when changing projects during edit
+    setSavedItems(grn.items || []);
+    setSavedProjectId(grn.projectId || '');
+    setSavedFloor(grn.floor || '');
+    
+    // Load floors and PO items in parallel to improve performance
+    const promises = [];
+    
+    // Load floors for the project if projectId exists
+    if (grn.projectId) {
+      const floorsPromise = fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${grn.projectId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.records && data.records[0] && data.records[0].floors) {
+            const floorList = data.records[0].floors;
+            setFloors(floorList);
+            
+            // If NO PO but has floor, load ALL floor components for activity dropdown
+            if (!grn.poId && grn.floor) {
+              const floorObj = floorList.find(f => f.floorName === grn.floor);
+              if (floorObj && floorObj.components) {
+                const componentsList = [];
+                Object.entries(floorObj.components).forEach(([key, component]) => {
+                  componentsList.push({
+                    componentName: key || '',
+                    activity: key || '',
+                    description: component.componentName || key,
+                    unit: component.unit || '',
+                    orderedQty: component.volume || 0,
+                    totalReceivedQty: component.totalReceivedQty || 0,
+                    balanceQty: component.balanceQty || 0,
+                    receivedQty: 0,
+                    rate: component.rate || 0,
+                    amount: 0,
+                    floorName: floorObj.floorName || ''
+                  });
+                });
+                setPoItems(componentsList);
+              }
+            }
+          } else {
+            setFloors([]);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading floors:', error);
+          setFloors([]);
         });
-      });
+      promises.push(floorsPromise);
     }
     
-    // Add discounts (convert to negative amounts)
-    if (grn.discounts && grn.discounts.length > 0) {
-      grn.discounts.forEach(discount => {
-        mergedCharges.push({
-          chargeType: discount.chargeType || 'Discount/Rebate (-)',
-          description: discount.description || '',
-          amount: -(Math.abs(parseFloat(discount.amount) || 0))
-        });
-      });
-    }
-    
-    // Populate poItems for Receipt type to enable dropdown
-    if (grn.movementType === 'Receipt' && grn.poId) {
-      // Fetch latest PO items with updated received quantities
-      fetch(`${apiBaseUrl}/api/PurchaseOrder/items/${grn.poId}`)
+    // If has PO, load ALL PO items for activity dropdown
+    if (grn.poId) {
+      const poItemsPromise = fetch(`${apiBaseUrl}/api/PurchaseOrder/items/${grn.poId}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data && data.items) {
             const itemsForDropdown = data.items.map(item => ({
-              itemCode: item.itemName || item.itemCode || '',
-              itemId: item.itemCode || '',
-              itemName: item.itemName || '',
+              componentName: item.componentName || '',
+              activity: item.description || '',
+              description: item.description || '',
               unit: item.unit || '',
               orderedQty: item.purchaseQty || 0,
               totalReceivedQty: item.totalReceivedQty || 0,
@@ -832,64 +829,14 @@ const WCCReceived = () => {
           console.error('Error loading PO items:', error);
           setPoItems([]);
         });
+      promises.push(poItemsPromise);
     }
     
-    // Populate poItems for Return type to enable dropdown
-    if (grn.movementType === 'Return' && grn.items && grn.items.length > 0) {
-      const itemsForDropdown = grn.items.map(item => ({
-        itemCode: item.itemId || item.itemCode || '',
-        itemName: item.itemName || '',
-        unit: item.unit || '',
-        orderedQty: item.orderedQty || 0,
-        receivedQty: item.receivedQty || 0,
-        rate: item.rate || 0,
-        amount: item.amount || 0
-      }));
-      setPoItems(itemsForDropdown);
-      
-      // Load POs for the supplier
-      if (grn.supplierId) {
-        loadPurchaseOrdersBySupplier(grn.supplierId);
-      }
-    }
-    
-    // Populate locationInventory for Transfer/Issue/Return types - removed for Work Order Completion
-    
-    // Set floor and event for Issue type
-    if (grn.movementType === 'Issue') {
-      setSelectedFloor(grn.floor || '');
-      setSelectedEvent(grn.event || '');
-      
-      // Load floors if projectId exists
-      if (grn.projectId) {
-        fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${grn.projectId}`)
-          .then(res => res.ok ? res.json() : null)
-          .then(data => {
-            if (data && data.records && data.records[0] && data.records[0].floors) {
-              const floorList = data.records[0].floors;
-              setFloors(floorList);
-              
-              // Load events if floor exists
-              if (grn.floor) {
-                const floorObj = floorList.find(f => f.floorName === grn.floor);
-                if (floorObj && floorObj.components) {
-                  setEvents(Object.keys(floorObj.components));
-                }
-              }
-            }
-          })
-          .catch(() => {});
-      }
-    }
-    
-    setFormData({
-      ...grn,
-      charges: mergedCharges.length > 0 ? mergedCharges : []
+    // Wait for all promises to complete before switching to form view
+    Promise.all(promises).finally(() => {
+      setEditMode(true);
+      setViewMode('form');
     });
-    setPoSearchTerm(grn.movementType === 'Return' ? (grn.originalGrnPo || '') : (grn.poNumber || ''));
-    
-    setEditMode(true);
-    setViewMode('form');
   };
 
   const handleDelete = async (_id) => {
@@ -970,20 +917,19 @@ const WCCReceived = () => {
                 </Col>
                 <Col md={3}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Purchase Order # <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>Purchase Order # <small className="text-muted">(Optional)</small></Form.Label>
                     <div className="position-relative" ref={poDropdownRef}>
                       <Form.Control
                         type="text"
                         value={formData.poNumber || poSearchTerm}
                         onChange={(e) => {
                           setPoSearchTerm(e.target.value);
-                          setFormData(prev => ({ ...prev, poNumber: '', poId: '', items: [] }));
+                          setFormData(prev => ({ ...prev, poNumber: '', poId: '', projectId: '', items: [] }));
                           setPoItems([]);
                           setShowPODropdown(true);
                         }}
                         onFocus={() => setShowPODropdown(true)}
-                        placeholder="Search PO number"
-                        required
+                        placeholder="Search PO number (optional)"
                         disabled={editMode}
                       />
                       {showPODropdown && filteredPOs.length > 0 && (
@@ -1052,7 +998,156 @@ const WCCReceived = () => {
             <div className="mb-4">
               <h5 className="border-bottom pb-2 mb-3">Receiving Information</h5>
               <Row>
-                <Col md={4}>
+                <Col md={3}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Project <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                      name="projectId"
+                      value={formData.projectId}
+                      onChange={async (e) => {
+                        const selectedProject = projects.find(p => p._id === e.target.value);
+                        const newProjectId = e.target.value;
+                        
+                        setFormData(prev => ({
+                          ...prev,
+                          projectId: newProjectId,
+                          projectName: selectedProject?.name || '',
+                          items: [] // Clear items when project changes
+                        }));
+                        setSelectedFloor('');
+                        setFloors([]);
+                        
+                        if (newProjectId) {
+                          try {
+                            const res = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${newProjectId}`);
+                            if (res.ok) {
+                              const data = await res.json();
+                              const floorList = (data.records && data.records[0] && data.records[0].floors) || [];
+                              setFloors(floorList);
+                              
+                              // If returning to the saved project, restore saved floor and items
+                              // Restore dropdown with unique activities from saved items
+                              if (newProjectId === savedProjectId && savedFloor) {
+                                setTimeout(() => {
+                                  setSelectedFloor(savedFloor);
+                                  
+                                  // Restore dropdown options from saved items
+                                  const uniqueActivities = [];
+                                  const activityMap = new Map();
+                                  
+                                  savedItems.forEach(item => {
+                                    if (item.activity && !activityMap.has(item.activity)) {
+                                      activityMap.set(item.activity, true);
+                                      uniqueActivities.push({
+                                        componentName: item.componentName || '',
+                                        activity: item.activity || '',
+                                        description: item.description || '',
+                                        unit: item.unit || '',
+                                        orderedQty: item.orderedQty || 0,
+                                        totalReceivedQty: item.totalReceivedQty || 0,
+                                        balanceQty: item.balanceQty || 0,
+                                        receivedQty: 0,
+                                        rate: item.rate || 0,
+                                        amount: 0
+                                      });
+                                    }
+                                  });
+                                  
+                                  setPoItems(uniqueActivities);
+                                  
+                                  // Restore the saved grid items
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    floor: savedFloor,
+                                    items: savedItems.map(item => ({...item}))
+                                  }));
+                                }, 100);
+                              }
+                            } else {
+                              setFloors([]);
+                            }
+                          } catch {
+                            setFloors([]);
+                          }
+                        }
+                      }}
+                      required
+                      disabled={!!formData.poId}
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={3}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Floor <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                      name="floor"
+                      value={selectedFloor}
+                      onChange={e => {
+                        const newFloor = e.target.value;
+                        
+                        setSelectedFloor(newFloor);
+                        const floorObj = floors.find(f => f.floorName === newFloor);
+                        
+                        // Check if returning to saved project and floor - restore saved items
+                        if (formData.projectId === savedProjectId && newFloor === savedFloor && savedItems.length > 0) {
+                          setPoItems(savedItems);
+                          // Use setTimeout to ensure state updates properly
+                          setTimeout(() => {
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              floor: newFloor, 
+                              items: savedItems.map(item => ({...item})) 
+                            }));
+                          }, 0);
+                          return;
+                        }
+                        
+                        setFormData(prev => ({ ...prev, floor: newFloor }));
+                        
+                        // If no PO selected, load floor components as activities
+                        if (!formData.poId && floorObj && floorObj.components) {
+                          
+                          const componentsList = [];
+
+Object.entries(floorObj.components).forEach(([key, component]) => {
+  componentsList.push({
+    componentName: key || '',
+    activity: key || '',
+    description: component.componentName || key,
+    unit: component.unit || '',
+    orderedQty: component.volume || 0,
+    totalReceivedQty: component.totalReceivedQty || 0,
+    balanceQty: component.balanceQty || 0,
+    receivedQty: 0, // to be filled during progress entry
+    rate: component.rate || 0,
+    amount: 0, // calculated later as receivedQty * rate
+    floorName: floorObj.floorName || ''
+  });
+});
+
+                         
+                          setPoItems(componentsList); // Set as available items for dropdown
+                        } else {
+                          if (!formData.poId) {
+                            setPoItems([]);
+                          }
+                        }
+                      }}
+                      required
+                    >
+                      <option value="">Select Floor</option>
+                      {floors.map(f => (
+                        <option key={f.floorName} value={f.floorName}>{f.floorName}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Work Order Type <span className="text-danger">*</span></Form.Label>
                     <Form.Select
@@ -1066,7 +1161,7 @@ const WCCReceived = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={4}>
+                <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Verified By <span className="text-danger">*</span></Form.Label>
                     <Form.Control
@@ -1084,438 +1179,8 @@ const WCCReceived = () => {
           </>
         );
 
-      case 'Transfer':
-        return (
-          <div className="mb-4">
-            <h5 className="border-bottom pb-2 mb-3">Transfer Information</h5>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="sourceLocationId"
-                    value={formData.sourceLocationId}
-                    onChange={(e) => {
-                      const selectedLocation = locations.find(l => l._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        sourceLocationId: e.target.value,
-                        sourceLocationName: selectedLocation?.locationName || '',
-                        items: [] // Clear items when location changes
-                      }));
-                    }}
-                    required
-                  >
-                    <option value="">Select Source Location</option>
-                    {locations.map(l => (
-                      <option key={l._id} value={l._id}>{l.locationName}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Destination Location <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="receivingLocationId"
-                    value={formData.receivingLocationId}
-                    onChange={(e) => {
-                      const selectedLocation = locations.find(l => l._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        receivingLocationId: e.target.value,
-                        receivingLocationName: selectedLocation?.locationName || ''
-                      }));
-                    }}
-                    required
-                  >
-                    <option value="">Select Destination Location</option>
-                    {locations
-                      .filter(l => l._id !== formData.sourceLocationId)
-                      .map(l => (
-                        <option key={l._id} value={l._id}>{l.locationName}</option>
-                      ))
-                    }
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-          </div>
-        );
-
-      case 'Issue': // Disbursement to project
-        return (
-          <div className="mb-4">
-            <h5 className="border-bottom pb-2 mb-3">Issue Information</h5>
-            <Row>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="sourceLocationId"
-                    value={formData.sourceLocationId}
-                    onChange={(e) => {
-                      const selectedLocation = locations.find(l => l._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        sourceLocationId: e.target.value,
-                        sourceLocationName: selectedLocation?.locationName || '',
-                        items: [] // Clear items when location changes
-                      }));
-                    }}
-                    required
-                  >
-                    <option value="">Select Source Location</option>
-                    {locations.map(l => (
-                      <option key={l._id} value={l._id}>{l.locationName}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Project <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="projectId"
-                    value={formData.projectId}
-                    onChange={async (e) => {
-                      const selectedProject = projects.find(p => p._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        projectId: e.target.value,
-                        projectName: selectedProject?.name || ''
-                      }));
-                      setSelectedFloor('');
-                      setEvents([]);
-                      setSelectedEvent('');
-                      setFloors([]);
-                      if (e.target.value) {
-                        try {
-                          const res = await fetch(`${apiBaseUrl}/api/PriceEstimationForMaterialAndLabour/by-project/${e.target.value}`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            const floorList = (data.records && data.records[0] && data.records[0].floors) || [];
-                            setFloors(floorList);
-                          } else {
-                            setFloors([]);
-                          }
-                        } catch {
-                          setFloors([]);
-                        }
-                      }
-                    }}
-                    required
-                  >
-                    <option value="">Select Project</option>
-                    {projects.map(p => (
-                      <option key={p._id} value={p._id}>{p.name}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Floor <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="floor"
-                    value={selectedFloor}
-                    onChange={e => {
-                      setSelectedFloor(e.target.value);
-                      setSelectedEvent('');
-                      setFormData(prev => ({ ...prev, floor: e.target.value, event: '' }));
-                      const floorObj = floors.find(f => f.floorName === e.target.value);
-                      if (floorObj && floorObj.components) {
-                        setEvents(Object.keys(floorObj.components));
-                      } else {
-                        setEvents([]);
-                      }
-                    }}
-                    required
-                    disabled={floors.length === 0}
-                  >
-                    <option value="">Select Floor</option>
-                    {floors.map(f => (
-                      <option key={f.floorName} value={f.floorName}>{f.floorName}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Event <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="event"
-                    value={selectedEvent}
-                    onChange={e => {
-                      setSelectedEvent(e.target.value);
-                      setFormData(prev => ({ ...prev, event: e.target.value }));
-                    }}
-                    required
-                    disabled={events.length === 0}
-                  >
-                    <option value="">Select Event</option>
-                    {events.map(ev => (
-                      <option key={ev} value={ev}>{ev}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-          </div>
-        );
-
-      case 'Return': // Return to supplier
-        return (
-          <div className="mb-4">
-            <h5 className="border-bottom pb-2 mb-3">Return Information</h5>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Source Location <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="sourceLocationId"
-                    value={formData.sourceLocationId}
-                    onChange={(e) => {
-                      const selectedLocation = locations.find(l => l._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        sourceLocationId: e.target.value,
-                        sourceLocationName: selectedLocation?.locationName || '',
-                        items: [] // Clear items when location changes
-                      }));
-                    }}
-                    required
-                  >
-                    <option value="">Select Source Location</option>
-                    {locations.map(l => (
-                      <option key={l._id} value={l._id}>{l.locationName}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Supplier <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="supplierId"
-                    value={formData.supplierId}
-                    onChange={(e) => {
-                      const selectedSupplier = suppliers.find(s => s._id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        supplierId: e.target.value,
-                        supplierName: selectedSupplier?.supplierName || '',
-                        originalGrnPo: '',
-                        items: []
-                      }));
-                      setPoSearchTerm('');
-                      // Load POs for selected supplier
-                      if (e.target.value) {
-                        loadPurchaseOrdersBySupplier(e.target.value);
-                      } else {
-                        setPurchaseOrders([]);
-                        setFilteredPOs([]);
-                      }
-                    }}
-                    required
-                  >
-                    <option value="">Select Supplier</option>
-                    {suppliers.map(s => (
-                      <option key={s._id} value={s._id}>{s.supplierName}</option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Purchase Order # (Reference)</Form.Label>
-                  <div className="position-relative" ref={poDropdownRef}>
-                    <Form.Control
-                      type="text"
-                      value={formData.originalGrnPo || poSearchTerm}
-                      onChange={(e) => {
-                        setPoSearchTerm(e.target.value);
-                        setFormData(prev => ({ ...prev, originalGrnPo: '' }));
-                        setPoItems([]);
-                        setShowPODropdown(true);
-                      }}
-                      onFocus={() => setShowPODropdown(true)}
-                      placeholder="Search PO number (optional)"
-                    />
-                    {showPODropdown && filteredPOs.length > 0 && (
-                      <Card 
-                        className="position-absolute shadow-lg border" 
-                        style={{ 
-                          zIndex: 1000, 
-                          maxHeight: '200px', 
-                          overflowY: 'auto',
-                          marginTop: '2px',
-                          width: '100%'
-                        }}
-                      >
-                        <Card.Body className="p-2">
-                          {filteredPOs.map((po) => (
-                            <div
-                              key={po._id}
-                              onClick={async () => {
-                                try {
-                                  // Fetch material received records for this PO
-                                  const companyId = localStorage.getItem('selectedCompanyId');
-                                  const response = await fetch(`${apiBaseUrl}/api/ServiceReceived/by-po/${po._id}?companyId=${companyId}`);
-                                  
-                                  if (!response.ok) {
-                                    setAlertMessage({
-                                      show: true,
-                                      type: 'danger',
-                                      message: 'Failed to fetch material received records for this PO'
-                                    });
-                                    return;
-                                  }
-                                  
-                                  const result = await response.json();
-                                  
-                                  if (!result.data || result.data.length === 0) {
-                                    setAlertMessage({
-                                      show: true,
-                                      type: 'warning',
-                                      message: 'No material received records found for this PO'
-                                    });
-                                    return;
-                                  }
-                                  
-                                  // Get the first GRN record (most recent)
-                                  const grnRecord = result.data[0];
-                                  
-                                  // Find the correct supplier from the GRN record
-                                  const correctSupplier = suppliers.find(s => s.supplierName === grnRecord.supplierName);
-                                  const correctLocation = locations.find(l => l.locationName === grnRecord.receivingLocationName);
-                                  
-                                  let message = '';
-                                  let needsUpdate = false;
-                                  
-                                  // Check and update supplier if needed
-                                  if (formData.supplierId !== grnRecord.supplierId) {
-                                    if (correctSupplier) {
-                                      needsUpdate = true;
-                                      message += `Supplier set to "${grnRecord.supplierName}". `;
-                                    } else {
-                                      setAlertMessage({
-                                        show: true,
-                                        type: 'danger',
-                                        message: `Supplier "${grnRecord.supplierName}" from PO not found in supplier list`
-                                      });
-                                      return;
-                                    }
-                                  }
-                                  
-                                  // Check and update location if needed
-                                  if (formData.sourceLocationId !== grnRecord.receivingLocationId) {
-                                    if (correctLocation) {
-                                      needsUpdate = true;
-                                      message += `Location set to "${grnRecord.receivingLocationName}". `;
-                                    } else {
-                                      setAlertMessage({
-                                        show: true,
-                                        type: 'danger',
-                                        message: `Location "${grnRecord.receivingLocationName}" from PO not found in location list`
-                                      });
-                                      return;
-                                    }
-                                  }
-                                  
-                                  // Map items from GRN record with lot numbers
-                                  const mappedItems = grnRecord.items.map(item => ({
-                                    itemCode: item.itemName || '',
-                                    itemId: item.itemId || '',
-                                    itemName: item.itemName || '',
-                                    unit: item.unit || '',
-                                    lotNo: item.lotNo || '',
-                                    lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
-                                    orderedQty: item.orderedQty || 0,
-                                    receivedQty: 0,
-                                    rate: item.rate || 0,
-                                    amount: 0
-                                  }));
-                                  
-                                  // Store items in poItems for dropdown source
-                                  setPoItems(mappedItems);
-                                  
-                                  // Update form data with correct supplier, location, and empty grid (user will select manually)
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    supplierId: correctSupplier?._id || prev.supplierId,
-                                    supplierName: correctSupplier?.supplierName || prev.supplierName,
-                                    sourceLocationId: correctLocation?._id || prev.sourceLocationId,
-                                    sourceLocationName: correctLocation?.locationName || prev.sourceLocationName,
-                                    originalGrnPo: po.poNumber,
-                                    items: [{
-                                      itemCode: '',
-                                      itemName: '',
-                                      unit: '',
-                                      lotNo: '',
-                                      lotControlled: false,
-                                      orderedQty: 0,
-                                      receivedQty: 0,
-                                      rate: 0,
-                                      amount: 0
-                                    }]
-                                  }));
-                                  
-                                  setPoSearchTerm('');
-                                  setShowPODropdown(false);
-                                  
-                                  // Show success message
-                                  if (needsUpdate) {
-                                    setAlertMessage({
-                                      show: true,
-                                      type: 'success',
-                                      message: message + 'Items loaded successfully for grid selection.'
-                                    });
-                                  } else {
-                                    setAlertMessage({
-                                      show: true,
-                                      type: 'success',
-                                      message: 'Items loaded successfully for grid selection.'
-                                    });
-                                  }
-                                  
-                                } catch (error) {
-                                  console.error('Error fetching material received records:', error);
-                                  setAlertMessage({
-                                    show: true,
-                                    type: 'danger',
-                                    message: 'Error loading material received records: ' + error.message
-                                  });
-                                }
-                              }}
-                              style={{
-                                padding: '8px',
-                                cursor: 'pointer',
-                                borderBottom: '1px solid #eee'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                            >
-                              <div><strong>{po.poNumber}</strong></div>
-                              <small className="text-muted">{po.supplierName}</small>
-                            </div>
-                          ))}
-                        </Card.Body>
-                      </Card>
-                    )}
-                  </div>
-                </Form.Group>
-              </Col>
-            </Row>
-          </div>
-        );
-
       default:
-        return (
-          <div className="mb-4">
-            <p className="text-muted">Please select a movement type to continue.</p>
-          </div>
-        );
+        return null;
     }
   };
 
@@ -1875,10 +1540,10 @@ const WCCReceived = () => {
               <h5 className="border-bottom pb-2 mb-3">Work Completion Details</h5>
               
               {/* Instruction message */}
-              {!formData.poId && (
+              {!formData.poId && !selectedFloor && (
                 <Alert variant="info" className="mb-3">
                   <i className="bi bi-info-circle me-2"></i>
-                  Please select a Purchase Order above to load activities.
+                  Select a Purchase Order OR select Project and Floor to load activities.
                 </Alert>
               )}
               
@@ -1888,21 +1553,24 @@ const WCCReceived = () => {
                 viewportRowRenderingOffset={30}
                 data={[
                   ...(formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
+                    componentName: '',
+                    activity: '',
+                    description: '',
                     unit: '',
-                    lotNo: '',
                     orderedQty: 0,
+                    totalReceivedQty: 0,
+                    balanceQty: 0,
                     receivedQty: 0,
                     rate: 0,
                     amount: 0
                   }]),
                   {
-                    itemCode: 'Total:',
-                    itemName: '',
+                    activity: 'Total:',
+                    description: '',
                     unit: '',
-                    lotNo: '',
                     orderedQty: '',
+                    totalReceivedQty: '',
+                    balanceQty: '',
                     receivedQty: '',
                     rate: '',
                     amount: (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
@@ -1910,48 +1578,28 @@ const WCCReceived = () => {
                     isTotalRow: true
                   }
                 ]}
-                colHeaders={['Activity', 'Work Description', 'Unit', 'PO Qty','Complt. Till Now','Pending', 'WCC Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']}
+                colHeaders={['Activity', 'Description', 'Unit', formData.poId ? 'PO Qty' : 'BOQ Qty', 'WCC Qty', `Rate (${currency})`, `Amount (${currency})`, 'Action']}
                 columns={[
                         {
-                          data: 'itemName',
+                          data: 'activity',
                           type: 'autocomplete',
-                          source: openingBalanceItems.length > 0 
-                            ? openingBalanceItems.map(item => item.itemName || '')
-                            : [],
+                          source: (poItems || []).map(item => item.activity || ''),
                           strict: true,
                           filter: false,
                           visibleRows: 10,
-                          width: 200
+                          width: 150
                         },
                         {
-                          data: 'lotNo',
+                          data: 'description',
                           type: 'text',
-                          width: 120,
-                          renderer: (instance, td, row, col, prop, value, cellProperties) => {
-                            const rowData = instance.getSourceDataAtRow(row);
-                            if (rowData && rowData.isTotalRow) {
-                              td.innerHTML = '';
-                              cellProperties.readOnly = true;
-                            } else {
-                              td.innerHTML = value || '';
-                              // Make it yellow if item is lot controlled, disabled if not
-                              if (rowData && rowData.lotControlled) {
-                                td.style.backgroundColor = '#fffacd';
-                                cellProperties.readOnly = false;
-                              } else {
-                                td.style.backgroundColor = '#f0f0f0';
-                                cellProperties.readOnly = true;
-                              }
-                            }
-                            return td;
-                          }
+                          width: 200
                         },
                         {
                           data: 'unit',
                           type: 'text',
                           readOnly: true,
                           className: 'htMiddle bg-light',
-                          width: 80
+                          width: 70
                         },
                         {
                           data: 'orderedQty',
@@ -1961,27 +1609,7 @@ const WCCReceived = () => {
                           },
                           readOnly: true,
                           className: 'htRight htMiddle bg-light',
-                          width: 90
-                        },
-                        {
-                          data: 'totalReceivedQty',
-                          type: 'numeric',
-                          numericFormat: {
-                            pattern: '0,0.00'
-                          },
-                          readOnly: true,
-                          className: 'htRight htMiddle bg-light',
-                          width: 100
-                        },
-                        {
-                          data: 'balanceQty',
-                          type: 'numeric',
-                          numericFormat: {
-                            pattern: '0,0.00'
-                          },
-                          readOnly: true,
-                          className: 'htRight htMiddle bg-light',
-                          width: 90
+                          width: 80
                         },
                         {
                           data: 'receivedQty',
@@ -1989,7 +1617,7 @@ const WCCReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100
+                          width: 80
                         },
                         {
                           data: 'rate',
@@ -1997,7 +1625,7 @@ const WCCReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100
+                          width: 80
                         },
                         {
                           data: 'amount',
@@ -2005,13 +1633,13 @@ const WCCReceived = () => {
                           numericFormat: {
                             pattern: '0,0.00'
                           },
-                          width: 100,
+                          width: 90,
                           readOnly: true,
                           className: 'htRight htMiddle bg-light'
                         },
                         {
                           data: 'action',
-                          width: 100,
+                          width: 80,
                           readOnly: true,
                           renderer: (instance, td, row, col, prop, value, cellProperties) => {
                             const rowData = instance.getSourceDataAtRow(row);
@@ -2029,24 +1657,26 @@ const WCCReceived = () => {
                               addBtn.onclick = () => {
                                 const currentData = instance.getSourceData();
                                 const newItems = currentData.filter(item => !item.isTotalRow).map(item => ({
-                                  itemCode: item.itemCode || '',
-                                  itemName: item.itemName || '',
-                                  itemId: item.itemId || '',
+                                  componentName: item.componentName || '',
+                                  activity: item.activity || '',
+                                  description: item.description || '',
                                   unit: item.unit || '',
-                                  lotNo: item.lotNo || '',
-                                  lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
+                                  orderedQty: item.orderedQty || 0,
+                                  totalReceivedQty: item.totalReceivedQty || 0,
+                                  balanceQty: item.balanceQty || 0,
                                   receivedQty: item.receivedQty || 0,
                                   rate: item.rate || 0,
                                   amount: item.amount || 0
                                 }));
                                 
                                 newItems.splice(row + 1, 0, {
-                                  itemCode: '',
-                                  itemName: '',
-                                  itemId: '',
+                                  componentName: '',
+                                  activity: '',
+                                  description: '',
                                   unit: '',
-                                  lotNo: '',
-                                  lotControlled: false,
+                                  orderedQty: 0,
+                                  totalReceivedQty: 0,
+                                  balanceQty: 0,
                                   receivedQty: 0,
                                   rate: 0,
                                   amount: 0
@@ -2076,12 +1706,13 @@ const WCCReceived = () => {
                                     .filter(item => !item.isTotalRow)
                                     .filter((_, index) => index !== row)
                                     .map(item => ({
-                                      itemCode: item.itemCode || '',
-                                      itemName: item.itemName || '',
-                                      itemId: item.itemId || '',
+                                      componentName: item.componentName || '',
+                                      activity: item.activity || '',
+                                      description: item.description || '',
                                       unit: item.unit || '',
-                                      lotNo: item.lotNo || '',
-                                      lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
+                                      orderedQty: item.orderedQty || 0,
+                                      totalReceivedQty: item.totalReceivedQty || 0,
+                                      balanceQty: item.balanceQty || 0,
                                       receivedQty: item.receivedQty || 0,
                                       rate: item.rate || 0,
                                       amount: item.amount || 0
@@ -2097,10 +1728,13 @@ const WCCReceived = () => {
                       ]}
                 cells={(row, col) => {
                   const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
+                    componentName: '',
+                    activity: '',
+                    description: '',
                     unit: '',
                     orderedQty: 0,
+                    totalReceivedQty: 0,
+                    balanceQty: 0,
                     receivedQty: 0,
                     rate: 0,
                     amount: 0
@@ -2117,15 +1751,26 @@ const WCCReceived = () => {
                 }}
                 afterRenderer={(td, row, col, prop, value, cellProperties) => {
                   const itemsToDisplay = formData.items.length > 0 ? formData.items : [{
-                    itemCode: '',
-                    itemName: '',
+                    componentName: '',
+                    activity: '',
+                    description: '',
                     unit: '',
                     orderedQty: 0,
+                    totalReceivedQty: 0,
+                    balanceQty: 0,
                     receivedQty: 0,
                     rate: 0,
                     amount: 0
                   }];
                   const dataRow = [...itemsToDisplay, { isTotalRow: true }][row];
+                  
+                  // Apply yellow background to editable columns, excluding total row
+                  if (dataRow && !dataRow.isTotalRow) {
+                    if (col === 0 || col === 1 || col === 4 || col === 5) {
+                      td.style.backgroundColor = '#FFFACD';
+                    }
+                  }
+                  
                   if (dataRow && dataRow.isTotalRow) {
                     td.style.borderTop = '2px solid #0d6efd';
                     td.style.fontWeight = 'bold';
@@ -2134,7 +1779,7 @@ const WCCReceived = () => {
                     if (col === 0) {
                       td.style.textAlign = 'right';
                       td.style.paddingRight = '15px';
-                    } else if (col === 8) {
+                    } else if (col === 6) {
                       td.style.textAlign = 'right';
                       td.style.color = '#0d6efd';
                       const totalAmount = (formData.items || []).reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -2175,8 +1820,9 @@ const WCCReceived = () => {
                     // Ensure row exists in newItems
                     while (newItems.length <= row) {
                       newItems.push({
-                        itemCode: '',
-                        itemName: '',
+                        componentName: '',
+                        activity: '',
+                        description: '',
                         unit: '',
                         orderedQty: 0,
                         receivedQty: 0,
@@ -2185,26 +1831,36 @@ const WCCReceived = () => {
                       });
                     }
 
-                    // Handle material selection
-                    if (prop === 'itemName' && newValue) {
-                      // Find the item from the original PO items
+                    // Handle activity selection
+                    if (prop === 'activity' && newValue) {
+                      // Find the item from the original PO items by activity
                       const selectedItem = poItems.find(item => 
-                          (item.itemName || item.itemCode) === newValue
+                          item.activity === newValue
                         );
                         
                         if (selectedItem) {
                           const existingReceivedQty = newItems[row]?.receivedQty || 0;
-                          const existingLotNo = newItems[row]?.lotNo || '';
                           // Keep the existing item data from PO
                           newItems[row] = {
                             ...selectedItem,
-                            lotNo: existingLotNo,
                             receivedQty: existingReceivedQty
                           };
                           // Calculate amount
                           const receivedQty = parseFloat(newItems[row].receivedQty) || 0;
                           const rate = parseFloat(newItems[row].rate) || 0;
                           newItems[row].amount = receivedQty * rate;
+                          
+                          // Auto-populate all fields from selected item
+                          setTimeout(() => {
+                            hotInstance.setDataAtRowProp(row, 'description', selectedItem.description || newValue);
+                            hotInstance.setDataAtRowProp(row, 'componentName', selectedItem.componentName || '');
+                            hotInstance.setDataAtRowProp(row, 'unit', selectedItem.unit || '');
+                            hotInstance.setDataAtRowProp(row, 'orderedQty', selectedItem.orderedQty || 0);
+                            hotInstance.setDataAtRowProp(row, 'totalReceivedQty', selectedItem.totalReceivedQty || 0);
+                            hotInstance.setDataAtRowProp(row, 'balanceQty', selectedItem.balanceQty || 0);
+                            hotInstance.setDataAtRowProp(row, 'rate', selectedItem.rate || 0);
+                            hotInstance.setDataAtRowProp(row, 'amount', newItems[row].amount);
+                          }, 0);
                         }
                     }
 
@@ -2217,7 +1873,7 @@ const WCCReceived = () => {
                     }
 
                     // Handle other field changes
-                    if (prop !== 'itemName' && prop !== 'receivedQty' && prop !== 'rate') {
+                    if (prop !== 'activity' && prop !== 'receivedQty' && prop !== 'rate') {
                       newItems[row][prop] = newValue;
                     }
                   });
@@ -2286,10 +1942,13 @@ const WCCReceived = () => {
             onClick={() => {
               const currentItems = formData.items.length > 0 ? formData.items : [];
               const newRows = Array(rowsToAdd).fill(null).map(() => ({
-                itemCode: '',
-                itemName: '',
-                itemId: '',
+                componentName: '',
+                activity: '',
+                description: '',
                 unit: '',
+                orderedQty: 0,
+                totalReceivedQty: 0,
+                balanceQty: 0,
                 receivedQty: 0,
                 rate: 0,
                 amount: 0

@@ -271,8 +271,8 @@ const RequisitionPDF = ({ poData, currency }) => {
   );
 };
 
-const StoreRequisition = () => {
-  const permissions = getPagePermissions('Store Requisition');
+const Requisition = () => {
+  const permissions = getPagePermissions('Requisition');
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -2142,4 +2142,4 @@ const StoreRequisition = () => {
   );
 };
 
-export default StoreRequisition;
+export default Requisition;

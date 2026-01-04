@@ -1126,43 +1126,90 @@ const boqFloorsList = React.useMemo(() => [
       try {
         const companyId = localStorage.getItem('selectedCompanyId');
 
-        // Use different endpoints based on mode
+        // Decide which projects endpoint to call.
+        // - If mode === 'new' => basic-without-estimation
+        // - If mode === 'edit' => check the estimation record in DB; if it
+        //   has no projectId then treat as without-estimation, otherwise
+        //   use the normal basic endpoint and ensure attached project is included.
+        let useWithoutEstimation = mode === 'new';
+        let attachedProjectId = selectedProjectId;
+
+        if (mode === 'edit' && id) {
+          try {
+            const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
+            const estResp = await fetch(`${apiUrl}/api/ProjectEstimation/${id}`);
+            if (estResp.ok) {
+              const estData = await estResp.json();
+              if (!estData || !estData.projectId) {
+                useWithoutEstimation = true;
+              } else {
+                attachedProjectId = estData.projectId;
+                // update local selected ids so subsequent logic can use it
+                setSelectedProjectId(estData.projectId);
+                setSelectedProject(estData.projectId);
+              }
+            } else {
+              // If we couldn't fetch estimation, fallback to conservative choice
+              useWithoutEstimation = false;
+            }
+          } catch (err) {
+            console.warn('Error checking estimation attached project:', err);
+          }
+        }
+
         let endpoint;
-        if (mode === 'new') {
-          // For new mode, use basic-without-estimation endpoint
-          endpoint = companyId 
+        if (useWithoutEstimation) {
+          endpoint = companyId
             ? `${apiBaseUrl}/api/Projects/basic-without-estimation?companyId=${companyId}`
             : `${apiBaseUrl}/api/Projects/basic-without-estimation`;
         } else {
-          // For edit/view mode, use basic endpoint
-          endpoint = companyId 
+          endpoint = companyId
             ? `${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`
             : `${apiBaseUrl}/api/Projects/basic`;
         }
-        
+
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
-          
-          
+
           // Handle both array and grouped object structures
           let projectsList = [];
           if (Array.isArray(data)) {
             projectsList = data;
           } else {
-            // Flatten grouped data
             projectsList = [
               ...(data.completed || []),
               ...(data.running || []),
               ...(data.upcoming || [])
             ];
           }
-          
+
+          // If we are editing and there is a selectedProjectId that isn't in the
+          // returned list (because endpoint filtered it out), fetch that project
+          // and prepend it so the dropdown can show the current association.
+          // If we discovered an attached project id (either from loadProjectData
+          // earlier or from the estimation check above), ensure it's present
+          // in the list. Use attachedProjectId variable which may have been set.
+          if (attachedProjectId) {
+            const exists = projectsList.some(p => p._id === attachedProjectId);
+            if (!exists) {
+              try {
+                const singleResp = await fetch(`${apiBaseUrl}/api/Projects/${attachedProjectId}`);
+                if (singleResp.ok) {
+                  const proj = await singleResp.json();
+                  projectsList = [proj, ...projectsList];
+                }
+              } catch (err) {
+                console.warn('Could not fetch attached project:', err);
+              }
+            }
+          }
+
           // Filter out projects with status "completed" (case-insensitive)
-          const filteredProjects = projectsList.filter(project => 
+          const filteredProjects = projectsList.filter(project =>
             project.status && project.status.toLowerCase() !== 'completed'
           );
-          
+
           setProjects(filteredProjects);
         } else {
           console.error('Failed to fetch projects');
@@ -1172,7 +1219,7 @@ const boqFloorsList = React.useMemo(() => [
       }
     };
     fetchProjects();
-  }, [mode]);
+  }, [mode, selectedProjectId, id]);
 
   // --- Handler for Project Selection ---
   const handleProjectSelect = (e) => {
