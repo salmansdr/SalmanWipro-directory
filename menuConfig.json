@@ -36,8 +36,8 @@
       "requireAuth": true,
       "submenu": [
         {
-          "label": "Store Requisition",
-          "path": "/store-requisition",
+          "label": "Requisition",
+          "path": "/requisition",
           "icon": "fas fa-clipboard-check"
         },
         {
