@@ -564,7 +564,6 @@ const WCCReceived = () => {
       for (let i = 0; i < formData.items.length; i++) {
         const item = formData.items[i];
         const receivedQty = parseFloat(item.receivedQty) || 0;
-        const balanceQty = parseFloat(item.balanceQty) || 0;
         
         // Check if received quantity is greater than 0
         if (receivedQty <= 0) {
