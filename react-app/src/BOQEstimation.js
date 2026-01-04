@@ -979,7 +979,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
     // Find where to insert in quantityData
     const currentData = [...quantityData];
     let insertPosition = currentData.length; // Default to end
-    let foundInsertPosition = false;
     
     // Get current group headers
     const existingGroupHeaders = currentData.filter(row => row.isGroupHeader);
@@ -992,7 +991,6 @@ const BOQEstimation = ({ selectedFloor, estimationMasterId, floorsList, onSaveCo
       if (headerIndexInAll > targetIndex) {
         // Insert before this group
         insertPosition = currentData.indexOf(existingGroupHeaders[i]);
-        foundInsertPosition = true;
         break;
       }
     }
