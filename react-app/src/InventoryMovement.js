@@ -5,6 +5,7 @@ import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import * as XLSX from 'xlsx-js-style';
+import axiosClient from './api/axiosClient';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -17,23 +18,19 @@ const InventoryMovement = () => {
   const [loading, setLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   
-  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const currency = localStorage.getItem('companyCurrency') ;
 
   const loadProjects = useCallback(async () => {
     try {
       const companyId = localStorage.getItem('selectedCompanyId');
-      const response = await fetch(`${apiBaseUrl}/api/Projects/basic?companyId=${companyId}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(Array.isArray(data) ? data : []);
-      }
+      const resp = await axiosClient.get(`/api/Projects/basic?companyId=${companyId}`);
+      const data = resp.data;
+      setProjects(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading projects:', error);
       setAlertMessage({ show: true, type: 'danger', message: 'Failed to load projects' });
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     loadProjects();
@@ -47,16 +44,10 @@ const InventoryMovement = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/ProjectEstimation/report-by-InventoryMovement/${projectId}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data.materialtabularReport || []);
-        setAlertMessage({ show: false, type: '', message: '' });
-      } else {
-        setReportData([]);
-        setAlertMessage({ show: true, type: 'danger', message: 'Failed to load inventory movement report' });
-      }
+      const resp = await axiosClient.get(`/api/ProjectEstimation/report-by-InventoryMovement/${projectId}`);
+      const data = resp.data;
+      setReportData(data.materialtabularReport || []);
+      setAlertMessage({ show: false, type: '', message: '' });
     } catch (error) {
       console.error('Error loading report:', error);
       setReportData([]);

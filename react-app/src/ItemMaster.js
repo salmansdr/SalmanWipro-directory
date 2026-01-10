@@ -550,8 +550,26 @@ const ItemMaster = () => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        // Try to get error message from backend response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          // Read response as text first (can only read once)
+          const responseText = await response.text();
+          if (responseText) {
+            // Try to parse as JSON
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || errorData.error || responseText;
+            } catch (jsonError) {
+              // If not JSON, use the text directly
+              errorMessage = responseText;
+            }
+          }
+        } catch (readError) {
+          // If cannot read response, use default error
+          console.error('Error reading response:', readError);
+        }
+        throw new Error(errorMessage);
       }
       
       return true;
@@ -1389,6 +1407,13 @@ const ItemMaster = () => {
             </Card.Header>
 
             <Card.Body>
+              {/* Alert for messages */}
+              {showAlert && (
+                <Alert variant={alertVariant} dismissible onClose={() => setShowAlert(false)} className="mb-3">
+                  {alertMessage}
+                </Alert>
+              )}
+
               {/* Loading Indicator */}
               {loading && (
                 <div className="text-center py-4">

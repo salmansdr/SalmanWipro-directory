@@ -231,7 +231,26 @@ const SupplierMaster = () => {
         
         loadSuppliers();
       } else {
-        setAlertMessage({ show: true, type: 'danger', message: 'Failed to delete supplier' });
+        // Try to get error message from backend response
+        let errorMessage = 'Failed to delete supplier';
+        try {
+          // Read response as text first (can only read once)
+          const responseText = await response.text();
+          if (responseText) {
+            // Try to parse as JSON
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || errorData.error || responseText;
+            } catch (jsonError) {
+              // If not JSON, use the text directly
+              errorMessage = responseText;
+            }
+          }
+        } catch (readError) {
+          // If cannot read response, use default error
+          console.error('Error reading response:', readError);
+        }
+        setAlertMessage({ show: true, type: 'danger', message: errorMessage });
       }
     } catch (error) {
       setAlertMessage({ show: true, type: 'danger', message: `Error: ${error.message}` });

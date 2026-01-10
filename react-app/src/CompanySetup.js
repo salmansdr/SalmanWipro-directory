@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Form, Button, Row, Col, Alert, Modal } from 'react-bootstrap';
+import axiosClient from './api/axiosClient';
 
 // API Base URL from environment variable
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5222';
@@ -34,17 +35,9 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5222';
  */
 
 const CompanySetup = () => {
-  // Country and city data
-  const countryData = {
-    India: {
-      currency: 'INR',
-      cities: ['Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow']
-    },
-    Bangladesh: {
-      currency: 'BDT',
-      cities: ['Dhaka', 'Chittagong', 'Khulna', 'Rajshahi', 'Sylhet', 'Barisal', 'Rangpur', 'Mymensingh']
-    }
-  };
+  // State for country data loaded from API
+  const [countryData, setCountryData] = useState({});
+  const [countriesList, setCountriesList] = useState([]);
 
   const [companyData, setCompanyData] = useState({
     companyName: '',
@@ -81,8 +74,40 @@ const CompanySetup = () => {
 
   // Auto-load saved companies list on component mount
   React.useEffect(() => {
+    loadCountryDetails();
     loadCompaniesList();
   }, []);
+
+  const loadCountryDetails = async () => {
+    try {
+      const resp = await axiosClient.get('/api/CountryDetails');
+      const result = resp.data;
+      const data = result?.data || result;
+      
+      if (Array.isArray(data) && data.length > 0) {
+        // Build countryData object from API response
+        const countryMap = {};
+        const countries = [];
+        
+        data.forEach(item => {
+          if (item.country) {
+            countries.push(item.country);
+            countryMap[item.country] = {
+              currency: item.currency || '',
+              cities: item.cities || []
+            };
+          }
+        });
+        
+        setCountryData(countryMap);
+        setCountriesList(countries);
+      }
+    } catch (error) {
+      console.error('Error loading country details:', error);
+      // Fallback to default data if API fails
+     
+    }
+  };
 
   const loadCompaniesList = async () => {
     try {
@@ -567,8 +592,9 @@ const CompanySetup = () => {
                     required
                   >
                     <option value="">Select Country</option>
-                    <option value="India">India</option>
-                    <option value="Bangladesh">Bangladesh</option>
+                    {countriesList.map(country => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
               </Col>

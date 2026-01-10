@@ -429,9 +429,9 @@ const CostReportPDF = ({ reportData, categoryWiseData, floorWiseData, includeMat
   );
 };
 
-function Reports() {
+function Reports({ isModal = false, preSelectedProjectId = null, preSelectedProjectName = null, onDataLoaded = null }) {
   const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState(preSelectedProjectId || '');
   const [selectedEstimationId, setSelectedEstimationId] = useState('');
   const [reportData, setReportData] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
@@ -804,6 +804,20 @@ function Reports() {
     fetchEstimations();
   }, [apiUrl]);
 
+  // Auto-select project when opened from Dashboard
+  useEffect(() => {
+    if (isModal && preSelectedProjectId && projects.length > 0) {
+      const project = projects.find(p => p._id === preSelectedProjectId || p.name === preSelectedProjectName);
+      if (project) {
+        setSelectedProjectId(project._id);
+        // Auto-select first estimation if available
+        if (project.estimations && project.estimations.length > 0) {
+          setSelectedEstimationId(project.estimations[0]._id);
+        }
+      }
+    }
+  }, [isModal, preSelectedProjectId, preSelectedProjectName, projects]);
+
   // Get filtered estimations for selected project
   const filteredEstimations = selectedProjectId
     ? projects.find(p => p._id === selectedProjectId)?.estimations || []
@@ -829,6 +843,10 @@ function Reports() {
             if (data.companyDetails?.currency) {
               setCurrencySymbol(data.companyDetails.currency);
             }
+            // Notify parent component that data is loaded
+            if (onDataLoaded) {
+              onDataLoaded();
+            }
           } else {
             console.error('Failed to fetch report data');
             setReportData(null);
@@ -836,6 +854,9 @@ function Reports() {
             setFloorWiseData([]);
             setDetailedMaterialData([]);
             setDetailedFloors([]);
+            if (onDataLoaded) {
+              onDataLoaded();
+            }
           }
         } catch (error) {
           console.error('Error fetching report data:', error);
@@ -844,6 +865,9 @@ function Reports() {
           setFloorWiseData([]);
           setDetailedMaterialData([]);
           setDetailedFloors([]);
+          if (onDataLoaded) {
+            onDataLoaded();
+          }
         }
       } else {
         setReportData(null);
@@ -855,7 +879,7 @@ function Reports() {
     };
     
     fetchReportData();
-  }, [selectedEstimationId, apiUrl]);
+  }, [selectedEstimationId, apiUrl, onDataLoaded]);
 
   // Export all tabs to a single Excel file with 3 sheets
   const exportAllToExcel = () => {
@@ -1485,25 +1509,25 @@ function Reports() {
 
   return (
     <Container className="construction-report py-4">
-      <Card className="mb-4 shadow-sm">
-         <Card.Header as="h3" className="bg-primary text-white">Building Construction Report
-</Card.Header>
-        <Card.Body>
-          <Row className="mb-4">
-            <Col md={6}>
-              <Form.Group className="report-dropdown-section" controlId="project-select">
-                <Form.Label className="dropdown-label">Select Project:</Form.Label>
-                <Form.Select
-                  className="modern-dropdown"
-                  value={selectedProjectId}
-                  onChange={e => {
-                    const projectId = e.target.value;
-                    setSelectedProjectId(projectId);
-                    setSelectedEstimationId(''); // Reset estimation when project changes
-                    
-                    // Auto-select first estimation if available
-                    if (projectId) {
-                      const selectedProject = projects.find(p => p._id === projectId);
+      {!isModal && (
+        <Card className="mb-4 shadow-sm">
+          <Card.Header as="h3" className="bg-primary text-white">Building Construction Report</Card.Header>
+          <Card.Body>
+            <Row className="mb-4">
+              <Col md={6}>
+                <Form.Group className="report-dropdown-section" controlId="project-select">
+                  <Form.Label className="dropdown-label">Select Project:</Form.Label>
+                  <Form.Select
+                    className="modern-dropdown"
+                    value={selectedProjectId}
+                    onChange={e => {
+                      const projectId = e.target.value;
+                      setSelectedProjectId(projectId);
+                      setSelectedEstimationId(''); // Reset estimation when project changes
+                      
+                      // Auto-select first estimation if available
+                      if (projectId) {
+                        const selectedProject = projects.find(p => p._id === projectId);
                       const estimations = selectedProject?.estimations || [];
                       if (estimations.length > 0) {
                         // Auto-select the first estimation
@@ -2086,6 +2110,330 @@ function Reports() {
           )}
         </Card.Body>
       </Card>
+      )}
+
+      {/* Report Data Section - Always Shown */}
+      {reportData && isModal && (
+        <>
+          <Card className="mb-4 report-summary-section card-style shadow">
+            <Card.Header className="bg-light">
+              <h4 className="mb-0 section-heading text-primary">Project Summary</h4>
+            </Card.Header>
+            <Card.Body>
+              {/* Company Details */}
+              <div className="mb-3 pb-2 border-bottom">
+                <Row className="g-2">
+                  <Col md={5}>
+                    <div>
+                      <small className="text-muted d-block">Company Name:</small>
+                      <span className="text-dark">{reportData.companyDetails?.companyName || 'N/A'}</span>
+                    </div>
+                  </Col>
+                  <Col md={7}>
+                    <div>
+                      <small className="text-muted d-block">Address:</small>
+                      <span className="text-dark" style={{lineHeight: '1.4'}}>
+                        {(() => {
+                          try {
+                            const addr = JSON.parse(reportData.companyDetails?.address || '{}');
+                            const parts = [];
+                            if (addr.street) parts.push(addr.street);
+                            if (addr.city) parts.push(addr.city);
+                            if (addr.state) parts.push(addr.state);
+                            if (addr.zipCode) parts.push(addr.zipCode);
+                            return parts.length > 0 ? parts.join(', ') : 'N/A';
+                          } catch {
+                            return reportData.companyDetails?.address || 'N/A';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Project Details */}
+              <div>
+                <Row className="g-2">
+                  <Col md={3}>
+                    <div>
+                      <small className="text-muted d-block">Project Name:</small>
+                      <span className="text-dark">{reportData.projectDetails?.projectName || 'N/A'}</span>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div>
+                      <small className="text-muted d-block">Location:</small>
+                      <span className="text-dark">{reportData.projectDetails?.location || 'N/A'}</span>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div>
+                      <small className="text-muted d-block">Project Type:</small>
+                      <span className="text-dark">{reportData.projectDetails?.projectType || 'N/A'}</span>
+                    </div>
+                  </Col>
+                  <Col md={3}>
+                    <div>
+                      <small className="text-muted d-block">Construction Area:</small>
+                      <span className="text-dark">{reportData.projectDetails?.constructionArea || 'N/A'}</span>
+                      {reportData.projectDetails?.constructionArea && <span className="text-muted ms-1">sq ft</span>}
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Cost Tracking  Tables */}
+          {reportData && (
+            <Card className="mb-4 report-phase-table-section card-style">
+              <Card.Header className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <h4 className="mb-0 section-heading">Cost Tracking</h4>
+              </Card.Header>
+              <Card.Body>
+                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
+                  {/* Same tab content as non-modal mode */}
+                  <Tab eventKey="summary" title="Summary">
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }} className="handsontable-wrapper">
+                      <HotTable
+                        ref={summaryTableRef}
+                        data={categoryWiseData}
+                        colHeaders={['Category', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
+                        columns={[
+                          { data: 'category', type: 'text', readOnly: true },
+                          { 
+                            data: 'materialCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'labourCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'otherExpense', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'totalCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'costPerSft', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'percentileCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          }
+                        ]}
+                        height="auto"
+                        stretchH="all"
+                        readOnly={true}
+                        licenseKey="non-commercial-and-evaluation"
+                        className="htCenter htMiddle"
+                        cells={function(row, col) {
+                          const cellProperties = {};
+                          const rowData = categoryWiseData[row];
+                          
+                          if (rowData && rowData.isGrandTotal) {
+                            cellProperties.className = 'grand-total-row';
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.style.backgroundColor = '#2e7d32';
+                              td.style.color = 'white';
+                              td.style.fontWeight = 'bold';
+                              td.style.padding = '8px';
+                              
+                              if (col === 0) {
+                                td.innerHTML = value || 'Grand Total';
+                                td.style.textAlign = 'left';
+                              } else if (value != null) {
+                                const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                td.innerHTML = formattedValue;
+                                td.style.textAlign = 'right';
+                              } else {
+                                td.innerHTML = '';
+                              }
+                              return td;
+                            };
+                          } else {
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.style.padding = '8px';
+                              
+                              if (col === 0) {
+                                td.innerHTML = value || '';
+                                td.style.textAlign = 'left';
+                              } else if (value != null) {
+                                const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                td.innerHTML = formattedValue;
+                                td.style.textAlign = 'right';
+                              } else {
+                                td.innerHTML = '';
+                              }
+                              return td;
+                            };
+                          }
+                          
+                          return cellProperties;
+                        }}
+                      />
+                    </div>
+                  </Tab>
+                  <Tab eventKey="floor-wise" title="Floor-wise">
+                    <div style={{ overflow: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }} className="handsontable-wrapper">
+                      <HotTable
+                        ref={floorWiseTableRef}
+                        data={floorWiseData}
+                        colHeaders={['Floor', 'Category', 'Component Name', `Material Cost (${currencySymbol})`, `Labour Cost (${currencySymbol})`, `Other Expenses (${currencySymbol})`, `Total Cost (${currencySymbol})`, `Cost Per Sqft (${currencySymbol})`, 'Percentile Cost (%)']}
+                        columns={[
+                          { data: 'floorName', type: 'text', readOnly: true },
+                          { data: 'category', type: 'text', readOnly: true },
+                          { data: 'componentName', type: 'text', readOnly: true },
+                          { 
+                            data: 'materialCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'labourCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'otherExpense', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'totalCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'costPerSft', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          },
+                          { 
+                            data: 'percentileCost', 
+                            type: 'numeric', 
+                            numericFormat: { pattern: '0,0.00' },
+                            readOnly: true 
+                          }
+                        ]}
+                        height="auto"
+                        stretchH="all"
+                        readOnly={true}
+                        licenseKey="non-commercial-and-evaluation"
+                        className="htCenter htMiddle"
+                        cells={function(row, col) {
+                          const cellProperties = {};
+                          const rowData = floorWiseData[row];
+                          
+                          if (rowData && rowData.isGroupHeader) {
+                            cellProperties.className = 'group-header-row';
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.colSpan = 9;
+                              td.style.backgroundColor = '#f0f0f0';
+                              td.style.fontWeight = 'bold';
+                              td.style.padding = '8px';
+                              td.style.textAlign = 'left';
+                              td.innerHTML = value || '';
+                              return td;
+                            };
+                          } else if (rowData && rowData.isSubtotal) {
+                            cellProperties.className = 'subtotal-row';
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.style.backgroundColor = '#e3f2fd';
+                              td.style.fontWeight = 'bold';
+                              td.style.padding = '8px';
+                              
+                              if (col <= 2) {
+                                if (col === 2) {
+                                  td.innerHTML = 'Subtotal';
+                                  td.style.textAlign = 'left';
+                                } else {
+                                  td.innerHTML = '';
+                                }
+                              } else if (value != null) {
+                                const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                td.innerHTML = formattedValue;
+                                td.style.textAlign = 'right';
+                              } else {
+                                td.innerHTML = '';
+                              }
+                              return td;
+                            };
+                          } else if (rowData && rowData.isGrandTotal) {
+                            cellProperties.className = 'grand-total-row';
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.style.backgroundColor = '#2e7d32';
+                              td.style.color = 'white';
+                              td.style.fontWeight = 'bold';
+                              td.style.padding = '8px';
+                              
+                              if (col <= 2) {
+                                if (col === 2) {
+                                  td.innerHTML = 'Grand Total';
+                                  td.style.textAlign = 'left';
+                                } else {
+                                  td.innerHTML = '';
+                                }
+                              } else if (value != null) {
+                                const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                td.innerHTML = formattedValue;
+                                td.style.textAlign = 'right';
+                              } else {
+                                td.innerHTML = '';
+                              }
+                              return td;
+                            };
+                          } else {
+                            cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                              td.style.padding = '8px';
+                              
+                              if (col <= 2) {
+                                td.innerHTML = value || '';
+                                td.style.textAlign = 'left';
+                              } else if (value != null) {
+                                const formattedValue = value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                td.innerHTML = formattedValue;
+                                td.style.textAlign = 'right';
+                              } else {
+                                td.innerHTML = '';
+                              }
+                              return td;
+                            };
+                          }
+                          
+                          return cellProperties;
+                        }}
+                      />
+                    </div>
+                  </Tab>
+                </Tabs>
+              </Card.Body>
+            </Card>
+          )}
+        </>
+      )}
 
       {/* PDF Viewer Modal */}
       <Modal 

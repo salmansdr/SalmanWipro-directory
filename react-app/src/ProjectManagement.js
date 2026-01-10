@@ -2,24 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { Container, Card, Table, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { getPagePermissions } from './utils/menuSecurity';
+import axiosClient from './api/axiosClient';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function ProjectDetails() {
   const [projects, setProjects] = useState([]);
+  const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const navigate = useNavigate();
   const permissions = getPagePermissions('Project Management');
 
   const loadProjects = async () => {
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
       const companyId = localStorage.getItem('selectedCompanyId');
       const endpoint = companyId 
-        ? `${apiUrl}/api/Projects?companyId=${companyId}`
-        : `${apiUrl}/api/Projects`;
+        ? `/api/Projects?companyId=${companyId}`
+        : `/api/Projects`;
       
-      const response = await fetch(endpoint);
-      const data = await response.json();
+      const resp = await axiosClient.get(endpoint);
+      const data = resp.data;
       
       // Check if data is directly an array of projects
       if (Array.isArray(data)) {
@@ -44,7 +45,7 @@ function ProjectDetails() {
   
   const handleEdit = (project) => {
     if (!permissions.edit) {
-      alert('You do not have permission to edit projects');
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to edit projects' });
       return;
     }
     navigate('/ProjectManagementEntryForm', { state: { project, edit: true } });
@@ -52,7 +53,7 @@ function ProjectDetails() {
 
   const handleDelete = async (projectId) => {
     if (!permissions.delete) {
-      alert('You do not have permission to delete projects');
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to delete projects' });
       return;
     }
     
@@ -61,27 +62,27 @@ function ProjectDetails() {
     }
 
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-      const response = await fetch(`${apiUrl}/api/projects/${projectId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete project');
-      }
-
+      await axiosClient.delete(`/api/projects/${projectId}`);
+      
       // Refresh the projects list after successful deletion
       loadProjects();
-      alert('Project deleted successfully!');
+      setAlertMessage({ show: true, type: 'success', message: 'Project deleted successfully!' });
+      
+      // Auto-hide success alert after 3 seconds
+      setTimeout(() => {
+        setAlertMessage({ show: false, type: '', message: '' });
+      }, 3000);
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert('Error deleting project: ' + error.message);
+      // axiosClient automatically extracts error message from response
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      setAlertMessage({ show: true, type: 'danger', message: 'Error deleting project: ' + errorMessage });
     }
   };
 
   const handleNewEntry = () => {
     if (!permissions.edit) {
-      alert('You do not have permission to create new projects');
+      setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to create new projects' });
       return;
     }
     navigate('/ProjectManagementEntryForm');
@@ -106,6 +107,17 @@ function ProjectDetails() {
 
   return (
     <Container className="py-4">
+      {/* Success/Error Alert */}
+      {alertMessage.show && (
+        <Alert 
+          variant={alertMessage.type} 
+          onClose={() => setAlertMessage({ show: false, type: '', message: '' })} 
+          dismissible
+        >
+          {alertMessage.message}
+        </Alert>
+      )}
+
       <Card className="shadow-sm">
         <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
           <h3 className="mb-0">Project Details</h3>

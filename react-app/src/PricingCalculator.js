@@ -612,7 +612,13 @@ const boqFloorsList = React.useMemo(() => [
         if (existingData && existingData.records && existingData.records.length > 0) {
           existingRecordId = existingData.records[0]._id;
           //console.log('Found existing record ID:', existingRecordId);
+          // Update state to show material data exists
+          setHasMaterialData(true);
+        } else {
+          setHasMaterialData(false);
         }
+      } else {
+        setHasMaterialData(false);
       }
 
       // Prepare single payload with all floors
@@ -1721,6 +1727,23 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
 
   const handleCircleClick = (s) => {
     setStep(s);
+  };
+
+  // Handler for Lock Delete toggle with warning
+  const handleLockDeleteChange = (e) => {
+    const isEnabling = e.target.checked;
+    if (isEnabling) {
+      const confirmed = window.confirm(
+        'Warning: Enabling Lock Delete will prevent this estimation from being deleted. ' +
+        'This action should only be taken for finalized estimations. ' +
+        'Do you want to proceed?'
+      );
+      if (confirmed) {
+        setLockDelete(true);
+      }
+    } else {
+      setLockDelete(false);
+    }
   };
 
   // Excel download logic
@@ -3448,20 +3471,24 @@ useEffect(() => {
                         onChange={e => setGroundFloorHasRooms(e.target.checked)}
                         disabled={isViewMode}
                       />
-                      <Form.Check 
-                        type="switch" 
-                        label="Lock Edit" 
-                        checked={lockEdit} 
-                        onChange={e => setLockEdit(e.target.checked)}
-                        disabled={isViewMode}
-                      />
-                      <Form.Check 
-                        type="switch" 
-                        label="Lock Delete" 
-                        checked={lockDelete} 
-                        onChange={e => setLockDelete(e.target.checked)}
-                        disabled={isViewMode}
-                      />
+                      {hasMaterialData && (
+                        <>
+                          <Form.Check 
+                            type="switch" 
+                            label="Lock Edit" 
+                            checked={lockEdit} 
+                            onChange={e => setLockEdit(e.target.checked)}
+                            disabled={isViewMode}
+                          />
+                          <Form.Check 
+                            type="switch" 
+                            label="Lock Delete" 
+                            checked={lockDelete} 
+                            onChange={handleLockDeleteChange}
+                            disabled={isViewMode}
+                          />
+                        </>
+                      )}
                     </div>
                   </Form.Group>
                 </Col>
