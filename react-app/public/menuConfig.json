@@ -7,6 +7,13 @@
       "requireAuth": false
     },
     {
+      "label": "Main Dashboard",
+      "path": "/main",
+      "type": "link",
+      "icon": "🏠",
+      "requireAuth": true
+    },
+    {
       "label": "Project Management",
       "type": "dropdown",
       "icon": "📊",
@@ -148,14 +155,21 @@
       ]
     },
     {
-      "label": "About",
-      "path": "/about",
+      "label": "Help",
+      "path": "/help",
       "type": "link",
-      "requireAuth": false
+      "icon": "📚",
+      "requireAuth": true
     },
     {
       "label": "Contact",
       "path": "/contact",
+      "type": "link",
+      "requireAuth": false
+    },
+    {
+      "label": "About",
+      "path": "/about",
       "type": "link",
       "requireAuth": false
     }

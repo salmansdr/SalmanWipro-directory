@@ -72,11 +72,13 @@ const pdfStyles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   col1: { width: '5%' },
-  col2: { width: '25%' },
-  col3: { width: '25%' },
-  col4: { width: '15%', textAlign: 'center' },
-  col5: { width: '15%', textAlign: 'right' },
-  col6: { width: '15%', textAlign: 'right' },
+  col2: { width: '20%' },
+  col3: { width: '20%' },
+  col4: { width: '11%', textAlign: 'right' },
+  col5: { width: '11%', textAlign: 'right' },
+  col6: { width: '11%', textAlign: 'right' },
+  col7: { width: '11%', textAlign: 'right' },
+  col8: { width: '11%', textAlign: 'center' },
   // Detail view columns
   detailHeader: {
     flexDirection: 'row',
@@ -199,11 +201,11 @@ const StockDetailsPDF = ({ inventoryData, filters, showDetails }) => {
             <Text style={pdfStyles.col1}>S/N</Text>
             <Text style={pdfStyles.col2}>Location</Text>
             <Text style={pdfStyles.col3}>Item Name</Text>
-            
+            <Text style={pdfStyles.col4}>Opening Bal</Text>
             <Text style={pdfStyles.col5}>Total In</Text>
             <Text style={pdfStyles.col6}>Total Out</Text>
-            <Text style={pdfStyles.col5}>Net Stock</Text>
-            <Text style={pdfStyles.col4}>Unit</Text>
+            <Text style={pdfStyles.col7}>Net Stock</Text>
+            <Text style={pdfStyles.col8}>Unit</Text>
           </View>
 
           {inventoryData.map((item, index) => (
@@ -212,11 +214,11 @@ const StockDetailsPDF = ({ inventoryData, filters, showDetails }) => {
                 <Text style={pdfStyles.col1}>{index + 1}</Text>
                 <Text style={pdfStyles.col2}>{item.locationName}</Text>
                 <Text style={pdfStyles.col3}>{item.itemName}</Text>
-               
+                <Text style={pdfStyles.col4}>{(item.summary.openingBalance || 0).toFixed(2)}</Text>
                 <Text style={pdfStyles.col5}>{item.summary.totalInQty.toFixed(2)}</Text>
                 <Text style={pdfStyles.col6}>{item.summary.totalOutQty.toFixed(2)}</Text>
-                <Text style={pdfStyles.col5}>{item.summary.netStockQty.toFixed(2)}</Text>
-                 <Text style={pdfStyles.col4}>{item.summary.unit}</Text>
+                <Text style={pdfStyles.col7}>{item.summary.netStockQty.toFixed(2)}</Text>
+                <Text style={pdfStyles.col8}>{item.summary.unit}</Text>
               </View>
 
               {/* Transaction Details (if showDetails is true) */}
@@ -294,11 +296,25 @@ const StockDetails = () => {
     }
   }, [apiBaseUrl]);
 
-  const loadInventoryData = useCallback(async () => {
+  const loadInventoryData = useCallback(async (startDate = '', endDate = '') => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`${apiBaseUrl}/api/MaterialReceived/inventory-by-location-detailed`);
+      // Build query string for optional date parameters
+      const params = new URLSearchParams();
+      if (startDate) {
+        // Convert from yyyy-mm-dd to dd/mm/yyyy
+        const [year, month, day] = startDate.split('-');
+        params.append('startDate', `${day}/${month}/${year}`);
+      }
+      if (endDate) {
+        // Convert from yyyy-mm-dd to dd/mm/yyyy
+        const [year, month, day] = endDate.split('-');
+        params.append('endDate', `${day}/${month}/${year}`);
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      
+      const response = await fetch(`${apiBaseUrl}/api/MaterialReceived/inventory-by-location-detailed${queryString}`);
       if (response.ok) {
         const data = await response.json();
         setInventoryData(data.inventory || []);
@@ -330,37 +346,9 @@ const StockDetails = () => {
       filtered = filtered.filter(item => item.itemName === filters.itemName);
     }
 
-    // Filter by date range (applied to transactions)
-    if (filters.startDate || filters.endDate) {
-      filtered = filtered.map(item => {
-        const filteredTransactions = item.transactions.filter(txn => {
-          const txnDate = new Date(txn.referenceDate);
-          const startDate = filters.startDate ? new Date(filters.startDate) : null;
-          const endDate = filters.endDate ? new Date(filters.endDate) : null;
-
-          if (startDate && txnDate < startDate) return false;
-          if (endDate && txnDate > endDate) return false;
-          return true;
-        });
-
-        // Recalculate summary for filtered transactions
-        const totalInQty = filteredTransactions.reduce((sum, txn) => sum + txn.inQty, 0);
-        const totalOutQty = filteredTransactions.reduce((sum, txn) => sum + txn.outQty, 0);
-        const netStockQty = totalInQty - totalOutQty;
-
-        return {
-          ...item,
-          transactions: filteredTransactions,
-          summary: {
-            ...item.summary,
-            totalInQty,
-            totalOutQty,
-            netStockQty
-          }
-        };
-      }).filter(item => item.transactions.length > 0);
-    }
-
+    // Note: Date filtering is now done server-side via API parameters
+    // No need to filter transactions client-side
+    
     setFilteredData(filtered);
   }, [inventoryData, filters]);
 
@@ -394,6 +382,14 @@ const StockDetails = () => {
       startDate: '',
       endDate: ''
     });
+    // Reload data without date filters
+    loadInventoryData();
+  };
+
+  const handleFetchData = () => {
+    if (filters.startDate && filters.endDate) {
+      loadInventoryData(filters.startDate, filters.endDate);
+    }
   };
 
   const toggleRow = (index) => {
@@ -428,7 +424,7 @@ const StockDetails = () => {
             </Card.Header>
             <Card.Body>
               <Row className="g-3">
-                <Col md={3}>
+                <Col md={2}>
                   <Form.Group>
                     <Form.Label>Location</Form.Label>
                     <Form.Select
@@ -444,7 +440,7 @@ const StockDetails = () => {
                     </Form.Select>
                   </Form.Group>
                 </Col>
-                <Col md={3}>
+                <Col md={2}>
                   <Form.Group>
                     <Form.Label>Item Name</Form.Label>
                     <Form.Select
@@ -480,8 +476,14 @@ const StockDetails = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={2} className="d-flex align-items-end">
-                  <Button variant="secondary" onClick={handleClearFilters} className="w-100">
+                <Col md={4} className="d-flex align-items-end gap-2">
+                  {filters.startDate && filters.endDate && (
+                    <Button variant="primary" onClick={handleFetchData} className="flex-fill">
+                      <i className="bi bi-arrow-clockwise me-1"></i>
+                      Fetch Data
+                    </Button>
+                  )}
+                  <Button variant="secondary" onClick={handleClearFilters} className="flex-fill">
                     Clear Filters
                   </Button>
                 </Col>
@@ -527,28 +529,36 @@ const StockDetails = () => {
                     <th style={{ width: '50px' }}></th>
                     <th>Location</th>
                     <th>Item Name</th>
-                   
+                    <th className="text-end">Opening Balance</th>
                     <th className="text-end">Total In</th>
                     <th className="text-end">Total Out</th>
                     <th className="text-end">Net Stock</th>
-                     <th className="text-center">Unit</th>
+                    <th className="text-center">Unit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.map((item, index) => (
+                  {filteredData.map((item, index) => {
+                    const hasTransactions = item.transactions && item.transactions.length > 0;
+                    return (
                     <React.Fragment key={index}>
                       {/* Summary Row */}
                       <tr 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => toggleRow(index)}
+                        style={{ cursor: hasTransactions ? 'pointer' : 'default' }}
+                        onClick={() => hasTransactions && toggleRow(index)}
                         className={expandedRows[index] ? 'table-active' : ''}
                       >
                         <td className="text-center">
-                          {expandedRows[index] ? <FaChevronDown /> : <FaChevronRight />}
+                          {hasTransactions ? (
+                            expandedRows[index] ? <FaChevronDown /> : <FaChevronRight />
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
                         </td>
                         <td>{item.locationName}</td>
                         <td>{item.itemName}</td>
-                       
+                        <td className="text-end">
+                          <Badge bg="info">{(item.summary.openingBalance || 0).toFixed(2)}</Badge>
+                        </td>
                         <td className="text-end">
                           {item.summary.totalInQty.toFixed(2)}
                         </td>
@@ -568,7 +578,7 @@ const StockDetails = () => {
                       {/* Expanded Transaction Details */}
                       {expandedRows[index] && (
                         <tr>
-                          <td colSpan="7" className="p-0">
+                          <td colSpan="8" className="p-0">
                             <div className="bg-light p-3">
                               <h6 className="text-muted mb-3">Transaction History</h6>
                               <Table size="sm" bordered className="mb-0">
@@ -608,7 +618,8 @@ const StockDetails = () => {
                         </tr>
                       )}
                     </React.Fragment>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </Table>
             </div>

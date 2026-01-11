@@ -1,0 +1,167 @@
+.main-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  padding-bottom: 2rem;
+}
+
+.dashboard-tile {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dashboard-tile:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dashboard-tile .card-header {
+  padding: 1rem;
+  border-bottom: none;
+}
+
+.dashboard-tile .card-body {
+  padding: 1.25rem;
+}
+
+/* Button Styles */
+.dashboard-tile .btn {
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+  padding: 0.5rem 1rem;
+  text-transform: none;
+}
+
+.dashboard-tile .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.dashboard-tile .btn-primary:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.dashboard-tile .btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+}
+
+.dashboard-tile .btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.dashboard-tile .btn-outline-primary {
+  border: 2px solid #667eea;
+  color: #667eea;
+  background: white;
+}
+
+.dashboard-tile .btn-outline-primary:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  transform: scale(1.02);
+}
+
+.dashboard-tile .btn-outline-success {
+  border: 2px solid #10b981;
+  color: #10b981;
+  background: white;
+}
+
+.dashboard-tile .btn-outline-success:hover {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+  transform: scale(1.02);
+}
+
+/* Icon Styles */
+.dashboard-tile .bi {
+  font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-tile h2 {
+    font-size: 1.75rem;
+  }
+  
+  .dashboard-tile h3 {
+    font-size: 1.5rem;
+  }
+  
+  .dashboard-tile:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Animation for numbers */
+.dashboard-tile h2,
+.dashboard-tile h3,
+.dashboard-tile h4 {
+  animation: fadeInUp 0.6s ease-in-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search card styling */
+.main-dashboard .card {
+  border-radius: 12px;
+  border: none;
+}
+
+.main-dashboard .form-label {
+  color: #495057;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.main-dashboard .form-select {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  padding: 0.6rem 0.75rem;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.95rem;
+}
+
+.main-dashboard .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+/* Badge Enhancements */
+.badge {
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Card Body Backgrounds */
+.dashboard-tile .rounded {
+  transition: all 0.2s ease-in-out;
+}
+
+.dashboard-tile .rounded:hover {
+  transform: scale(1.02);
+}

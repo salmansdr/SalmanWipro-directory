@@ -5,11 +5,14 @@ import LocationMaster from './LocationMaster';
 import EnquiryDetails from './EnquiryDetails';
 import PurchaseOrders from './PurchaseOrders';
 import MaterialReceived from './MaterialReceived';
+import MaterialAdjustment from './MaterialAdjustment';
 import WCCReceived from './WCCReceived';
 import Requisition from './Requisition';
 import StockDetails from './StockDetails';
 import InventoryMovement from './InventoryMovement';
 import Dashboard from './Dashboard';
+import Main from './Main';
+import Help from './Help';
 
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -90,12 +93,12 @@ function AvatarMenu({ onLogout }) {
   );
 }
 
-// WhatsApp button component - only shows on home page
-function WhatsAppButton() {
+// WhatsApp button component - only shows on home page when not authenticated
+function WhatsAppButton({ isAuthenticated }) {
   const location = useLocation();
   
-  // Only show on home page
-  if (location.pathname !== '/') {
+  // Hide when authenticated or not on home page
+  if (isAuthenticated || location.pathname !== '/') {
     return null;
   }
   
@@ -378,9 +381,10 @@ function App() {
             </Navbar.Collapse>
           </Container>
         </Navbar>
-          <main className="container py-4 px-3">
+          <main className={isAuthenticated ? "py-4 px-3" : ""}>
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={isAuthenticated ? <Main /> : <Home />} />
+              {isAuthenticated && <Route path="/main" element={<Main />} />}
               {isAuthenticated && <Route path="/project-management" element={<ProjectManagement />} />}
               {isAuthenticated && <Route path="/ProjectManagementEntryForm" element={<ProjectManagementEntryForm />} />}
               {isAuthenticated && <Route path="/project-estimation" element={<ProjectEstimation />} />}
@@ -389,10 +393,12 @@ function App() {
               {isAuthenticated && <Route path="/pricing-calculator" element={<PricingCalculator />} />}
               {isAuthenticated && <Route path="/purchase-orders" element={<PurchaseOrders />} />}
               {isAuthenticated && <Route path="/material-received" element={<MaterialReceived />} />}
+              {isAuthenticated && <Route path="/material-adjustment" element={<MaterialAdjustment />} />}
               {isAuthenticated && <Route path="/wcc-received" element={<WCCReceived />} />}
               {isAuthenticated && <Route path="/requisition" element={<Requisition />} />}
               {isAuthenticated && <Route path="/reports" element={<Reports />} />}
               {isAuthenticated && <Route path="/stock-details" element={<StockDetails />} />}
+              {isAuthenticated && <Route path="/help" element={<Help />} />}
               {isAuthenticated && <Route path="/inventory-movement" element={<InventoryMovement />} />}
               {isAuthenticated && <Route path="/dashboard" element={<Dashboard />} />}
               {isAuthenticated && <Route path="/cost-report" element={<CostReport />} />}
@@ -413,12 +419,15 @@ function App() {
               <Route path="/TestApiPage" element={<TestApiPage />} />
               <Route path="*" element={<Home />} />
             </Routes>
-            <WhatsAppButton />
+            <WhatsAppButton isAuthenticated={isAuthenticated} />
           </main>
           <footer className="bg-light pt-3 pb-2 shadow-sm">
             <div className="container">
-              <div className="row align-items-center justify-content-center">
-                <div className="col-12 col-md-10 d-flex align-items-center justify-content-end">
+              <div className="row align-items-center">
+                <div className="col-12 col-md-6 text-center text-md-start mb-2 mb-md-0">
+                  <p className="mb-0 text-secondary">© 2026 Construction Management System. All rights reserved.</p>
+                </div>
+                <div className="col-12 col-md-6 d-flex align-items-center justify-content-center justify-content-md-end">
                   <span className="fw-bold text-secondary me-2">Follow us on</span>
                   <nav className="d-flex flex-row gap-2">
                     <a href="https://facebook.com/salmansdr" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="p-0 m-0">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal, Pagination, Dropdown, DropdownButton } from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
@@ -381,7 +382,11 @@ const PurchaseOrderPDF = ({ poData, currency, copyType = 'supplier' }) => {
 
 const PurchaseOrders = () => {
   const permissions = getPagePermissions('Purchase Orders');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
+  const location = useLocation();
+  const navigate = useNavigate();
+  // If navigating for approval, start directly in form mode
+  const initialViewMode = (location.state?.action === 'approve') ? 'form' : 'list';
+  const [viewMode, setViewMode] = useState(initialViewMode);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -460,6 +465,103 @@ const PurchaseOrders = () => {
         console.error('Error parsing company setup:', error);
       }
     }
+
+    // Check if navigated from Main.js with action to create new form
+    if (location.state?.viewMode === 'form' && location.state?.action === 'new') {
+      handleNewPO();
+    }
+    
+    // Check if navigated from Main.js for approval - load directly without showing list
+    if (location.state?.viewMode === 'form' && location.state?.action === 'approve' && location.state?.poNumber) {
+      const loadPOForApproval = async () => {
+        try {
+          // Load dropdown data first (needed for form)
+          await loadDropdownData();
+          
+          // Fetch only the specific purchase order by number
+          const response = await axiosClient.get(`/api/PurchaseOrder?companyId=${companyId}`);
+          if (response.status === 200) {
+            const data = response.data;
+            
+            const poToApprove = data.find(
+              po => po.poNumber === location.state.poNumber
+            );
+            
+            if (poToApprove) {
+              // Extract requisition data
+              let requisitionIds = [];
+              let requisitionNumbers = [];
+              let requisitions = [];
+              
+              if (poToApprove.requisitions && Array.isArray(poToApprove.requisitions)) {
+                requisitions = poToApprove.requisitions;
+                requisitionIds = requisitions.map(req => req.requisitionId);
+                requisitionNumbers = requisitions.map(req => req.requisitionNumber);
+              } else {
+                requisitionIds = Array.isArray(poToApprove.requisitionIds) ? poToApprove.requisitionIds : (poToApprove.requisitionId ? [poToApprove.requisitionId] : []);
+                requisitionNumbers = Array.isArray(poToApprove.requisitionNumbers) ? poToApprove.requisitionNumbers : (poToApprove.requisitionNumber ? [poToApprove.requisitionNumber] : []);
+              }
+              
+              // Transform items
+              const transformedPO = {
+                ...poToApprove,
+                itemType: poToApprove.itemType || 'Material',
+                requisitions: requisitions,
+                requisitionIds: requisitionIds,
+                requisitionNumbers: requisitionNumbers,
+                items: poToApprove.items?.map(item => {
+                  if (item.itemName) {
+                    return {
+                      ...item,
+                      itemCode: item.itemName,
+                      itemId: item.itemCode
+                    };
+                  }
+                  
+                  const materialItem = materialItems.find(mi => {
+                    const itemData = mi.itemData || mi;
+                    return (itemData._id || itemData.materialId) === item.itemCode;
+                  });
+                  
+                  if (materialItem) {
+                    const itemData = materialItem.itemData || materialItem;
+                    return {
+                      ...item,
+                      itemCode: itemData.material || item.itemCode,
+                      itemId: item.itemCode
+                    };
+                  }
+                  
+                  return item;
+                }) || []
+              };
+              
+              // Set approver details
+              if (poToApprove.approverUserId) {
+                const approver = users.find(u => u._id === poToApprove.approverUserId);
+                setApproverDetails({
+                  approverId: poToApprove.approverUserId,
+                  approverName: approver ? approver.username : '',
+                  approverEmail: approver ? approver.email : (poToApprove.approverEmail || ''),
+                  approverComments: ''
+                });
+              }
+              
+              setFormData(transformedPO);
+              setEditMode(false);
+              setIsViewMode(poToApprove.status === 'ApprovalRequest');
+              setOriginalRequisitionNumbers(requisitionNumbers);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading purchase order for approval:', error);
+          setAlertMessage({ show: true, type: 'danger', message: 'Failed to load purchase order for approval' });
+        }
+      };
+      
+      loadPOForApproval();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1781,7 +1883,13 @@ const PurchaseOrders = () => {
                 </h4>
               </div>
               <div>
-                <Button variant="light" className="me-2" onClick={() => setViewMode('list')}>
+                <Button variant="light" className="me-2" onClick={() => {
+                  if (location.state?.fromDashboard) {
+                    navigate('/main');
+                  } else {
+                    setViewMode('list');
+                  }
+                }}>
                   <i className="bi bi-arrow-left me-2"></i>Back to List
                 </Button>
                 {formData._id && (

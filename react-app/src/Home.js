@@ -1,461 +1,362 @@
-import React, { useState } from 'react';
-import Hero from './Hero';
-import MoreDetails from './MoreDetails';
-
-const PROJECT_TABS_META = [
-  { key: 'completed', label: 'Completed', icon: '🏆', showProgress: false },
-  { key: 'running', label: 'Running', icon: '🏗️', showProgress: true },
-  { key: 'upcoming', label: 'Upcoming', icon: '🚧', showProgress: true },
-];
-
-function ProjectSection({ title, projects, showProgress = true }) {
-  return (
-    <div className="container-fluid mt-3 px-3">
-      <div className="row">
-        {projects.map((proj, index) => {
-          // Extract Project Image from projectdocuments array
-          let projectImage = proj.image;
-          if (!projectImage && proj.projectdocuments && Array.isArray(proj.projectdocuments)) {
-            const imageDoc = proj.projectdocuments.find(doc => doc.name === 'Project Image');
-            if (imageDoc && imageDoc.data) {
-              projectImage = imageDoc.data; // This is base64 data
-            }
-          }
-
-          return (
-            <div key={`${proj.id}-${index}`} className="col-12 col-md-6 col-lg-3 mb-4">
-              <div className="card h-100 shadow-sm d-flex flex-column">
-                {projectImage && (
-                  <img
-                    src={projectImage.startsWith('http') ? projectImage : (projectImage.startsWith('data:') ? projectImage : process.env.PUBLIC_URL + '/' + projectImage)}
-                    alt={proj.name}
-                    className="card-img-top"
-                    style={{ marginTop: 0, paddingTop: 0, borderTopLeftRadius: '0.5rem', borderTopRightRadius: '0.5rem', objectFit: 'cover', height: '200px' }}
-                  />
-                )}
-                <div className="card-body d-flex flex-column">
-                  <h5 className="card-title">{proj.name}</h5>
-                  <h6 className="card-subtitle mb-2 text-muted">{proj.location}</h6>
-                  <div className="mb-2">{proj.status}</div>
-                  {showProgress && (proj.status === 'running' || proj.status === 'upcoming') && (
-                    <div className="mb-2">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <span className="fw-bold" style={{ fontSize: '0.875rem' }}>Progress</span>
-                        <span className="fw-bold text-primary">{proj.completionStatus || 0}%</span>
-                      </div>
-                      <div className="progress" style={{ height: '8px' }}>
-                        <div
-                          className={`progress-bar ${
-                            (proj.completionStatus || 0) < 50 ? 'bg-info' :
-                            (proj.completionStatus || 0) < 80 ? 'bg-primary' :
-                            'bg-success'
-                          }`}
-                          role="progressbar"
-                          style={{ width: `${proj.completionStatus || 0}%` }}
-                          aria-valuenow={proj.completionStatus || 0}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className={`btn btn-outline-primary mt-auto`}
-                    id={proj._id}
-                    onClick={() => proj.onKnowMore()}
-                  >
-                    More Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+import React from 'react';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import './Styles/Home.css';
 
 function Home() {
-  // All hooks at the top
-  const [tab, setTab] = useState('completed');
-  const [projectsData, setProjectsData] = useState(null);
-  const [searchLocation, setSearchLocation] = useState('');
-  const [searchStatus, setSearchStatus] = useState(''); // Changed to empty string to show "All" initially
-  const [filteredProjects, setFilteredProjects] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [selectedProject, setSelectedProject] = useState(null);
-  // Enquire Now form state
-  const [enqName, setEnqName] = useState('');
-  const [enqEmail, setEnqEmail] = useState('');
-  const [enqProject, setEnqProject] = useState('');
-  const [enqPhone, setEnqPhone] = useState('');
-  const [enqMessage, setEnqMessage] = useState('');
-  const [enqError, setEnqError] = useState('');
-  const [enqSuccess, setEnqSuccess] = useState('');
-  const [enqLoading, setEnqLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const currentTab = PROJECT_TABS_META.find(t => t.key === tab);
-  let tabProjects = [];
-
-  React.useEffect(() => {
-    setTab('completed');
-    // Get companyId from localStorage
-    const companyId = localStorage.getItem('selectedCompanyId');
-    
-    // Updated to call API instead of local file
-    // Use environment variable for API URL, fallback to localhost for development
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://localhost:7777';
-    const endpoint = companyId 
-      ? `${apiUrl}/api/Projects/all-data?companyId=${companyId}`
-      : `${apiUrl}/api/Projects/all-data`;
-    
-    
-    
-    fetch(endpoint)
-      .then(res => res.json())
-      .then(data => {
-       
-        let processedData;
-        
-        // Check if API returns a flat array of projects
-        if (Array.isArray(data)) {
-          // Log first project to check structure
-         
-          
-          // Group projects by status
-          processedData = {
-            completed: data.filter(project => project.status === 'completed'),
-            running: data.filter(project => project.status === 'running'),
-            upcoming: data.filter(project => project.status === 'upcoming')
-          };
-          
-        } else {
-          // API returns object with completed, running, upcoming arrays
-          processedData = data;
-          
-        }
-        
-        setProjectsData(processedData);
-        // Set filtered projects to all projects initially
-        const allProjectsArray = [
-          ...(processedData.completed || []),
-          ...(processedData.running || []),
-          ...(processedData.upcoming || [])
-        ];
-        setFilteredProjects(allProjectsArray);
-      })
-      .catch(error => {
-        console.error('Error fetching projects:', error);
-        setProjectsData(null);
-        setFilteredProjects([]);
-      });
-    
-    // Previous local file approach - kept for future use:
-    // fetch(process.env.PUBLIC_URL + '/projects.json')
-    //   .then(res => res.json())
-    //   .then(data => {
-    //     setProjectsData(data);
-    //     setFilteredProjects(data.completed);
-    //   });
-  }, []);
-
-  if (!projectsData) return <div>Loading...</div>;
-
-  const allProjects = [
-    ...(projectsData.completed || []),
-    ...(projectsData.running || []),
-    ...(projectsData.upcoming || [])
+  const features = [
+    {
+      icon: '📊',
+      title: 'BOQ Estimation',
+      description: 'Comprehensive Bill of Quantities generation with accurate material, labour, and cost calculations for your construction projects.',
+      color: '#667eea'
+    },
+    {
+      icon: '📝',
+      title: 'Material Requisition',
+      description: 'Streamlined requisition workflow with approval management, ensuring timely procurement of construction materials.',
+      color: '#14b8a6'
+    },
+    {
+      icon: '🛒',
+      title: 'Purchase Orders',
+      description: 'Complete purchase order lifecycle management from creation to approval, with vendor tracking and delivery monitoring.',
+      color: '#10b981'
+    },
+    {
+      icon: '📦',
+      title: 'Material Receipt',
+      description: 'Track material deliveries against purchase orders with quality checks and inventory updates in real-time.',
+      color: '#f59e0b'
+    },
+    {
+      icon: '📤',
+      title: 'Issue Register',
+      description: 'Manage material distribution to project sites with floor-wise tracking and return management.',
+      color: '#3b82f6'
+    },
+    {
+      icon: '⚙️',
+      title: 'Supply Chain Workflow',
+      description: 'End-to-end supply chain automation with multi-level approvals and real-time status tracking.',
+      color: '#8b5cf6'
+    }
   ];
-  const uniqueLocations = Array.from(new Set(allProjects.map(p => p.location)));
 
-  if (filteredProjects !== null) {
-    tabProjects = filteredProjects;
-  } else {
-    if (tab === 'completed') tabProjects = projectsData.completed || [];
-    if (tab === 'running') tabProjects = projectsData.running || [];
-    if (tab === 'upcoming') tabProjects = projectsData.upcoming || [];
-  }
-
-  // Update currentTab for display when showing filtered results
-  const displayTab = filteredProjects !== null ? 
-    (searchStatus ? { key: searchStatus, label: searchStatus.charAt(0).toUpperCase() + searchStatus.slice(1), icon: '🔍' } : { key: 'all', label: 'All', icon: '🔍' }) : 
-    currentTab;
-
-  const projectsWithNav = tabProjects.map((proj) => ({
-    ...proj,
-    onKnowMore: () => {
-      
-      setSelectedProject(proj._id || proj.id);
-      setShowDetails(true);
-    }
-  }));
-
-  const handleBack = () => {
-    setShowDetails(false);
-    setSelectedProject(null);
-  };
-
-  if (showDetails && selectedProject) {
-    return <MoreDetails onBack={handleBack} projectId={selectedProject} allProjects={allProjects} />;
-  }
-
-  function handleSearch(location, status) {
-    
-    
-    // If both filters are empty, show all projects
-    if (!location && !status) {
-      setFilteredProjects(allProjects);
-      setTab('all');
-      return;
-    }
-    
-    let filtered = allProjects;
-    
-    if (location) {
-      filtered = filtered.filter(p => p.location === location);
-      
-    }
-    
-    if (status) {
-      filtered = filtered.filter(p => p.status && p.status.toLowerCase() === status.toLowerCase());
-     
-    }
-    
-   
-    setFilteredProjects(filtered);
-    
-    // Set appropriate tab
-    if (status) {
-      setTab(status);
-    } else {
-      setTab('all');
-    }
-  }
-
-  // Simple email and phone validation
-  function validateEmail(email) {
-    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  }
-  function validatePhone(phone) {
-    return /^[0-9]{10}$/.test(phone);
-  }
-
-  function handleEnquireSubmit(e) {
-    e.preventDefault();
-    setEnqError('');
-    setEnqSuccess('');
-    if (!enqName || !validateEmail(enqEmail) || !validatePhone(enqPhone) || !enqProject || !enqMessage) {
-      setEnqError('Please fill all fields with valid email and 10-digit phone number.');
-      return;
-    }
-    
-    setEnqLoading(true);
-    const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
-    
-    // First, check if record already exists
-    const searchUrl = `${apiBaseUrl}/api/Home/search?projectName=${encodeURIComponent(enqProject)}&email=${encodeURIComponent(enqEmail)}`;
-    
-    fetch(searchUrl)
-      .then(response => {
-        
-        // If 404, treat as no record found and proceed with POST
-        if (response.status === 404) {
-         
-          return null;
-        }
-        // If other error status
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(existingData => {
-        
-        
-        if (existingData) {
-          // Record already exists
-          const enquiryDate = existingData.enquiryDate || existingData[0]?.enquiryDate;
-          const formattedDate = enquiryDate ? new Date(enquiryDate).toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          }) : '';
-          
-          setEnqLoading(false);
-          setEnqSuccess(`Your enquiry information about this project is saved in our database on ${formattedDate}. Team will contact you.`);
-          setEnqName(''); 
-          setEnqEmail(''); 
-          setEnqProject(''); 
-          setEnqPhone(''); 
-          setEnqMessage('');
-        } else {
-          // No existing record, proceed with POST
-          // Prepare enquiry data as JSON with all columns
-          const enquiryData = {
-            name: enqName,
-            Email: enqEmail,
-            ProjectName: enqProject,
-            phoneNo: enqPhone,
-            message: enqMessage,
-            enquiryDate: new Date().toISOString()
-          };
-          
-          const requestPayload = {
-            subject: `New Enquiry for ${enqProject}`,
-            enquiryData: enquiryData
-          };
-          
-          
-          fetch(`${apiBaseUrl}/api/Home`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestPayload)
-          })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            setEnqLoading(false);
-            setEnqSuccess('Your enquiry has been sent!');
-            setEnqName(''); 
-            setEnqEmail(''); 
-            setEnqProject(''); 
-            setEnqPhone(''); 
-            setEnqMessage('');
-          })
-          .catch(error => {
-            setEnqLoading(false);
-            console.error('Error sending email:', error);
-            setEnqError('Failed to send enquiry. Please try again.');
-          });
-        }
-      })
-      .catch(error => {
-        setEnqLoading(false);
-        console.error('Error checking existing enquiry:', error);
-        setEnqError('Failed to process enquiry. Please try again.');
-      });
-  }
+  const workflowSteps = [
+    { step: 1, title: 'Project Estimation', desc: 'Create detailed BOQ with material & labour costs' },
+    { step: 2, title: 'Material Requisition', desc: 'Raise requisition for required materials' },
+    { step: 3, title: 'Approval Workflow', desc: 'Multi-level approval by authorized users' },
+    { step: 4, title: 'Purchase Order', desc: 'Generate PO and send to suppliers' },
+    { step: 5, title: 'Material Receipt', desc: 'Receive materials against PO' },
+    { step: 6, title: 'Issue to Site', desc: 'Distribute materials to project floors' }
+  ];
 
   return (
-    <div className="container-fluid px-0">
-      <Hero />
-      {/* Search Section */}
-      <div className="card mt-4 mb-4 shadow-sm">
-        <div className="card-body">
-          <div className="row g-3 align-items-end">
-            <div className="col-12 col-md-6">
-              <div className="mb-3">
-                <label htmlFor="location-select" className="form-label">By Location</label>
-                <select
-                  id="location-select"
-                  className="form-select"
-                  value={searchLocation}
-                  onChange={e => {
-                    const newLocation = e.target.value;
-                    setSearchLocation(newLocation);
-                    handleSearch(newLocation, searchStatus);
-                  }}
+    <div className="home-page">
+      {/* Hero Banner Section */}
+      <section className="hero-banner" style={{ 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        color: 'white',
+        minHeight: '60vh',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '3rem 0',
+        margin: 0
+      }}>
+        <Container>
+          <Row className="align-items-center">
+            <Col lg={10} className="mx-auto text-center">
+              <div className="mb-4">
+                <i className="bi bi-building" style={{ fontSize: '4rem', opacity: 0.9 }}></i>
+              </div>
+              <h1 className="display-3 fw-bold mb-4 animate__animated animate__fadeInDown">
+                Construction Management System
+              </h1>
+              <p className="lead mb-5 fs-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
+                Transform your construction project management with our comprehensive ERP solution. 
+                From BOQ estimation to material distribution, manage your entire supply chain seamlessly.
+              </p>
+              <div className="d-flex gap-3 justify-content-center flex-wrap">
+                <Button 
+                  variant="light" 
+                  size="lg" 
+                  className="px-5 py-3 shadow-lg"
+                  onClick={() => navigate('/login')}
+                  style={{ borderRadius: '50px', fontWeight: '600' }}
                 >
-                  <option value="">All</option>
-                  {uniqueLocations.map(loc => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="mb-3">
-                <label htmlFor="status-select" className="form-label">By Status</label>
-                <select
-                  id="status-select"
-                  className="form-select"
-                  value={searchStatus}
-                  onChange={e => {
-                    const newStatus = e.target.value;
-                    setSearchStatus(newStatus);
-                    handleSearch(searchLocation, newStatus);
-                  }}
+                  <i className="bi bi-box-arrow-in-right me-2"></i>
+                  Get Started
+                </Button>
+                <Button 
+                  variant="outline-light" 
+                  size="lg" 
+                  className="px-5 py-3 shadow"
+                  onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
+                  style={{ borderRadius: '50px', fontWeight: '600', borderWidth: '2px' }}
                 >
-                  <option value="">All</option>
-                  <option value="completed">Completed</option>
-                  <option value="running">Running</option>
-                  <option value="upcoming">Upcoming</option>
-                </select>
+                  <i className="bi bi-arrow-down-circle me-2"></i>
+                  Learn More
+                </Button>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* End Search Section */}
-      <ProjectSection
-        title={`${displayTab.icon} ${displayTab.label} Projects`}
-        projects={projectsWithNav}
-        showProgress={displayTab.showProgress}
-      />
-
-      {/* Enquire Now Section */}
-      <div className="container mt-3 mb-5">
-        <div className="card shadow-sm">
-          <div className="card-header bg-primary text-white">
-            <h4 className="mb-0">Enquire Now</h4>
-          </div>
-          <div className="card-body">
-            <form className="row g-3" onSubmit={handleEnquireSubmit} autoComplete="off">
-              <div className="col-12 col-md-6">
-                <input type="text" className="form-control" id="enq-name" placeholder="Name" required value={enqName} onChange={e => setEnqName(e.target.value)} />
-              </div>
-              <div className="col-12 col-md-6">
-                <input type="email" className="form-control" id="enq-email" placeholder="Email" required value={enqEmail} onChange={e => setEnqEmail(e.target.value)} />
-              </div>
-              <div className="col-12 col-md-6">
-                <select className="form-select" id="enq-project" required value={enqProject} onChange={e => setEnqProject(e.target.value)}>
-                  <option value="">Select project</option>
-                  {allProjects.map((p, index) => (
-                    <option key={`${p.id}-${index}`} value={p.name}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-12 col-md-6">
-                <input type="tel" className="form-control" id="enq-phone" placeholder="Phone No." pattern="[0-9]{10}" maxLength={10} required value={enqPhone} onChange={e => setEnqPhone(e.target.value)} />
-              </div>
-              <div className="col-12">
-                <textarea className="form-control" id="enq-message" placeholder="Message" rows="3" style={{resize: 'vertical'}} required value={enqMessage} onChange={e => setEnqMessage(e.target.value)}></textarea>
-              </div>
-              {enqLoading && (
-                <div className="col-12">
-                  <div className="alert alert-info py-2 mb-0 d-flex align-items-center">
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Sending message, might take some time...
+              
+              {/* Quick Stats */}
+              <Row className="mt-5 pt-4">
+                <Col md={3} sm={6} className="mb-3">
+                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
+                    <h3 className="display-6 fw-bold mb-0">100+</h3>
+                    <p className="mb-0 opacity-75">Projects Managed</p>
                   </div>
-                </div>
-              )}
-              {enqError && (
-                <div className="col-12">
-                  <div className="alert alert-danger py-2 mb-0">{enqError}</div>
-                </div>
-              )}
-              {enqSuccess && (
-                <div className="col-12">
-                  <div className="alert alert-success py-2 mb-0">{enqSuccess}</div>
-                </div>
-              )}
-              <div className="col-12 d-flex justify-content-end">
-                <button type="submit" className="btn btn-success px-4" disabled={enqLoading}>
-                  {enqLoading ? 'Sending...' : 'Submit'}
-                </button>
-              </div>
-            </form>
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
+                    <h3 className="display-6 fw-bold mb-0">500+</h3>
+                    <p className="mb-0 opacity-75">Purchase Orders</p>
+                  </div>
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
+                    <h3 className="display-6 fw-bold mb-0">24/7</h3>
+                    <p className="mb-0 opacity-75">Real-time Tracking</p>
+                  </div>
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
+                    <h3 className="display-6 fw-bold mb-0">99%</h3>
+                    <p className="mb-0 opacity-75">Accuracy Rate</p>
+                  </div>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-5 bg-light">
+        <Container>
+          <div className="text-center mb-5">
+            <h2 className="display-5 fw-bold mb-3">Powerful Features</h2>
+            <p className="lead text-muted">Everything you need to manage construction projects efficiently</p>
           </div>
-        </div>
-      </div>
+          <Row className="g-4">
+            {features.map((feature, index) => (
+              <Col key={index} lg={4} md={6}>
+                <Card className="h-100 border-0 shadow-sm feature-card" style={{ transition: 'all 0.3s' }}>
+                  <Card.Body className="p-4">
+                    <div 
+                      className="feature-icon mb-3 d-flex align-items-center justify-content-center rounded-circle mx-auto"
+                      style={{ 
+                        width: '70px', 
+                        height: '70px', 
+                        background: `${feature.color}20`,
+                        fontSize: '2rem'
+                      }}
+                    >
+                      {feature.icon}
+                    </div>
+                    <h5 className="card-title text-center mb-3" style={{ color: feature.color, fontWeight: '600' }}>
+                      {feature.title}
+                    </h5>
+                    <p className="card-text text-muted text-center">
+                      {feature.description}
+                    </p>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Container>
+      </section>
+
+      {/* Workflow Section */}
+      <section className="py-5">
+        <Container>
+          <div className="text-center mb-5">
+            <h2 className="display-5 fw-bold mb-3">Supply Chain Workflow</h2>
+            <p className="lead text-muted">Seamless process from estimation to material distribution</p>
+          </div>
+          
+          {/* Flow Diagram */}
+          <div className="workflow-container mb-5">
+            <Row className="g-4 justify-content-center">
+              {workflowSteps.map((item, index) => (
+                <React.Fragment key={index}>
+                  <Col lg={2} md={4} sm={6} className="text-center">
+                    <div className="workflow-step">
+                      <div 
+                        className="step-number mb-3 mx-auto d-flex align-items-center justify-content-center rounded-circle"
+                        style={{
+                          width: '60px',
+                          height: '60px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          fontSize: '1.5rem',
+                          fontWeight: 'bold',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                        }}
+                      >
+                        {item.step}
+                      </div>
+                      <h6 className="fw-bold mb-2">{item.title}</h6>
+                      <small className="text-muted">{item.desc}</small>
+                    </div>
+                  </Col>
+                  {index < workflowSteps.length - 1 && (
+                    <Col lg={1} className="d-none d-lg-flex align-items-center justify-content-center">
+                      <i className="bi bi-arrow-right text-primary" style={{ fontSize: '2rem' }}></i>
+                    </Col>
+                  )}
+                </React.Fragment>
+              ))}
+            </Row>
+          </div>
+
+          {/* Workflow Details */}
+          <Row className="mt-5">
+            <Col lg={10} className="mx-auto">
+              <Card className="border-0 shadow-sm">
+                <Card.Body className="p-4">
+                  <h4 className="mb-4 text-center fw-bold">How It Works</h4>
+                  <Row className="g-4">
+                    <Col md={6}>
+                      <div className="d-flex mb-3">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Estimation & Planning</h6>
+                          <p className="text-muted mb-0">Create detailed BOQs with component-wise material calculations and cost breakdowns.</p>
+                        </div>
+                      </div>
+                      <div className="d-flex mb-3">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Smart Procurement</h6>
+                          <p className="text-muted mb-0">Automated requisition to PO conversion with supplier management and price tracking.</p>
+                        </div>
+                      </div>
+                      <div className="d-flex">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Real-time Tracking</h6>
+                          <p className="text-muted mb-0">Monitor material receipts, inventory levels, and distribution across project sites.</p>
+                        </div>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="d-flex mb-3">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Approval Workflow</h6>
+                          <p className="text-muted mb-0">Multi-level approval system with role-based access and notification management.</p>
+                        </div>
+                      </div>
+                      <div className="d-flex mb-3">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Inventory Control</h6>
+                          <p className="text-muted mb-0">Track stock levels, location-wise inventory, and material movement in real-time.</p>
+                        </div>
+                      </div>
+                      <div className="d-flex">
+                        <div className="me-3">
+                          <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '1.5rem' }}></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold">Analytics & Reports</h6>
+                          <p className="text-muted mb-0">Comprehensive dashboards with cost analysis, purchase trends, and project insights.</p>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Benefits Section */}
+      <section className="py-5 bg-light">
+        <Container>
+          <div className="text-center mb-5">
+            <h2 className="display-5 fw-bold mb-3">Why Choose Us</h2>
+            <p className="lead text-muted">Built for construction professionals, by construction experts</p>
+          </div>
+          <Row className="g-4">
+            <Col lg={3} md={6}>
+              <div className="text-center p-4">
+                <div className="benefit-icon mb-3 mx-auto">
+                  <i className="bi bi-lightning-charge-fill" style={{ fontSize: '3rem', color: '#f59e0b' }}></i>
+                </div>
+                <h5 className="fw-bold mb-2">Efficiency</h5>
+                <p className="text-muted">Reduce manual work and save time with automated workflows</p>
+              </div>
+            </Col>
+            <Col lg={3} md={6}>
+              <div className="text-center p-4">
+                <div className="benefit-icon mb-3 mx-auto">
+                  <i className="bi bi-graph-up-arrow" style={{ fontSize: '3rem', color: '#10b981' }}></i>
+                </div>
+                <h5 className="fw-bold mb-2">Cost Savings</h5>
+                <p className="text-muted">Optimize procurement and reduce material wastage significantly</p>
+              </div>
+            </Col>
+            <Col lg={3} md={6}>
+              <div className="text-center p-4">
+                <div className="benefit-icon mb-3 mx-auto">
+                  <i className="bi bi-shield-check" style={{ fontSize: '3rem', color: '#3b82f6' }}></i>
+                </div>
+                <h5 className="fw-bold mb-2">Accuracy</h5>
+                <p className="text-muted">Minimize errors with validated data and automated calculations</p>
+              </div>
+            </Col>
+            <Col lg={3} md={6}>
+              <div className="text-center p-4">
+                <div className="benefit-icon mb-3 mx-auto">
+                  <i className="bi bi-eye-fill" style={{ fontSize: '3rem', color: '#8b5cf6' }}></i>
+                </div>
+                <h5 className="fw-bold mb-2">Transparency</h5>
+                <p className="text-muted">Complete visibility across the entire procurement lifecycle</p>
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-5" style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', color: 'white' }}>
+        <Container>
+          <Row className="align-items-center">
+            <Col lg={8} className="mx-auto text-center">
+              <h2 className="display-5 fw-bold mb-3">Ready to Transform Your Construction Management?</h2>
+              <p className="lead mb-4">
+                Join leading construction companies using our platform to streamline operations and boost productivity.
+              </p>
+              <Button 
+                variant="light" 
+                size="lg" 
+                className="px-5 py-3"
+                onClick={() => navigate('/login')}
+              >
+                <i className="bi bi-rocket-takeoff me-2"></i>
+                Start Your Journey
+              </Button>
+            </Col>
+          </Row>
+        </Container>
+      </section>
     </div>
   );
 }

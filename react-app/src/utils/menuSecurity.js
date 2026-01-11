@@ -59,6 +59,11 @@ export const hasPermission = (menuItem, userRole) => {
     return false;
   }
 
+  // Allow Help page for all authenticated users
+  if (menuItem.label === 'Help') {
+    return true;
+  }
+
   // Check API-based permissions from localStorage
   const userPermissions = localStorage.getItem('userPermissions');
   
@@ -273,6 +278,11 @@ export const getFilteredMenuItems = async (isAuthenticated) => {
   const userRole = isAuthenticated ? getUserRole() : 'guest';
   
   const filtered = config.menuItems.filter(menuItem => {
+    // Hide Home and About menu items when authenticated
+    if (isAuthenticated && (menuItem.label === 'Home' || menuItem.label === 'About')) {
+      return false;
+    }
+    
     // If menu item is public, allow access
     if (!menuItem.requireAuth) {
       return true;

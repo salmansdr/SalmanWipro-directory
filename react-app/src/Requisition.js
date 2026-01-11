@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Form, Button, Row, Col, Table, Alert, Badge, InputGroup, Modal, Pagination, Spinner } from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
@@ -273,7 +274,11 @@ const RequisitionPDF = ({ poData, currency }) => {
 
 const Requisition = () => {
   const permissions = getPagePermissions('Requisition');
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
+  const location = useLocation();
+  const navigate = useNavigate();
+  // If navigating for approval, start directly in form mode
+  const initialViewMode = (location.state?.action === 'approve') ? 'form' : 'list';
+  const [viewMode, setViewMode] = useState(initialViewMode);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -336,6 +341,104 @@ const Requisition = () => {
         console.error('Error parsing company setup:', error);
       }
     }
+
+    // Check if navigated from Main.js with action to create new form
+    if (location.state?.viewMode === 'form' && location.state?.action === 'new') {
+      handleNewRequisition();
+    }
+    
+    // Check if navigated from Main.js for approval - load directly without showing list
+    if (location.state?.viewMode === 'form' && location.state?.action === 'approve' && location.state?.requisitionNumber) {
+      const loadRequisitionForApproval = async () => {
+        try {
+          // Load dropdown data first (needed for form)
+          await loadDropdownData();
+          
+          // Fetch only the specific requisition by number
+          const response = await fetch(`${apiBaseUrl}/api/Requisition?companyId=${companyId}`);
+          if (response.ok) {
+            const data = await response.json();
+            const mappedData = data.map(item => ({
+              ...item,
+              requisitionNumber: item.prNumber,
+              requisitionDate: item.prDate,
+              purchaseType: item.requisitionType
+            }));
+            
+            const requisitionToApprove = mappedData.find(
+              po => po.requisitionNumber === location.state.requisitionNumber
+            );
+            
+            if (requisitionToApprove) {
+              // Open the requisition directly for approval
+              if (requisitionToApprove.projectId) {
+                await fetchMaterialRequirements(requisitionToApprove.projectId);
+              }
+              
+              // Transform items
+              const transformedPO = {
+                ...requisitionToApprove,
+                itemType: requisitionToApprove.itemType || 'Material',
+                items: requisitionToApprove.items?.map(item => {
+                  if (requisitionToApprove.itemType === 'Service' && item.workScope) {
+                    return {
+                      ...item,
+                      itemCode: item.workScope,
+                      workScope: item.workScope
+                    };
+                  }
+                  
+                  if (item.itemName) {
+                    return {
+                      ...item,
+                      itemCode: item.itemName,
+                      itemId: item.itemCode
+                    };
+                  }
+                  
+                  const materialItem = materialItems.find(mi => {
+                    const itemData = mi.itemData || mi;
+                    return (itemData._id || itemData.materialId) === item.itemCode;
+                  });
+                  
+                  if (materialItem) {
+                    const itemData = materialItem.itemData || materialItem;
+                    return {
+                      ...item,
+                      itemCode: itemData.material || item.itemCode,
+                      itemId: item.itemCode
+                    };
+                  }
+                  
+                  return item;
+                }) || []
+              };
+              
+              // Set approver details
+              if (requisitionToApprove.approverUserId) {
+                const approver = users.find(u => u._id === requisitionToApprove.approverUserId);
+                setApproverDetails({
+                  approverId: requisitionToApprove.approverUserId,
+                  approverName: approver ? approver.username : '',
+                  approverEmail: approver ? approver.email : (requisitionToApprove.approverEmail || ''),
+                  approverComments: ''
+                });
+              }
+              
+              setFormData(transformedPO);
+              setEditMode(false);
+              setIsViewMode(requisitionToApprove.status === 'ApprovalRequest');
+            }
+          }
+        } catch (error) {
+          console.error('Error loading requisition for approval:', error);
+          setAlertMessage({ show: true, type: 'danger', message: 'Failed to load requisition for approval' });
+        }
+      };
+      
+      loadRequisitionForApproval();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1425,7 +1528,13 @@ const Requisition = () => {
                 </h4>
               </div>
               <div>
-                <Button variant="light" className="me-2" onClick={() => setViewMode('list')}>
+                <Button variant="light" className="me-2" onClick={() => {
+                  if (location.state?.fromDashboard) {
+                    navigate('/main');
+                  } else {
+                    setViewMode('list');
+                  }
+                }}>
                   <i className="bi bi-arrow-left me-2"></i>Back to List
                 </Button>
                 {formData._id && (

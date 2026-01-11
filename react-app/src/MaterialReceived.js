@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Container, Card, Form, Button, Row, Col, Table, Alert, InputGroup, Modal, Pagination } from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
@@ -547,6 +548,8 @@ const TransferVoucherPDF = ({ data }) => {
 
 const MaterialReceived = () => {
   const permissions = getPagePermissions('Material Movement');
+  const location = useLocation();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'form'
   const [grns, setGrns] = useState([]);
   const [filteredGrns, setFilteredGrns] = useState([]);
@@ -661,6 +664,13 @@ const MaterialReceived = () => {
       description: 'Return to supplier',
       icon: 'bi bi-arrow-return-left',
       color: '#dc3545'
+    },
+    { 
+      value: 'Adjustment', 
+      label: 'Adjustment', 
+      description: 'Stock adjustment entry',
+      icon: 'bi bi-sliders',
+      color: '#6f42c1'
     }
   ];
 
@@ -696,9 +706,15 @@ const MaterialReceived = () => {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
+    // Check if navigated from Main.js with action to create new form
+    if (location.state?.viewMode === 'form' && location.state?.action === 'new') {
+      handleNewGrn();
+    }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPODropdown]);
 
   useEffect(() => {
@@ -1182,6 +1198,11 @@ const MaterialReceived = () => {
   };
 
   const handleMovementTypeSelect = (movementType) => {
+    if (movementType === 'Adjustment') {
+      // Redirect to Material Adjustment page
+      navigate('/material-adjustment');
+      return;
+    }
     setFormData(prev => ({ ...prev, movementType }));
     setShowMovementTypeModal(false);
     setViewMode('form');
@@ -1190,6 +1211,12 @@ const MaterialReceived = () => {
   const handleViewGrn = (grn) => {
     if (!permissions.view) {
       setAlertMessage({ show: true, type: 'danger', message: 'You do not have permission to view material movements' });
+      return;
+    }
+    
+    // Redirect to MaterialAdjustment page if movement type is Adjustment
+    if (grn.movementType === 'Adjustment') {
+      navigate('/material-adjustment', { state: { record: grn } });
       return;
     }
     
