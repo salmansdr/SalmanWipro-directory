@@ -34,6 +34,9 @@ const SupplierMaster = () => {
   const [alertMessage, setAlertMessage] = useState({ show: false, type: '', message: '' });
   const [loading, setLoading] = useState(false);
 
+  // User information
+  const [userId] = useState(localStorage.getItem('userId') || '');
+
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
 
   useEffect(() => {
@@ -141,12 +144,24 @@ const SupplierMaster = () => {
       
       const method = editMode ? 'PUT' : 'POST';
       
+      // Prepare submission data
+      const submitData = editMode ? {
+        ...formData,
+        modifiedDate: new Date().toISOString(),
+        modifiedBy: userId
+      } : {
+        ...formData,
+        createdDate: new Date().toISOString(),
+        createdBy: userId,
+        modifiedBy: userId
+      };
+      
       const response = await fetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {

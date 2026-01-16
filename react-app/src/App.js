@@ -125,7 +125,7 @@ function App() {
   const [expanded, setExpanded] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogo] = useState('');
-  const [themeColor, setThemeColor] = useState('#003366');
+  const [themeColor, setThemeColor] = useState('#1a1a2e');
   const [fontColor, setFontColor] = useState('#ffffff');
   const AUTH_KEY = 'isAuthenticated';
   const AUTH_USER_KEY = 'authUser';

@@ -380,49 +380,46 @@ function Main() {
           {/* Project Estimation Tile */}
           <Col xl={4} lg={4} md={6} sm={12}>
             <Card className="dashboard-tile h-100 shadow-sm border-0 overflow-hidden">
-              <div style={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)', padding: '1.5rem 1.25rem', color: 'white' }}>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <i className="bi bi-calculator-fill" style={{ fontSize: '2.2rem', opacity: 0.9 }}></i>
-                </div>
-                <h5 className="mb-0 fw-bold">Project Estimation</h5>
+              <div style={{ background: 'linear-gradient(135deg, #0e7490 0%, #155e75 100%)', padding: '1rem 1rem', color: 'white' }}>
+                <h6 className="mb-0 fw-bold">Project Estimation ({companyCurrency})</h6>
               </div>
               <Card.Body className="p-3">
-                <div className="text-center mb-3 p-3 rounded" style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)' }}>
-                  <small className="text-muted d-block mb-1 fw-semibold">Total Estimated Cost</small>
-                  <h2 className="mb-0 fw-bold" style={{ color: '#0891b2' }}>{companyCurrency}{dashboardData.estimation.totalEstimatedProjectCost.toLocaleString()}</h2>
-                </div>
-                
-                <Row className="g-2 mb-3">
+                {/* Cards in Grid Format */}
+                <Row className="g-3">
+                  {/* Total Estimated Cost */}
                   <Col xs={6}>
-                    <div className="p-2 text-center rounded" style={{ background: '#cffafe' }}>
-                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Material</small>
-                      <strong className="d-block" style={{ fontSize: '0.85rem' }}>{companyCurrency}{(dashboardData.estimation.totalmaterialEstimatedAmount / 100000).toFixed(1)}L</strong>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #3b82f6' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Total Cost</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{(dashboardData.estimation.totalEstimatedProjectCost/1000).toFixed(0)}K</div>
                     </div>
                   </Col>
+
+                  {/* Material */}
                   <Col xs={6}>
-                    <div className="p-2 text-center rounded" style={{ background: '#e0f2fe' }}>
-                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Labour</small>
-                      <strong className="d-block" style={{ fontSize: '0.85rem' }}>{companyCurrency}{(dashboardData.estimation.totalEstimatedLabourAmount / 1000).toFixed(0)}K</strong>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #10b981' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Material</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{(dashboardData.estimation.totalmaterialEstimatedAmount / 1000).toFixed(0)}K</div>
+                    </div>
+                  </Col>
+
+                  {/* Labour */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #ef4444' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Labour</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{(dashboardData.estimation.totalEstimatedLabourAmount / 1000).toFixed(0)}K</div>
+                    </div>
+                  </Col>
+
+                  {/* Components */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #f97316' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Components</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.estimation.totalComponentsCount}</div>
                     </div>
                   </Col>
                 </Row>
 
-                <Row className="g-2 mb-3">
-                  <Col xs={6}>
-                    <div className="p-2 text-center rounded" style={{ background: '#f8f9fa' }}>
-                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Components</small>
-                      <strong className="fs-5">{dashboardData.estimation.totalComponentsCount}</strong>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div className="p-2 text-center rounded" style={{ background: '#fef3c7' }}>
-                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Other Expense</small>
-                      <strong className="d-block" style={{ fontSize: '0.85rem' }}>{companyCurrency}{(dashboardData.estimation.totalEstimatedOtherExpense / 1000).toFixed(0)}K</strong>
-                    </div>
-                  </Col>
-                </Row>
-
-                <div className="d-flex align-items-center justify-content-between p-2 rounded mb-3" style={{ background: '#fff3cd' }}>
+                <div className="d-flex align-items-center justify-content-between p-2 rounded mt-3" style={{ background: '#fff3cd' }}>
                   <small className="text-muted"><i className="bi bi-clock me-1"></i>Last Updated</small>
                   <strong className="small">
                     {dashboardData.estimation.lastEstimationModifiedDate 
@@ -435,7 +432,7 @@ function Main() {
                   </strong>
                 </div>
 
-                <div className="d-grid gap-2">
+                <div className="d-grid gap-2 mt-3">
                   <Button 
                     size="sm"
                     onClick={() => navigate('/project-estimation')}
@@ -452,56 +449,55 @@ function Main() {
           {/* Requisition Tile */}
           <Col xl={4} lg={4} md={6} sm={12}>
             <Card className="dashboard-tile h-100 shadow-sm border-0 overflow-hidden">
-              <div style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', padding: '1rem 1rem', color: 'white' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)', padding: '1rem 1rem', color: 'white' }}>
                 <h6 className="mb-0 fw-bold">Requisition</h6>
               </div>
-              <Card.Body className="p-2">
-                {/* First Row: Pending, Approved */}
-                <Row className="g-1 mb-2">
+              <Card.Body className="p-3" style={{ background: '#f9fafb' }}>
+                {/* Cards in Grid Format */}
+                <Row className="g-3">
+                  {/* Pending */}
                   <Col xs={6}>
-                    <div className="text-center p-2 rounded" style={{ background: '#e0f2fe', border: '1px solid #38bdf8' }}>
-                      <small className="text-muted d-block mb-1" style={{ fontSize: '0.65rem' }}>Pending</small>
-                      <h5 className="mb-0 fw-bold" style={{ color: '#0369a1' }}>{dashboardData.requisition.pendingApprovalCount}</h5>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #3b82f6', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Pending</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.requisition.pendingApprovalCount}</div>
                     </div>
                   </Col>
+
+                  {/* Approved */}
                   <Col xs={6}>
-                    <div className="text-center p-2 rounded" style={{ background: '#d1fae5', border: '1px solid #34d399' }}>
-                      <small className="text-muted d-block mb-1" style={{ fontSize: '0.65rem' }}>Approved</small>
-                      <h5 className="mb-0 fw-bold" style={{ color: '#059669' }}>{dashboardData.requisition.approvedCount}</h5>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #10b981', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Approved</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.requisition.approvedCount}</div>
+                    </div>
+                  </Col>
+
+                  {/* Draft */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Draft</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.requisition.draftCount}</div>
+                    </div>
+                  </Col>
+
+                  {/* Rejected */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #64748b', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Rejected</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.requisition.rejectedCount}</div>
                     </div>
                   </Col>
                 </Row>
 
-                {/* Second Row: Draft, Rejected */}
-                <Row className="g-1 mb-2">
-                  <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #eab308' }}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-file-earmark me-1"></i>Draft</span>
-                        <span className="badge" style={{ background: '#eab308', color: 'white', fontSize: '0.75rem' }}>{dashboardData.requisition.draftCount}</span>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#f1f5f9', border: '1px solid #64748b' }}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-x-circle me-1"></i>Rejected</span>
-                        <span className="badge" style={{ background: '#64748b', color: 'white', fontSize: '0.75rem' }}>{dashboardData.requisition.rejectedCount}</span>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-
-                {/* Total Row */}
-                <div className="mb-2 p-2 rounded text-center" style={{ background: '#e0e7ff', border: '1px solid #6366f1' }}>
+                {/* Total Requisitions */}
+                <div className="mt-3 p-2 rounded text-center" style={{ background: 'white', border: '1px solid #6366f1', boxShadow: '0 2px 4px rgba(99,102,241,0.15)' }}>
                   <div className="d-flex justify-content-between align-items-center">
                     <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-card-list me-1"></i>Total Requisitions</span>
                     <span className="badge" style={{ background: '#6366f1', color: 'white', fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>{dashboardData.requisition.totalRequisitions}</span>
                   </div>
                 </div>
 
-                {/* Third Row: Open Requisitions */}
-                <div className="mb-2 p-2 rounded" style={{ background: '#dbeafe', border: '1px solid #3b82f6' }}>
+                {/* Open Requisitions */}
+                <div className="mt-2 p-2 rounded" style={{ background: 'white', border: '1px solid #3b82f6', boxShadow: '0 2px 4px rgba(59,130,246,0.15)' }}>
                   <div className="d-flex justify-content-between align-items-center">
                     <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-folder-open me-1"></i>Open Requisitions</span>
                     <span 
@@ -530,7 +526,7 @@ function Main() {
 
                 {/* Pending Requisitions for Approval */}
                 {userPendingRequisitions.length > 0 && (
-                  <div className="mb-2 p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
+                  <div className="mt-2 p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
                     <div className="mb-1">
                       <small className="fw-bold" style={{ color: '#d97706', fontSize: '0.7rem' }}>
                         <i className="bi bi-bell-fill me-1"></i>
@@ -555,7 +551,7 @@ function Main() {
                   </div>
                 )}
 
-                <div className="d-grid gap-1">
+                <div className="d-grid gap-1 mt-3">
                   {requisitionPermissions.edit && (
                     <Button 
                       style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', border: 'none', color: 'white' }}
@@ -582,58 +578,57 @@ function Main() {
           {/* Purchase Orders Tile */}
           <Col xl={4} lg={4} md={6} sm={12}>
             <Card className="dashboard-tile h-100 shadow-sm border-0 overflow-hidden">
-              <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '1rem 1rem', color: 'white' }}>
+              <div style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', padding: '1rem 1rem', color: 'white' }}>
                 <h6 className="mb-0 fw-bold">Purchase Orders</h6>
               </div>
-              <Card.Body className="p-2">
-                {/* First Row: Pending, Approved */}
-                <Row className="g-1 mb-2">
+              <Card.Body className="p-3" style={{ background: '#f9fafb' }}>
+                {/* Cards in Grid Format */}
+                <Row className="g-3">
+                  {/* Pending */}
                   <Col xs={6}>
-                    <div className="text-center p-2 rounded" style={{ background: '#e0f2fe', border: '1px solid #38bdf8' }}>
-                      <small className="text-muted d-block mb-1" style={{ fontSize: '0.65rem' }}>Pending</small>
-                      <h5 className="mb-0 fw-bold" style={{ color: '#0369a1' }}>{dashboardData.purchaseOrders.pendingApprovalCount}</h5>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #3b82f6', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Pending</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.purchaseOrders.pendingApprovalCount}</div>
                     </div>
                   </Col>
+
+                  {/* Approved */}
                   <Col xs={6}>
-                    <div className="text-center p-2 rounded" style={{ background: '#d1fae5', border: '1px solid #34d399' }}>
-                      <small className="text-muted d-block mb-1" style={{ fontSize: '0.65rem' }}>Approved</small>
-                      <h5 className="mb-0 fw-bold" style={{ color: '#059669' }}>{dashboardData.purchaseOrders.approvedCount}</h5>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #10b981', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Approved</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.purchaseOrders.approvedCount}</div>
+                    </div>
+                  </Col>
+
+                  {/* Draft */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Draft</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.purchaseOrders.draftCount}</div>
+                    </div>
+                  </Col>
+
+                  {/* Rejected */}
+                  <Col xs={6}>
+                    <div className="p-3 rounded bg-white" style={{ border: '1px solid #e5e7eb', borderLeft: '4px solid #64748b', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.8rem', fontWeight: '500' }}>Rejected</div>
+                      <div className="fw-bold" style={{ fontSize: '1.5rem', color: '#1f2937' }}>{dashboardData.purchaseOrders.rejectedCount}</div>
                     </div>
                   </Col>
                 </Row>
 
-                {/* Second Row: Draft, Rejected */}
-                <Row className="g-1 mb-2">
-                  <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #eab308' }}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-file-earmark me-1"></i>Draft</span>
-                        <span className="badge" style={{ background: '#eab308', color: 'white', fontSize: '0.75rem' }}>{dashboardData.purchaseOrders.draftCount}</span>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#f1f5f9', border: '1px solid #64748b' }}>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-x-circle me-1"></i>Rejected</span>
-                        <span className="badge" style={{ background: '#64748b', color: 'white', fontSize: '0.75rem' }}>{dashboardData.purchaseOrders.rejectedCount}</span>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-
-                {/* Total Row */}
-                <div className="mb-2 p-2 rounded text-center" style={{ background: '#e0e7ff', border: '1px solid #6366f1' }}>
+                {/* Total Purchase Orders */}
+                <div className="mt-3 p-2 rounded text-center" style={{ background: 'white', border: '1px solid #6366f1', boxShadow: '0 2px 4px rgba(99,102,241,0.15)' }}>
                   <div className="d-flex justify-content-between align-items-center">
                     <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-card-list me-1"></i>Total Purchase Orders</span>
                     <span className="badge" style={{ background: '#6366f1', color: 'white', fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>{dashboardData.purchaseOrders.totalPurchaseOrders}</span>
                   </div>
                 </div>
 
-                {/* Third Row: Open PO, Delayed PO */}
-                <Row className="g-1 mb-2">
+                {/* Open PO and Delayed PO */}
+                <Row className="g-2 mt-2">
                   <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#dbeafe', border: '1px solid #3b82f6' }}>
+                    <div className="p-2 rounded" style={{ background: 'white', border: '1px solid #3b82f6', boxShadow: '0 2px 4px rgba(59,130,246,0.15)' }}>
                       <div className="d-flex justify-content-between align-items-center">
                         <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-folder-open me-1"></i>Open PO</span>
                         <span 
@@ -661,7 +656,7 @@ function Main() {
                     </div>
                   </Col>
                   <Col xs={6}>
-                    <div className="p-2 rounded" style={{ background: '#fee2e2', border: '1px solid #ef4444' }}>
+                    <div className="p-2 rounded" style={{ background: 'white', border: '1px solid #ef4444', boxShadow: '0 2px 4px rgba(239,68,68,0.15)' }}>
                       <div className="d-flex justify-content-between align-items-center">
                         <span style={{ fontSize: '0.7rem', fontWeight: '600' }}><i className="bi bi-exclamation-triangle me-1"></i>Delayed</span>
                         <span 
@@ -692,7 +687,7 @@ function Main() {
 
                 {/* Pending Purchase Orders for Approval */}
                 {userPendingPurchaseOrders.length > 0 && (
-                  <div className="mb-2 p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
+                  <div className="mt-2 p-2 rounded" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
                     <div className="mb-1">
                       <small className="fw-bold" style={{ color: '#d97706', fontSize: '0.7rem' }}>
                         <i className="bi bi-bell-fill me-1"></i>
@@ -717,10 +712,10 @@ function Main() {
                   </div>
                 )}
 
-                <div className="d-grid gap-1">
+                <div className="d-grid gap-1 mt-3">
                   {purchaseOrdersPermissions.edit && (
                     <Button 
-                      variant="success" 
+                      style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: 'white' }}
                       size="sm"
                       onClick={() => navigate('/purchase-orders', { state: { viewMode: 'form', action: 'new' } })}
                     >
@@ -729,7 +724,7 @@ function Main() {
                   )}
                   {purchaseOrdersPermissions.view && (
                     <Button 
-                      variant="outline-success" 
+                      style={{ border: '2px solid #10b981', color: '#10b981', background: 'white' }}
                       size="sm"
                       onClick={() => navigate('/purchase-orders')}
                     >

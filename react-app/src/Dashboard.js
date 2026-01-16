@@ -26,7 +26,7 @@ const Dashboard = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
   //const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  const currency = localStorage.getItem('companyCurrency') || 'Rs';
+  const currency = localStorage.getItem('companyCurrency') ;
 
   // Callback for when Reports component data is loaded
   const handleReportsDataLoaded = useCallback(() => {
@@ -168,20 +168,33 @@ const Dashboard = () => {
       completionPercentages.push(...floors.map(() => 0));
     }
 
+    // Calculate completed and remaining portions based on completion percentage
+    const completedPortions = estimated.map((est, idx) => (est * completionPercentages[idx]) / 100);
+    const remainingPortions = estimated.map((est, idx) => est - completedPortions[idx]);
+
     return {
       labels,
       datasets: [
         {
-          label: 'Estimated Cost',
-          data: estimated,
-          backgroundColor: 'rgba(68,114,196,0.85)',
-          completionPercentages: completionPercentages // Store completion data for labels
+          label: 'Completed (%)',
+          data: completedPortions,
+          backgroundColor: 'rgba(76,175,80,0.85)', // Green for completed portion
+          stack: 'estimated',
+          completionPercentages: completionPercentages
+        },
+        {
+          label: 'Remaining',
+          data: remainingPortions,
+          backgroundColor: 'rgba(68,114,196,0.4)', // Light blue for remaining portion
+          stack: 'estimated',
+          completionPercentages: completionPercentages
         },
         {
           label: 'Actual Expense',
           data: actual,
           backgroundColor: 'rgba(255,107,107,0.85)',
-          completionPercentages: completionPercentages // Store completion data for labels
+          stack: 'actual',
+          completionPercentages: completionPercentages
         }
       ]
     };
@@ -391,7 +404,11 @@ const Dashboard = () => {
       }
     },
     scales: {
+      x: {
+        stacked: true
+      },
       y: {
+        stacked: true,
         beginAtZero: true,
         ticks: {
           callback: function(value) {
@@ -409,40 +426,40 @@ const Dashboard = () => {
         }
       },
       tooltip: {
-        enabled: false // Disable tooltips since values are displayed on chart
+        enabled: false
       },
       datalabels: {
-        display: true,
+        display: function(context) {
+          // Show label on Remaining portion (dataset index 1) and Actual Expense (dataset index 2)
+          return context.datasetIndex === 1 || context.datasetIndex === 2;
+        },
         anchor: 'end',
         align: 'top',
-        offset: function(context) {
-          // Add more offset for Actual Expense to show completion above the value
-          if (context.datasetIndex === 1) {
-            return 15;
-          }
-          return 0;
-        },
+        offset: 5,
         formatter: function(value, context) {
           if (value === 0) return '';
           
-          // For Actual Expense bars (dataset index 1), show completion first, then value
+          // For Remaining portion (dataset index 1), show total estimated and completion percentage
           if (context.datasetIndex === 1) {
-            const completion = context.dataset.completionPercentages?.[context.dataIndex];
-            // Show completion on top, value below
-            return 'Completion: ' + Math.round(completion || 0) + '%\n' + formatNumber(value);
+            const completedValue = context.chart.data.datasets[0].data[context.dataIndex];
+            const totalEstimated = completedValue + value;
+            const completion = context.dataset.completionPercentages?.[context.dataIndex] || 0;
+            
+            return formatNumber(totalEstimated) + '\nCompletion: ' + Math.round(completion) + '%';
           }
           
-          // For Estimated Cost bars (dataset index 0), show only value
-          return formatNumber(value);
+          // For Actual Expense (dataset index 2), show the value
+          if (context.datasetIndex === 2) {
+            return formatNumber(value);
+          }
+          
+          return '';
         },
-        color: function(context) {
-          // Different colors for different datasets
-          return context.datasetIndex === 0 ? '#444' : '#2e7d32';
-        },
+        color: '#444',
         font: {
           weight: 'bold',
           size: 9,
-          lineHeight: 1.3
+          lineHeight: 1.4
         },
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderRadius: 4,

@@ -176,9 +176,9 @@ const ItemMaster = () => {
     quantity_formula: '',
     wastage_percent: 0,
     description: '',
-    location: '',
     isActive: true,
     lotControlled: false,
+    consumption: '',
     // Calculation subcomponents - grouped by component type
       materialCalculation: {
         RCC: [
@@ -188,40 +188,20 @@ const ItemMaster = () => {
         ],
         Ceiling: [],
         Wall: []
-      },
-      finishingCalculation: {
-        enabled: false,
-        quantity_formula: '',
-        coverage_per_box_sqft: '',
-        applicable_areas: [], // built_up_area, tile_area, perimeter etc
-        count_dependencies: [] // toilet_count, kitchen_count, floor_count etc
       }
     });
   // Validation states
   const [duplicateError, setDuplicateError] = useState('');
   const [materialValidated, setMaterialValidated] = useState(false);
 
-  // Location dropdown options (India and Bangladesh cities)
-  const locations = [
-    // India
-    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata',
-    'Surat', 'Pune', 'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Bhopal',
-    'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara', 'Ghaziabad',
-    // Bangladesh
-    'Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Barisal', 'Rangpur',
-    'Comilla', 'Narayanganj', 'Gazipur'
-  ].sort();
+  // User information
+  const [userId] = useState(localStorage.getItem('userId') || '');
 
   // Get subcategories for selected category from categories state
   const currentSubCategories = useMemo(() => {
     if (!itemForm.category) return [];
     const selectedCategory = categories.find(cat => cat.categoryName === itemForm.category);
-    console.log('currentSubCategories - Selected Category:', {
-      categoryName: itemForm.category,
-      selectedCategory,
-      hasSubCategories: !!selectedCategory?.subCategories,
-      subCategoriesLength: selectedCategory?.subCategories?.length
-    });
+    
     // Check if subCategories exists AND is an array (not null)
     if (selectedCategory && Array.isArray(selectedCategory.subCategories) && selectedCategory.subCategories.length > 0) {
       return selectedCategory.subCategories
@@ -230,9 +210,6 @@ const ItemMaster = () => {
     }
     return [];
   }, [categories, itemForm.category]);
-
-  // User's selected location (set once)
-  const [userLocation, setUserLocation] = useState('');
 
   // Load units from API
   const loadUnits = async () => {
@@ -252,7 +229,7 @@ const ItemMaster = () => {
       }
       
       const data = await response.json();
-      console.log('Units loaded from API:', data);
+      
       
       // Handle different response formats and extract unit strings
       let unitsArray = Array.isArray(data) ? data : (data.units || []);
@@ -293,12 +270,11 @@ const ItemMaster = () => {
       }
       
       const data = await response.json();
-      console.log('Categories loaded from API:', data);
+      
       
       // Ensure we have an array
       const categoriesArray = Array.isArray(data) ? data : (data.data || []);
-      console.log('Categories array after processing:', categoriesArray);
-      console.log('Sample category structure:', categoriesArray[0]);
+      
       setCategories(categoriesArray);
       
     } catch (error) {
@@ -306,27 +282,6 @@ const ItemMaster = () => {
       showAlertMessage('Error loading categories: ' + error.message, 'warning');
       setCategories([]);
     }
-  };
-
-  const loadUserLocation = async () => {
-    // Always load default location from MaterialRate.json as the source of truth
-    let defaultLocation = 'Kolkata'; // fallback
-    try {
-      const response = await fetch('/MaterialRate.json');
-      const data = await response.json();
-      defaultLocation = data.location || 'Kolkata';
-    } catch (error) {
-      console.warn('Could not load default location from MaterialRate.json:', error);
-    }
-
-    // Always use the location from MaterialRate.json 
-    // (This ensures consistency with the data source)
-    setUserLocation(defaultLocation);
-    setItemForm(prev => ({ ...prev, location: defaultLocation }));
-    
-    // Update localStorage to match MaterialRate.json
-    localStorage.setItem('userLocation', defaultLocation);
-    
   };
 
   const loadItems = useCallback(async (showLoading = true) => {
@@ -337,7 +292,7 @@ const ItemMaster = () => {
       
       // Ensure apiItems is an array before processing
       if (!Array.isArray(apiItems)) {
-        console.warn('API did not return an array:', apiItems);
+        
         throw new Error('API returned invalid data format');
       }
       
@@ -361,7 +316,6 @@ const ItemMaster = () => {
           categoryId: actualItem.categoryId || '',
           subCategories: actualItem.subCategories || [],
           unit: actualItem.unit || '',
-          location: actualItem.location || '',
           isActive: actualItem.isActive !== undefined ? actualItem.isActive : true,
           // Handle other potential fields
           default_brand: actualItem.default_brand || '',
@@ -369,6 +323,7 @@ const ItemMaster = () => {
           quantity_formula: actualItem.quantity_formula || '',
           wastage_percent: actualItem.wastage_percent || 0,
           description: actualItem.description || '',
+          consumption: actualItem.consumption || '',
           materialCalculation: actualItem.materialCalculation || null,
         //  finishingCalculation: actualItem.finishingCalculation || null
         };
@@ -449,7 +404,6 @@ const ItemMaster = () => {
       await loadUnits();
       await loadCategories();
       await loadItems();
-      await loadUserLocation();
     };
     initializeComponent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -458,7 +412,7 @@ const ItemMaster = () => {
   // Auto-select sub-category if only one exists
   useEffect(() => {
     if (currentSubCategories.length === 1 && !itemForm.sub_category) {
-      console.log('Auto-selecting single sub-category:', currentSubCategories[0]);
+      
       setItemForm(prev => ({
         ...prev,
         sub_category: currentSubCategories[0]
@@ -510,11 +464,7 @@ const ItemMaster = () => {
         body: JSON.stringify(apiData)
       };
 
-      console.log('saveItemToAPI - Complete JSON being sent to API:', {
-        endpoint,
-        method: requestOptions.method,
-        fullPayload: JSON.parse(requestOptions.body)
-      });
+      
 
       const response = await fetch(endpoint, requestOptions);
       
@@ -524,11 +474,7 @@ const ItemMaster = () => {
       }
       
       const result = await response.json();
-      console.log('saveItemToAPI - API Response:', {
-        success: true,
-        result_sub_category: result.sub_category,
-        result_categoryId: result.categoryId
-      });
+     
       return result;
     } catch (error) {
       console.error('API Error:', error);
@@ -623,7 +569,7 @@ const ItemMaster = () => {
       const apiUrl = process.env.REACT_APP_API_URL || 'https://buildproapi.onrender.com';
       const endpoint = `${apiUrl}/api/materialitems/${itemId}`;
       
-      console.log('Fetching item by ID:', itemId, 'from endpoint:', endpoint);
+      //console.log('Fetching item by ID:', itemId, 'from endpoint:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -638,7 +584,7 @@ const ItemMaster = () => {
       }
       
       const data = await response.json();
-      console.log('API Response for item:', JSON.stringify(data, null, 2));
+      //console.log('API Response for item:', JSON.stringify(data, null, 2));
       return data;
     } catch (error) {
       console.error('API Get Material By ID Error:', error);
@@ -656,10 +602,7 @@ const ItemMaster = () => {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Log sub_category changes
-    if (name === 'sub_category') {
-      console.log('handleInputChange - sub_category changed:', value);
-    }
+    
     
     // Handle default_brand change - automatically set defaultRate
     if (name === 'default_brand') {
@@ -682,52 +625,39 @@ const ItemMaster = () => {
    
     // Real-time duplicate validation for material name
     if (name === 'material') {
-      validateMaterialDuplicate(value, itemForm.category, itemForm.location);
+      validateMaterialDuplicate(value, itemForm.category);
     }
     
-    // Re-validate if category or location changes and material exists
-    if ((name === 'category' || name === 'location') && itemForm.material) {
+    // Re-validate if category changes and material exists
+    if (name === 'category' && itemForm.material) {
       const material = itemForm.material;
-      const category = name === 'category' ? value : itemForm.category;
-      const location = name === 'location' ? value : itemForm.location;
-      validateMaterialDuplicate(material, category, location);
+      const category = value;
+      validateMaterialDuplicate(material, category);
     }
   };
 
-  
 
-
-  const handleFinishingCalculationChange = (field, value) => {
-    setItemForm(prev => ({
-      ...prev,
-      finishingCalculation: {
-        ...prev.finishingCalculation,
-        [field]: value
-      }
-    }));
-  };
 
   
 
   
   // Handle active combination toggling with detailed keys
-  const validateMaterialDuplicate = (material, category, location) => {
+  const validateMaterialDuplicate = (material, category) => {
     if (!material.trim()) {
       setDuplicateError('');
       setMaterialValidated(false);
       return;
     }
 
-    // Check for duplicate material in same location and category
+    // Check for duplicate material in same category
     const existingItem = items.find(item => 
       item.material.toLowerCase().trim() === material.toLowerCase().trim() &&
       item.category === category &&
-      item.location === location &&
       item.id !== itemForm.id // Exclude current item when editing
     );
 
     if (existingItem) {
-      setDuplicateError(`Material "${material}" already exists in "${category}" category for "${location}" location.`);
+      setDuplicateError(`Material "${material}" already exists in "${category}" category.`);
       setMaterialValidated(false);
     } else {
       setDuplicateError('');
@@ -826,13 +756,6 @@ const ItemMaster = () => {
         
         // Apply auto-setup logic based on category
         let materialCalc = migrateMaterialCalculation(processedItemData.materialCalculation);
-        let finishingCalc = processedItemData.finishingCalculation || {
-          enabled: false,
-          quantity_formula: '',
-          coverage_per_box_sqft: '',
-          applicable_areas: [],
-          count_dependencies: []
-        };
 
         // Calculate defaultRate based on default_brand
         const brands = (processedItemData.brands && processedItemData.brands.length > 0) 
@@ -849,7 +772,6 @@ const ItemMaster = () => {
           categoryId: processedItemData.categoryId || '',
           sub_category: processedItemData.sub_category || '',
           unit: processedItemData.unit || '',
-          location: processedItemData.location || '',
           isActive: processedItemData.isActive !== undefined ? processedItemData.isActive : true,
           lotControlled: processedItemData.lotControlled !== undefined ? processedItemData.lotControlled : false,
           default_brand: defaultBrand,
@@ -858,9 +780,9 @@ const ItemMaster = () => {
           quantity_formula: processedItemData.quantity_formula || '',
           wastage_percent: processedItemData.wastage_percent || 0,
           description: processedItemData.description || '',
+          consumption: processedItemData.consumption || '',
           brands: brands,
-          materialCalculation: materialCalc,
-          finishingCalculation: finishingCalc
+          materialCalculation: materialCalc
         });
         
         // Clear validation states when editing
@@ -877,23 +799,6 @@ const ItemMaster = () => {
 
         // Migrate material calculation
         let materialCalc = migrateMaterialCalculation(item.materialCalculation);
-        
-        let finishingCalc = item.finishingCalculation || {
-          enabled: false,
-          quantity_formula: '',
-          coverage_per_box_sqft: '',
-          applicable_areas: [],
-          count_dependencies: []
-        };
-
-        // Auto-enable calculation panels based on category
-        if (item.category === 'Civil') {
-          materialCalc = { ...materialCalc, enabled: true };
-          finishingCalc = { ...finishingCalc, enabled: false };
-        } else if (item.category && item.category !== 'Civil') {
-          finishingCalc = { ...finishingCalc, enabled: true };
-          materialCalc = { ...materialCalc, enabled: false };
-        }
 
         // Calculate defaultRate based on default_brand
         const brands = (item.brands && item.brands.length > 0) 
@@ -910,7 +815,6 @@ const ItemMaster = () => {
           categoryId: item.categoryId || '',
           sub_category: item.sub_category || '',
           unit: item.unit || '',
-          location: item.location || '',
           isActive: item.isActive !== undefined ? item.isActive : true,
           lotControlled: item.lotControlled !== undefined ? item.lotControlled : false,
           default_brand: defaultBrand,
@@ -919,9 +823,9 @@ const ItemMaster = () => {
           quantity_formula: item.quantity_formula || '',
           wastage_percent: item.wastage_percent || 0,
           description: item.description || '',
+          consumption: item.consumption || '',
           brands: brands,
-          materialCalculation: materialCalc,
-          finishingCalculation: finishingCalc
+          materialCalculation: materialCalc
         });
         // Clear validation states when editing
         setDuplicateError('');
@@ -944,9 +848,14 @@ const ItemMaster = () => {
         quantity_formula: '',
         wastage_percent: 0,
         description: '',
-        location: userLocation || '', // Allow empty location for dropdown selection
+        consumption: '',
         isActive: true,
-        lotControlled: false
+        lotControlled: false,
+        materialCalculation: {
+          RCC: [],
+          Ceiling: [],
+          Wall: []
+        }
       });
       // Clear validation states for new item
       setDuplicateError('');
@@ -971,7 +880,7 @@ const ItemMaster = () => {
       quantity_formula: '',
       wastage_percent: 0,
       description: '',
-      location: userLocation || '',
+      consumption: '',
       isActive: true,
       lotControlled: false,
       // Reset calculation subcomponents
@@ -979,13 +888,6 @@ const ItemMaster = () => {
         RCC: [],
         Ceiling: [],
         Wall: []
-      },
-      finishingCalculation: {
-        enabled: false,
-        quantity_formula: '',
-        coverage_per_box_sqft: '',
-        applicable_areas: [],
-        count_dependencies: []
       }
     });
     // Clear validation states
@@ -1002,11 +904,6 @@ const ItemMaster = () => {
     // Check for sub-category when category has subcategories
     if (currentSubCategories.length > 0 && !itemForm.sub_category) {
       showAlertMessage('Please select a Sub-Category', 'danger');
-      return false;
-    }
-
-    if (!itemForm.location) {
-      showAlertMessage('Please select a location', 'danger');
       return false;
     }
 
@@ -1066,34 +963,23 @@ const ItemMaster = () => {
         quantity_formula: itemForm.quantity_formula || "",
         wastage_percent: Number(itemForm.wastage_percent) || 0,
         description: itemForm.description || null,
-        location: itemForm.location,
         isActive: itemForm.isActive !== undefined ? itemForm.isActive : true,
         lotControlled: itemForm.lotControlled !== undefined ? itemForm.lotControlled : false,
+        consumption: itemForm.consumption ? Number(itemForm.consumption) : null,
         materialCalculation: itemForm.materialCalculation || null,
-        finishingCalculation: itemForm.finishingCalculation?.enabled ? {
-          enabled: true,
-          quantity_formula: itemForm.finishingCalculation.quantity_formula || '',
-          coverage_per_box_sqft: itemForm.finishingCalculation.coverage_per_box_sqft || '',
-          applicable_areas: itemForm.finishingCalculation.applicable_areas || [],
-          count_dependencies: itemForm.finishingCalculation.count_dependencies || []
-        } : null,
         version: "1.0"
       };
 
-      console.log('handleSubmit - Saving item with sub_category:', {
-        material: itemData.material,
-        category: itemForm.category,
-        categoryId: itemData.categoryId,
-        sub_category: itemData.sub_category,
-        itemForm_sub_category: itemForm.sub_category
-      });
+     
 
       if (editingItem) {
         // Update existing item
         const updatedItemData = {
           ...itemData,
+          createdBy: editingItem.createdBy || userId,
+          createdDate: editingItem.createdDate || new Date().toISOString(),
           modifiedDate: new Date().toISOString(),
-          modifiedBy: localStorage.getItem('currentUser') || 'System'
+          modifiedBy: userId
         };
         
         // Use the editingItem's MongoDB _id for update (not local id)
@@ -1116,7 +1002,8 @@ const ItemMaster = () => {
         const newItem = {
           ...itemData,
           createdDate: new Date().toISOString(),
-          createdBy: localStorage.getItem('currentUser') || 'System'
+          createdBy: userId,
+          modifiedBy: userId
         };
         
         // Save to API (MongoDB will generate the ID)
@@ -1748,30 +1635,17 @@ const ItemMaster = () => {
                       // Auto-select if only one subcategory
                       const autoSelectedSubCategory = subCats.length === 1 ? subCats[0] : '';
                       
-                      console.log('Category changed:', {
-                        categoryName: selectedCategoryName,
-                        categoryId: selectedCategory?._id,
-                        subCategories: subCats,
-                        autoSelectedSubCategory
-                      });
+                      
                       
                       setItemForm(prev => ({
                         ...prev,
                         category: selectedCategoryName,
                         categoryId: selectedCategory?._id || '',
-                        sub_category: autoSelectedSubCategory, // Auto-select if only one, else reset
-                        // Ensure finishingCalculation is initialized for non-Civil categories
-                        finishingCalculation: prev.finishingCalculation || {
-                          enabled: false,
-                          quantity_formula: '',
-                          coverage_per_box_sqft: '',
-                          applicable_areas: [],
-                          count_dependencies: []
-                        }
+                        sub_category: autoSelectedSubCategory // Auto-select if only one, else reset
                       }));
                       // Re-validate if material exists
                       if (itemForm.material) {
-                        validateMaterialDuplicate(itemForm.material, selectedCategoryName, itemForm.location);
+                        validateMaterialDuplicate(itemForm.material, selectedCategoryName);
                       }
                     }}
                     required
@@ -1819,6 +1693,20 @@ const ItemMaster = () => {
             <Row className="mb-3">
               <Col md={3}>
                 <Form.Group>
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    name="description"
+                    value={itemForm.description}
+                    onChange={handleInputChange}
+                    placeholder="Enter detailed description of the material"
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={3}>
+                <Form.Group>
                   <Form.Label>Unit <span className="text-danger">*</span></Form.Label>
                   <Form.Select
                     name="unit"
@@ -1833,21 +1721,7 @@ const ItemMaster = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={3}>
-                <Form.Group>
-                  <Form.Label>Unit Size (kg)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="unit_size_kg"
-                    value={itemForm.unit_size_kg}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 50"
-                  />
-                  <Form.Text className="text-muted">
-                    <small>Weight per unit</small>
-                  </Form.Text>
-                </Form.Group>
-              </Col>
+             
               <Col md={3}>
                 <Form.Group>
                   <Form.Label>Wastage %</Form.Label>
@@ -1867,103 +1741,18 @@ const ItemMaster = () => {
               </Col>
               <Col md={3}>
                 <Form.Group>
-                  <Form.Label>Location <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
-                    name="location"
-                    value={itemForm.location}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Location</option>
-                    {locations.map(location => (
-                      <option key={location} value={location}>{location}</option>
-                    ))}
-                  </Form.Select>
-                  <Form.Text className="text-muted">
-                    Select the location for this material rate
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="mb-4">
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Description</Form.Label>
+                  <Form.Label>Consumption/unit (Cum or Sqm)</Form.Label>
                   <Form.Control
-                    as="textarea"
-                    rows={2}
-                    name="description"
-                    value={itemForm.description}
+                    type="number"
+                    step="0.01"
+                    name="consumption"
+                    value={itemForm.consumption || ''}
                     onChange={handleInputChange}
-                    placeholder="Enter detailed description of the material"
+                    placeholder="e.g., 0.1"
                   />
                 </Form.Group>
               </Col>
             </Row>
-
-            {/* Calculation Subcomponents */}
-            {itemForm.category && (
-              <Row className="mb-4">
-                <Col>
-                </Col>
-              </Row>
-            )}
-
-            
-
-            {/* Finishing Calculation Component - Only for Non-Core Materials */}
-            {itemForm.category && itemForm.category !== 'Civil' && (
-              <Row className="mb-4">
-                <Col md={12}>
-                  <Card className="border-success">
-                    <Card.Header className="bg-success text-white">
-                      <h6 className="mb-0">
-                        <i className="fas fa-paint-brush me-2"></i>
-                        Finishing Calculation (Area/Count-based)
-                        <Badge bg="light" text="success" size="sm" className="ms-2">Required</Badge>
-                      </h6>
-                      <small className="text-light mt-1 d-block">
-                        Area/count-based calculations for finishing materials (tiles, paint, electrical, plumbing, etc.)
-                      </small>
-                    </Card.Header>
-                    <Card.Body>
-                      <Row className="mb-3">
-                        <Col md={6}>
-                          <Form.Group>
-                            <Form.Label>Quantity Formula</Form.Label>
-                            <Form.Control
-                              type="text"
-                              value={itemForm.finishingCalculation?.quantity_formula || ''}
-                              onChange={(e) => handleFinishingCalculationChange('quantity_formula', e.target.value)}
-                              placeholder="e.g., built_up_area_sqft / 10"
-                            />
-                            <Form.Text className="text-muted">
-                              Formula using area/count variables
-                            </Form.Text>
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group>
-                            <Form.Label>Coverage per Box/Unit (sqft)</Form.Label>
-                            <Form.Control
-                              type="number"
-                              step="0.1"
-                              value={itemForm.finishingCalculation?.coverage_per_box_sqft || ''}
-                              onChange={(e) => handleFinishingCalculationChange('coverage_per_box_sqft', e.target.value)}
-                              placeholder="e.g., 16 for tile box"
-                            />
-                            <Form.Text className="text-muted">
-                              Coverage area per unit (optional)
-                            </Form.Text>
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-            )}
 
             {/* Brands Section */}
             <Row className="mb-3">

@@ -56,76 +56,159 @@ function Home() {
 
   return (
     <div className="home-page">
-      {/* Hero Banner Section */}
-      <section className="hero-banner" style={{ 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+      {/* Promotional Banner Strip */}
+      <section style={{
+        background: 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%)',
         color: 'white',
-        minHeight: '60vh',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '3rem 0',
-        margin: 0
+        padding: '1rem 0',
+        position: 'relative',
+        zIndex: 10
       }}>
         <Container>
           <Row className="align-items-center">
-            <Col lg={10} className="mx-auto text-center">
-              <div className="mb-4">
-                <i className="bi bi-building" style={{ fontSize: '4rem', opacity: 0.9 }}></i>
+            <Col className="text-center">
+              <div className="d-flex align-items-center justify-content-center flex-wrap gap-3">
+                <span style={{ fontSize: '1.1rem', fontWeight: '600' }}>BuildPro Platform</span>
+                <span style={{ fontSize: '1rem', opacity: 0.95 }}>Transform Construction Management with Confidence</span>
+                <Button
+                  variant="link"
+                  onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
+                  style={{
+                    color: 'white',
+                    textDecoration: 'none',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    padding: '0.25rem 1rem',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    borderRadius: '20px',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  Learn More →
+                </Button>
               </div>
-              <h1 className="display-3 fw-bold mb-4 animate__animated animate__fadeInDown">
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Hero Banner Section */}
+      <section className="hero-banner" style={{ 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        minHeight: '65vh',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '4rem 0 3rem 0',
+        margin: 0,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        
+        <Container style={{ position: 'relative', zIndex: 2 }}>
+          <Row className="align-items-center">
+            <Col lg={10} className="mx-auto text-center">
+              <h1 className="hero-title mb-4" style={{
+                fontSize: 'clamp(2.5rem, 6vw, 3.5rem)',
+                fontWeight: '700',
+                lineHeight: '1.2',
+                letterSpacing: '-0.01em'
+              }}>
                 Construction Management System
               </h1>
-              <p className="lead mb-5 fs-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                Transform your construction project management with our comprehensive ERP solution. 
-                From BOQ estimation to material distribution, manage your entire supply chain seamlessly.
+              <p className="lead mb-5" style={{ 
+                maxWidth: '900px', 
+                margin: '0 auto 3rem',
+                fontSize: 'clamp(1rem, 2vw, 1.2rem)',
+                color: 'rgba(255,255,255,0.95)',
+                fontWeight: '400',
+                lineHeight: '1.6'
+              }}>
+                Transform your construction project management with our comprehensive ERP solution. From BOQ estimation to material distribution, manage your entire supply chain seamlessly.
               </p>
-              <div className="d-flex gap-3 justify-content-center flex-wrap">
+
+              {/* CTA Buttons */}
+              <div className="d-flex gap-3 justify-content-center flex-wrap mb-5">
                 <Button 
-                  variant="light" 
                   size="lg" 
-                  className="px-5 py-3 shadow-lg"
+                  className="px-5 py-3"
                   onClick={() => navigate('/login')}
-                  style={{ borderRadius: '50px', fontWeight: '600' }}
+                  style={{ 
+                    background: 'white',
+                    color: '#667eea',
+                    border: 'none',
+                    borderRadius: '50px',
+                    fontWeight: '600',
+                    fontSize: '1.1rem',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)'
+                  }}
                 >
-                  <i className="bi bi-box-arrow-in-right me-2"></i>
                   Get Started
                 </Button>
                 <Button 
-                  variant="outline-light" 
+                  variant="outline-light"
                   size="lg" 
-                  className="px-5 py-3 shadow"
+                  className="px-5 py-3"
                   onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
-                  style={{ borderRadius: '50px', fontWeight: '600', borderWidth: '2px' }}
+                  style={{ 
+                    background: 'transparent',
+                    color: 'white',
+                    border: '2px solid white',
+                    borderRadius: '50px',
+                    fontWeight: '600',
+                    fontSize: '1.1rem'
+                  }}
                 >
-                  <i className="bi bi-arrow-down-circle me-2"></i>
                   Learn More
                 </Button>
               </div>
               
               {/* Quick Stats */}
-              <Row className="mt-5 pt-4">
+              <Row className="mt-5 pt-4" style={{ maxWidth: '1100px', margin: '3rem auto 0' }}>
                 <Col md={3} sm={6} className="mb-3">
-                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
-                    <h3 className="display-6 fw-bold mb-0">100+</h3>
-                    <p className="mb-0 opacity-75">Projects Managed</p>
+                  <div className="stat-box p-4" style={{ 
+                    background: 'rgba(255,255,255,0.15)', 
+                    borderRadius: '15px', 
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                    <h3 className="display-6 fw-bold mb-1" style={{ color: 'white' }}>100+</h3>
+                    <p className="mb-0" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>Projects Managed</p>
                   </div>
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
-                    <h3 className="display-6 fw-bold mb-0">500+</h3>
-                    <p className="mb-0 opacity-75">Purchase Orders</p>
+                  <div className="stat-box p-4" style={{ 
+                    background: 'rgba(255,255,255,0.15)', 
+                    borderRadius: '15px', 
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                    <h3 className="display-6 fw-bold mb-1" style={{ color: 'white' }}>500+</h3>
+                    <p className="mb-0" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>Purchase Orders</p>
                   </div>
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
-                    <h3 className="display-6 fw-bold mb-0">24/7</h3>
-                    <p className="mb-0 opacity-75">Real-time Tracking</p>
+                  <div className="stat-box p-4" style={{ 
+                    background: 'rgba(255,255,255,0.15)', 
+                    borderRadius: '15px', 
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                    <h3 className="display-6 fw-bold mb-1" style={{ color: 'white' }}>24/7</h3>
+                    <p className="mb-0" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>Real-time Tracking</p>
                   </div>
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                  <div className="stat-box p-3" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', backdropFilter: 'blur(10px)' }}>
-                    <h3 className="display-6 fw-bold mb-0">99%</h3>
-                    <p className="mb-0 opacity-75">Accuracy Rate</p>
+                  <div className="stat-box p-4" style={{ 
+                    background: 'rgba(255,255,255,0.15)', 
+                    borderRadius: '15px', 
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                    <h3 className="display-6 fw-bold mb-1" style={{ color: 'white' }}>99%</h3>
+                    <p className="mb-0" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>Accuracy Rate</p>
                   </div>
                 </Col>
               </Row>
@@ -135,11 +218,11 @@ function Home() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-5 bg-light">
+      <section id="features" className="py-5" style={{ background: '#f8f9fa', padding: '5rem 0' }}>
         <Container>
           <div className="text-center mb-5">
-            <h2 className="display-5 fw-bold mb-3">Powerful Features</h2>
-            <p className="lead text-muted">Everything you need to manage construction projects efficiently</p>
+            <h2 className="fw-bold mb-3" style={{ fontSize: 'clamp(2rem, 5vw, 2.75rem)', color: '#1a1a2e' }}>Powerful Features</h2>
+            <p className="lead" style={{ color: '#6c757d', fontSize: '1.2rem' }}>Everything you need to manage construction projects efficiently</p>
           </div>
           <Row className="g-4">
             {features.map((feature, index) => (
@@ -336,19 +419,32 @@ function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-5" style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', color: 'white' }}>
+      <section style={{ 
+        background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', 
+        color: 'white',
+        padding: '4rem 0'
+      }}>
         <Container>
           <Row className="align-items-center">
             <Col lg={8} className="mx-auto text-center">
-              <h2 className="display-5 fw-bold mb-3">Ready to Transform Your Construction Management?</h2>
-              <p className="lead mb-4">
+              <h2 className="fw-bold mb-4" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)' }}>
+                Ready to Transform Your Construction Management?
+              </h2>
+              <p className="lead mb-5" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.9)' }}>
                 Join leading construction companies using our platform to streamline operations and boost productivity.
               </p>
               <Button 
-                variant="light" 
                 size="lg" 
                 className="px-5 py-3"
                 onClick={() => navigate('/login')}
+                style={{ 
+                  background: '#38bdf8',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '1.1rem',
+                  boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)'
+                }}
               >
                 <i className="bi bi-rocket-takeoff me-2"></i>
                 Start Your Journey
