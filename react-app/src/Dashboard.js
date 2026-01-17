@@ -382,92 +382,132 @@ const Dashboard = () => {
   });
 
   // Function to create floor-specific options with click handler
-  const createFloorBarOptions = (componentWiseSummary, floorWiseSummary) => ({
-    ...chartOptions,
-    onClick: (event, elements) => {
-      if (elements.length > 0) {
-        const element = elements[0];
-        const floorIndex = element.index;
-        const floorName = floorWiseSummary?.floors[floorIndex]?.floorName;
-        
-        // Find component data for this floor
-        if (componentWiseSummary && Array.isArray(componentWiseSummary)) {
-          const floorData = componentWiseSummary.find(c => c.floor === floorName);
-          if (floorData && floorData.components) {
-            setSelectedFloorData({
-              floorName: floorName,
-              components: floorData.components
-            });
-            setShowComponentModal(true);
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        stacked: true
-      },
-      y: {
-        stacked: true,
-        beginAtZero: true,
-        ticks: {
-          callback: function(value) {
-            return currency + ' ' + formatNumber(value);
-          }
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 15,
-          font: { size: 11 }
+  const createFloorBarOptions = (componentWiseSummary, floorWiseSummary) => {
+    const isMobile = window.innerWidth < 768;
+    
+    return {
+      ...chartOptions,
+      layout: {
+        padding: {
+          top: isMobile ? 60 : 40, // More padding on mobile for labels
+          bottom: 10,
+          left: 10,
+          right: 10
         }
       },
-      tooltip: {
-        enabled: false
-      },
-      datalabels: {
-        display: function(context) {
-          // Show label on Remaining portion (dataset index 1) and Actual Expense (dataset index 2)
-          return context.datasetIndex === 1 || context.datasetIndex === 2;
-        },
-        anchor: 'end',
-        align: 'top',
-        offset: 5,
-        formatter: function(value, context) {
-          if (value === 0) return '';
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const element = elements[0];
+          const floorIndex = element.index;
+          const floorName = floorWiseSummary?.floors[floorIndex]?.floorName;
           
-          // For Remaining portion (dataset index 1), show total estimated and completion percentage
-          if (context.datasetIndex === 1) {
-            const completedValue = context.chart.data.datasets[0].data[context.dataIndex];
-            const totalEstimated = completedValue + value;
-            const completion = context.dataset.completionPercentages?.[context.dataIndex] || 0;
+          // Find component data for this floor
+          if (componentWiseSummary && Array.isArray(componentWiseSummary)) {
+            const floorData = componentWiseSummary.find(c => c.floor === floorName);
+            if (floorData && floorData.components) {
+              setSelectedFloorData({
+                floorName: floorName,
+                components: floorData.components
+              });
+              setShowComponentModal(true);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: {
+            offset: true
+          },
+          ticks: {
+            font: {
+              size: isMobile ? 9 : 11
+            },
+            maxRotation: isMobile ? 45 : 0,
+            minRotation: isMobile ? 45 : 0
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            font: {
+              size: isMobile ? 9 : 11
+            },
+            callback: function(value) {
+              if (isMobile && value >= 100000) {
+                return currency + ' ' + (value / 100000).toFixed(1) + 'L';
+              }
+              return currency + ' ' + formatNumber(value);
+            }
+          }
+        }
+      },
+      barPercentage: 0.7,
+      categoryPercentage: 0.8,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: isMobile ? 10 : 15,
+            font: { size: isMobile ? 9 : 11 }
+          }
+        },
+        tooltip: {
+          enabled: false
+        },
+        datalabels: {
+          display: function(context) {
+            // Show label on Remaining portion (dataset index 1) and Actual Expense (dataset index 2)
+            return context.datasetIndex === 1 || context.datasetIndex === 2;
+          },
+          anchor: 'end',
+          align: 'top',
+          offset: isMobile ? 0 : 5,
+          clip: false, // Allow labels to overflow chart area
+          formatter: function(value, context) {
+            if (value === 0) return '';
             
-            return formatNumber(totalEstimated) + '\nCompletion: ' + Math.round(completion) + '%';
-          }
-          
-          // For Actual Expense (dataset index 2), show the value
-          if (context.datasetIndex === 2) {
-            return formatNumber(value);
-          }
-          
-          return '';
-        },
-        color: '#444',
-        font: {
-          weight: 'bold',
-          size: 9,
-          lineHeight: 1.4
-        },
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 4,
-        padding: { top: 5, bottom: 5, left: 7, right: 7 },
-        textAlign: 'center'
+            // For Remaining portion (dataset index 1), show total estimated and completion percentage
+            if (context.datasetIndex === 1) {
+              const completedValue = context.chart.data.datasets[0].data[context.dataIndex];
+              const totalEstimated = completedValue + value;
+              const completion = context.dataset.completionPercentages?.[context.dataIndex] || 0;
+              
+              if (isMobile) {
+                // Compact format for mobile: use K/L for thousands/lakhs
+                const formatted = totalEstimated >= 100000 
+                  ? (totalEstimated / 100000).toFixed(1) + 'L'
+                  : totalEstimated >= 1000
+                  ? (totalEstimated / 1000).toFixed(0) + 'K'
+                  : totalEstimated.toFixed(0);
+                return formatted + '\n' + Math.round(completion) + '%';
+              }
+              return formatNumber(totalEstimated) + '\nComp. ' + Math.round(completion) + '%';
+            }
+            
+            // For Actual Expense (dataset index 2), show the value
+            if (context.datasetIndex === 2) {
+              return formatNumber(value);
+            }
+            
+            return '';
+          },
+          color: '#444',
+          font: {
+            weight: 'bold',
+            size: isMobile ? 8 : 9,
+            lineHeight: 1.3
+          },
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: 4,
+          padding: isMobile ? { top: 2, bottom: 2, left: 3, right: 3 } : { top: 5, bottom: 5, left: 7, right: 7 },
+          textAlign: 'center'
+        }
       }
-    }
-  });
+    };
+  };
 
   return (
     <Container fluid className="py-4">
@@ -717,10 +757,13 @@ const Dashboard = () => {
                     <Col lg={12} className="mb-4">
                       <Card className="shadow-sm h-100">
                         <Card.Header className="bg-light">
-                          <h6 className="mb-0 fw-bold">Floor-wise: Estimated Cost vs Actual Expense</h6>
+                          <h6 className="mb-0 fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
+                            <span className="d-none d-md-inline">Floor-wise: Estimated Cost vs Actual Expense</span>
+                            <span className="d-md-none">Floor-wise: Est. vs Actual</span>
+                          </h6>
                         </Card.Header>
                         <Card.Body>
-                          <div style={{ height: '350px', cursor: 'pointer' }}>
+                          <div style={{ height: window.innerWidth < 768 ? '500px' : '400px', cursor: 'pointer' }}>
                             {getFloorWiseComparisonData(projectData.componentWiseSummary, projectData.floorWiseSummary) && (
                               <Bar data={getFloorWiseComparisonData(projectData.componentWiseSummary, projectData.floorWiseSummary)} options={createFloorBarOptions(projectData.componentWiseSummary, projectData.floorWiseSummary)} />
                             )}

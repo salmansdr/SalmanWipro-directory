@@ -87,7 +87,7 @@ const [step, setStep] = useState(1);
     
   // --- Step 3: Component Calculation State ---
   // Holds all floor/component calculation results for use in Step 5 and elsewhere
-  const [areaCalculationLogic, setAreaCalculationLogic] = useState(null);
+  const [areaCalculationLogic] = useState(null);
   const [, setStep3GridData] = useState([]);
   const [isExpandedView, setIsExpandedView] = useState(false);
 
@@ -222,11 +222,6 @@ const [step, setStep] = useState(1);
     setStep3GridData(allFloors);
   }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, carpetAreaSqFt, constructionPerimeter, lift, beamColumnConfig]);
   // Variables for Step 3 (Calculation logic, debug, etc.)
-  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-  const [configError, setConfigError] = useState(null);
-  const [editablePercentages, setEditablePercentages] = useState({});
-  const [editableThickness, setEditableThickness] = useState({});
-  // ...existing code...
   // eslint-disable-next-line no-unused-vars
   const [selectedDebugFloor, setSelectedDebugFloor] = useState(0);
 
@@ -1360,76 +1355,6 @@ useEffect(() => {
   React.useEffect(() => {
     loadBHKConfigurations();
   }, []);
-
-  // Load area calculation logic from JSON file
-  useEffect(() => {
-    const loadCalculationLogic = async () => {
-      try {
-        // Use the correct path for Create React App
-        const jsonPath = `${process.env.PUBLIC_URL || ''}/AreaCalculationLogic.json`;
-        const response = await fetch(jsonPath, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch JSON file: ${response.status} ${response.statusText} from ${response.url}`);
-        }
-        // Check if response is actually JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          // If not JSON, get the text to see what we actually received
-          await response.text();
-          throw new Error(`Server returned ${contentType || 'unknown content type'} instead of JSON. This usually means the file was not found and a 404 HTML page was returned.`);
-        }
-        const logic = await response.json();
-        setAreaCalculationLogic(logic);
-        // Update editable percentages from JSON
-        const components = logic.calculation_components;
-        if (components) {
-          setEditablePercentages({
-            external_walls: components.external_walls?.percentage * 100,
-            beams_columns: components.beams_columns?.percentage * 100,
-            staircase_area: components.staircase_area?.percentage * 100,
-            lift_shaft_area: components.lift_shaft_area?.percentage * 100,
-            balcony_area: components.balcony_area?.percentage * 100,
-            utility_area: components.utility_area?.percentage * 100,
-            toilet_bath_area: components.toilet_bath_area?.percentage * 100,
-            common_corridor: components.common_corridor?.percentage * 100,
-            parking_area_ground: components.parking_area_ground?.percentage * 100,
-            foundation_area: components.foundation_area?.percentage * 100,
-            parapet_walls: components.parapet_walls?.percentage * 100
-          });
-          // Update thickness values from JSON
-          setEditableThickness({
-            internal_walls: components.internal_walls?.thickness,
-            external_walls: components.external_walls?.thickness,
-            slab_area: components.slab_area?.thickness,
-            ceiling_plaster: components.ceiling_plaster?.thickness,
-            beams_columns: components.beams_columns?.thickness,
-            staircase_area: components.staircase_area?.thickness,
-            lift_shaft_area: components.lift_shaft_area?.thickness,
-            balcony_area: components.balcony_area?.thickness,
-            utility_area: components.utility_area?.thickness,
-            toilet_bath_area: components.toilet_bath_area?.thickness,
-            common_corridor: components.common_corridor?.thickness,
-            parking_area_ground: components.parking_area_ground?.thickness,
-            foundation_area: components.foundation_area?.thickness,
-            parapet_walls: components.parapet_walls?.thickness
-          });
-        }
-        setIsConfigLoaded(true);
-        setConfigError(null);
-      } catch (error) {
-        console.error('Failed to load area calculation logic:', error);
-        setIsConfigLoaded(false);
-        setConfigError(error.message);
-      }
-    };
-    loadCalculationLogic();
-  }, []);
   
   // Helper to get carpet area options for a BHK type
   function getCarpetAreaOptions(bhkType) {
@@ -2405,13 +2330,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
         // We'll patch each return below.
             let area = '-';
             let percentage = comp.percentage ? comp.percentage * 100 : '-';
-            if (editablePercentages[key] !== undefined) {
-              percentage = editablePercentages[key];
-            }
             let thickness = comp.thickness || '-';
-            if (editableThickness[key] !== undefined) {
-              thickness = editableThickness[key];
-            }
             let logic = comp.description || comp.formula || '';
 
             // Custom logic for Internal Walls
@@ -2644,13 +2563,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             }
             if (key === 'ExcavationVolume') {
               let usedPercentage = comp.percentage;
-              if (editablePercentages[key] !== undefined) {
-                usedPercentage = editablePercentages[key] / 100;
-              }
               let usedThickness = comp.thickness;
-              if (editableThickness[key] !== undefined) {
-                usedThickness = editableThickness[key];
-              }
               area = vars.super_buildup_area * (usedPercentage || 0);
               logic = `Excavation: ${percentage}% × Built-up Area (${vars.super_buildup_area}) = ${area.toFixed(0)} sqft, Thickness: ${usedThickness}ft`;
               return {
@@ -2680,13 +2593,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             }
             if (key === 'BasementSlab') {
               let usedPercentage = comp.percentage;
-              if (editablePercentages[key] !== undefined) {
-                usedPercentage = editablePercentages[key] / 100;
-              }
               let usedThickness = comp.thickness;
-              if (editableThickness[key] !== undefined) {
-                usedThickness = editableThickness[key];
-              }
               area = vars.super_buildup_area * (usedPercentage || 0);
               logic = `Basement Slab: ${percentage}% × Built-up Area (${vars.super_buildup_area}) = ${area.toFixed(0)} sqft, Thickness: ${usedThickness}ft`;
               return { key, ...comp, area, percentage, thickness: usedThickness, logic, isEditable: comp.percentage !== undefined,
@@ -2817,9 +2724,6 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
             if (comp.formula) {
               try {
                 let usedPercentage = comp.percentage;
-                if (editablePercentages[key] !== undefined) {
-                  usedPercentage = editablePercentages[key] / 100;
-                }
                 if (comp.formula === 'percentage_of_carpet_area') {
                   area = vars.carpetArea * (usedPercentage || 0);
                 } else if (comp.formula === 'percentage_of_buildup') {
@@ -2871,7 +2775,7 @@ const totalCarpetArea = (Number(width) && Number(depth)) ? (Number(width) * Numb
         return comps;
       });
       // allFloorsComponents[floorIdx] gives the components for that floor
-  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, carpetAreaSqFt, constructionPerimeter, lift, editablePercentages, editableThickness, bhkRoomDetails, getFloorRows, beamColumnConfig]);
+  }, [areaCalculationLogic, width, depth, floors, carpetPercent, buildupPercent, carpetAreaSqFt, constructionPerimeter, lift, bhkRoomDetails, getFloorRows, beamColumnConfig]);
 
   // Debug: Log allFloorsComponents after calculation
   //console.log('allFloorsComponents:', allFloorsComponents);
@@ -3059,39 +2963,6 @@ useEffect(() => {
         </div>
       )}
       
-      {/* Configuration Loading Check */}
-      {!isConfigLoaded && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '2rem',
-          background: configError ? '#fff5f5' : '#f8f9fa',
-          borderRadius: '8px',
-          margin: '1rem 0',
-          border: `1px solid ${configError ? '#fed7d7' : '#dee2e6'}`
-        }}>
-          {configError ? (
-            <>
-              <div style={{ fontSize: '1.2rem', color: '#e53e3e', marginBottom: '0.5rem' }}>
-                ❌ Configuration Load Failed
-              </div>
-              <div style={{ fontSize: '0.9rem', color: '#c53030', marginBottom: '1rem' }}>
-                Error: {configError}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#718096', marginBottom: '1rem' }}>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: '1.2rem', color: '#666', marginBottom: '0.5rem' }}>
-                ⚙️ Loading Configuration...
-              </div>
-              <div style={{ fontSize: '0.9rem', color: '#888' }}>
-                Please wait while we load the calculation parameters from AreaCalculationLogic.json
-              </div>
-            </>
-          )}
-        </div>
-      )}
       <div style={{ 
         display: step === 3 && isExpandedView ? 'none' : 'flex',
         alignItems: 'center', 
