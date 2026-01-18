@@ -355,7 +355,7 @@ function App() {
                 )}
                 <span style={{ color: fontColor }}>{companyName}</span>
               </div>
-              <small className="fw-light mt-1" style={{ color: fontColor, fontSize: '0.75rem' }}>Powered by Salman & Kawsar</small>
+             
             </Navbar.Brand>
             <Navbar.Toggle aria-controls="mainNavbar" className="navbar-toggler-icon-white" />
             <Navbar.Collapse id="mainNavbar">
